@@ -10,7 +10,7 @@ import itertools
 from Bio import SeqIO, Phylo
 from lazy_property import LazyWritableProperty as lazyproperty
 
-from OrthoFinder import catAln, format_id_for_iqtree, OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder, parse_species
+from OrthoFinder import catAln, format_id_for_iqtree, OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder, parse_species, exists_and_size_gt_zero
 from small_tools import mkdirs, flatten, test_s, test_f, parse_kargs, rmdirs
 from RunCmdsMP import run_cmd, run_job, logger
 #from creat_ctl import sort_version
@@ -1040,18 +1040,32 @@ def cluster_add_outgroup(collinearities, orthogroup, outgroup, fout=sys.stdout, 
 			nog += 1
 		og.write(fout)
 	logger.info('add {} outgroup genes for {} orthogroups'.format(ng, nog))
+def parse_group(groups):
+	xgroup = []
+	if isinstance(groups, str):
+		groups = [groups]
+	if groups is not None:
+		for group in groups:
+			if exists_and_size_gt_zero(group):
+				xgroup += [line.strip().split()[0] for line in open(group)]
+			else:
+				xgroup += [group]
+	return xgroup
 
 def cluster_by_mcl(collinearities, orthologs=None, inflation=2, outgroup=None, ingroup=None, outpre='cluster'):
-	outgroup = set(outgroup) if outgroup is not None else {}
+	ingroup = set(parse_group(ingroup))
+	outgroup = set(parse_group(outgroup))
 	network = '{}.network'.format(outpre)
 	fout = open(network, 'w')
 	np = 0
 	for rc in XCollinearity(collinearities, orthologs=orthologs):
 		sp1,sp2 = rc.species
-		if sp1 == sp2:
+		if sp1 == sp2:	# exclude paralogs
 			continue
-		if sp1 in outgroup or sp2 in outgroup:
-			continue 
+		if sp1 in outgroup or sp2 in outgroup:  # exclude outgoup
+			continue
+		if ingroup and not (sp1 in ingroup and sp2 in ingroup):	# only include ingroup
+			continue
 		for g1, g2 in rc.pairs:
 			np += 1
 			line = [g1, g2]
@@ -2394,8 +2408,8 @@ class ToAstral(ColinearGroups):
 		cdsCatAln = '{}.cds.concat.aln'.format(self.suffix)
 		pepCatAln = '{}.pep.concat.aln'.format(self.suffix)
 		if self.singlecopy and self.concat:
-			for alnfiles, catAln in zip([pepAlnfiles, cdsAlnfiles], [pepCatAln, cdsCatAln]):
-				with open(catAln, 'w') as outAln:
+			for alnfiles, _catAln in zip([pepAlnfiles, cdsAlnfiles], [pepCatAln, cdsCatAln]):
+				with open(_catAln, 'w') as outAln:
 					catAln(alnfiles, outAln)
 		# clean
 		if self.cds and not self.both:
@@ -2404,7 +2418,7 @@ class ToAstral(ColinearGroups):
 			rmdirs(cdsGenetrees, cdsCatAln)
 
 		if self.clean:
-			logger.info('cleaning {}'.format(self.tmpdir))
+			logger.info('cleaning `{}`'.format(self.tmpdir))
 			rmdirs(self.tmpdir)
 
 def parse_spsd(spsd, skip=False):

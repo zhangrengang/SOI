@@ -4,19 +4,14 @@ import argparse,sys
 import re
 import networkx as nx
 import numpy as np
-from mcscan import Collinearity, Gff
+from mcscan import Collinearity, Gff, XCollinearity
 from OrthoFinder import OrthoFinder
 from ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
 
 __version__='0.1'
 __LastModified__='20190226'
 __Example__=''
-def makeArgparse():
-	parser = argparse.ArgumentParser( \
-        formatter_class=argparse.RawDescriptionHelpFormatter,\
-        epilog="Version: {}\nLast Modification Date: {}".format(__version__,__LastModified__),\
-        version="Version: {}".format(__version__),\
-        description="Example: {}".format(__Example__))
+def dotplot_args(parser):
 	parser.add_argument('-s', metavar='INPUT_BLOCK_FILE', type=str, required=True, help="the blocks (*.collinearity, output of MCSCANX)")
 	parser.add_argument('-g', metavar='INPUT_GENE_GFF_FILE', type=str, required=True, help="the annotation gff file (one of MCSCANX input)")
 	parser.add_argument('-c', metavar='chr ids config file', type=str, required=True, help="(*.ctl, control file for MCSCANX dotplotter)")
@@ -62,7 +57,14 @@ def makeArgparse():
 	group_ploidy = parser.add_argument_group('ploidy plot', 'options to plot relative ploidy')
 	group_ploidy.add_argument('--plot-ploidy', action='store_true', default=False, help="plot relative ploidy. default=%(default)s")
 	add_ploidy_opts(group_ploidy)
-	
+def makeArgparse():
+	parser = argparse.ArgumentParser( \
+        formatter_class=argparse.RawDescriptionHelpFormatter,\
+        epilog="Version: {}\nLast Modification Date: {}".format(__version__,__LastModified__),\
+        version="Version: {}".format(__version__),\
+        description="Example: {}".format(__Example__))
+
+	dotplot_args(parser)
 	if len(sys.argv)==1:
 		args = parser.parse_args(['-h'])
 	else:

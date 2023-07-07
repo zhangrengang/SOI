@@ -13,13 +13,13 @@ __LastModified__ = '20200616'
 __Example__ = None
 def add_ploidy_opts(parser):
 	parser.add_argument('--window_size', type=int, default=50, help="window_size. default=%(default)s")
-	parser.add_argument('--window_step', type=int, default=None, help="window_step. default=%(default)s")
+	parser.add_argument('--window_step', type=int, default=10, help="window_step. default=%(default)s")
 	parser.add_argument('--min_block', type=int, default=10, help="min genes for a block. default=%(default)s")
 	parser.add_argument('--max_distance', type=int, default=20, help="max_distance. default=%(default)s")
 	parser.add_argument('--max_ploidy',  type=int, default=10, help="x limit. default=%(default)s")
-	parser.add_argument('--min_overlap', type=float, default=None, help="min_overlap (0,1). default=%(default)s")
+	parser.add_argument('--min_overlap', type=float, default=20, help="min_overlap. default=%(default)s")
 	parser.add_argument('--color',  type=str, default=None, help="bar fill color. default=%(default)s")
-	parser.add_argument('--edgecolor', type=str, default=None, help="bar esge color. default=%(default)s")
+	parser.add_argument('--edgecolor', type=str, default=None, help="bar edge color. default=%(default)s")
 	
 def makeArgparse():
 	parser = argparse.ArgumentParser( \

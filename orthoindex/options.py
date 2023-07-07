@@ -1,6 +1,7 @@
 import sys,os
 import argparse
-from .__version__ import version
+from RunCmdsMP import logger
+from __version__ import version
 
 
 bindir = os.path.dirname(os.path.realpath(__file__))
@@ -8,7 +9,12 @@ bindir = os.path.dirname(os.path.realpath(__file__))
 def args_common(parser):
 	pass
 def args_dotplot(parser):
-	pass
+	from dot_plotter import dotplot_args
+	args = dotplot_args(parser)
+	return dict(args=args)
+def func_dotplot(**kargs):
+	from dot_plotter import main as dot_plotter
+	dot_plotter(**kargs)
 
 def args_filter(parser):
 	parser.add_argument('-s', '-synteny', required=True,  type=str,  nargs='*', 
@@ -41,7 +47,7 @@ This will use Orthology Index as weight for MCL [default=%(default)s]")
 					help="Inflation for MCL (varying this parameter affects granularity) [default=%(default)s]")
 	parser.add_argument('-outgroup', type=str, default=None, metavar='TAXON/FILE',
 					dest='outgroup', nargs='*',
-					help="Outgroups to exclude from orthogroups [default=%(default)s]")
+					help="Outgroups to exclude from orthogroups (prior to `-ingroup`) [default=%(default)s]")
 	parser.add_argument('-ingroup', type=str, default=None, metavar='TAXON/FILE',
 					dest='ingroup', nargs='*',
 					help="Ingroups that are only included [default=%(default)s]")
@@ -96,14 +102,14 @@ def args_phylo(parser):
 	parser.add_argument('-pre', '-prefix', type=str, default='sog',
 					dest='suffix', metavar='STR',
 					help="Output prefix. [default=%(default)s]")
-	parser.add_argument('-mm', '-max_missing', type=float, default=0.5,
+	parser.add_argument('-mm', '-max_missing', type=float, default=0.4,
 					dest='max_taxa_missing', metavar='FLOAT',
 					help="To allow maximum ratio of missing species. [default=%(default)s]")
 	parser.add_argument('-mc', '-max_copies', type=float, default=6,
 					dest='max_copies', metavar='INT',
 					help="To limit a common maximum copy number for every species. [default=%(default)s]")
 	parser.add_argument('-sc', '-singlecopy', default=None,
-					dest='concat', action='store_true',
+					dest='singlecopy', action='store_true',
 					help="Only retrieve singlecopy genes (=`-max_copies 1`). [default=%(default)s]")
 	parser.add_argument('-ss', '-spsd', type=str, default=None,
 					dest='spsd',  metavar='FILE',
@@ -115,7 +121,7 @@ def args_phylo(parser):
 	parser.add_argument('-p', '-ncpu', type=float, default=20,
 					dest='ncpu', metavar='INT',
 					help="Number of processors. [default=%(default)s]")
-	parser.add_argument('-tmpdir', type=str, default='./tmp/',
+	parser.add_argument('-tmp', '-tmpdir', type=str, default='./tmp/',
 					dest='tmpdir',  metavar='FOLDER',
 					help="Temporary folder. [default=%(default)s]")
 	parser.add_argument('-clean', default=None,
@@ -135,6 +141,7 @@ def makeArgs():
 	# subcommands
 	subparsers = parser.add_subparsers(help='sub-command help')
 	parser_dot = subparsers.add_parser('dotplot', help='Generate colored dot plots')
+	args_dotplot(parser_dot)
 	parser_flt = subparsers.add_parser('filter', help='Filter synteny with Orthology Index (standard output)')
 	args_filter(parser_flt)
 	parser_clst = subparsers.add_parser('cluster', help='Cluster syntenic orthogroups (SOGs)')
@@ -147,7 +154,9 @@ def makeArgs():
 	args = parser.parse_args()
 	return args
 
-FUNC = {'filter': func_filter, 
+FUNC = {
+		'dotplot': func_dotplot,
+		'filter': func_filter, 
 		'cluster': func_cluster,
 		'outgroup': func_outgroup,
 		'phylo': func_phylo, 
