@@ -6,7 +6,7 @@ import networkx as nx
 import numpy as np
 import itertools
 import matplotlib.pyplot as plt
-from mcscan import Collinearity, Gff
+from .mcscan import Collinearity, Gff
 
 __version__ = '0.1'
 __LastModified__ = '20200616'
@@ -17,7 +17,7 @@ def add_ploidy_opts(parser):
 	parser.add_argument('--min_block', type=int, default=10, help="min genes for a block. default=%(default)s")
 	parser.add_argument('--max_distance', type=int, default=20, help="max_distance. default=%(default)s")
 	parser.add_argument('--max_ploidy',  type=int, default=10, help="x limit. default=%(default)s")
-	parser.add_argument('--min_overlap', type=float, default=20, help="min_overlap. default=%(default)s")
+	parser.add_argument('--min_overlap', type=float, default=0.4, help="min_overlap. default=%(default)s")
 	parser.add_argument('--color',  type=str, default=None, help="bar fill color. default=%(default)s")
 	parser.add_argument('--edgecolor', type=str, default=None, help="bar edge color. default=%(default)s")
 	
@@ -39,7 +39,7 @@ def makeArgparse():
 	args = parser.parse_args()
 	sps = [args.ref] + args.qry
 	if args.output is None:
-		sps = map(lambda x:x[:2], sps)
+		sps = [x[:2] for x in sps]
 		args.output = '-'.join(sps) + '_' + str(args.window_size)
 	if args.nrow is None:
 		args.nrow = int(ceil(sqrt(len(args.qry))))
@@ -55,7 +55,7 @@ def makeArgparse():
 	xlabel = 'Relative Ploidy by {}-gene windows'.format(args.window_size)
 	args.suptitle = '{} ({})'.format(xlabel, suptitle)
 	args.titles = args.qry
-	print >>sys.stderr, '{} x {} figure'.format(args.nrow, args.ncol)
+	print('{} x {} figure'.format(args.nrow, args.ncol), file=sys.stderr)
 	return args
 def main():
 	args = makeArgparse()
@@ -79,11 +79,11 @@ def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1, suptitle=None
 			ax = [ax]
 		else:
 			fig, ax = plt.subplots(nrow, ncol, sharex=True, figsize=(10*ncol/2, 8*ncol/2))
-			cells = list(itertools.product(range(nrow), range(ncol)))
+			cells = list(itertools.product(list(range(nrow)), list(range(ncol))))
 			ax = [ax[cell] for cell in cells]
 	else:
 		ax = [ax]
-	tick_label = range(0, max_ploidy+1)
+	tick_label = list(range(0, max_ploidy+1))
 	for i, (dat, title, sax) in enumerate(zip(data, titles, ax)):
 		try:
 			x = dat[:, 0]
@@ -158,7 +158,7 @@ def parse_gff(gff, sps):
 		except KeyError: d_gff[key] = [line]
 
 	d_coord_path = {}
-	for (sp, chrom), lines in d_gff.items():
+	for (sp, chrom), lines in list(d_gff.items()):
 		lines = sorted(lines, key=lambda x:(x.start, -x.end))
 		genes = [line.gene for line in lines]
 		try: d_coord_path[sp] += [genes]
@@ -200,7 +200,7 @@ def get_ploidy(ref_coord_paths, ref_coord_graph, qry_coord_graph, rq_ortholog_gr
 		#	if len(ref_blocks) == 1:
 		#		ncmpt2 = 1
 		#	else:
-			ncmpt2 = max(map(lambda x:len(x), nx.connected_components(ref_clusters)))
+			ncmpt2 = max([len(x) for x in nx.connected_components(ref_clusters)])
 		#	insect_nodes = set(clusters.nodes()) & set(qry_paralog_graph.nodes())
 		#	for n1, n2 in itertools.combinations(insect_nodes, 2):
 		#		if qry_paralog_graph.has_edge(n1, n2):
@@ -226,13 +226,13 @@ def map_graph(bin, rq_ortholog_graph, qry_blocks):
 	return ref_blocks
 def overlap_blocks(blocks, coord_graph, min_overlap=3, **kargs):
 	'''将有overlap的block连起来'''
-	blocks = map(tuple, blocks)
+	blocks = list(map(tuple, blocks))
 	G = nx.Graph()
 	for b in blocks:
 		G.add_node(b)
 	for b1, b2 in itertools.combinations(blocks, 2):
-		i1 = map(lambda x: coord_graph.node[x]['index'], b1)
-		i2 = map(lambda x: coord_graph.node[x]['index'], b2)
+		i1 = [coord_graph.node[x]['index'] for x in b1]
+		i2 = [coord_graph.node[x]['index'] for x in b2]
 		min_i1, max_i1 = min(i1), max(i1)
 		min_i2, max_i2 = min(i2), max(i2)
 		if min(max_i1, max_i2) - max(min_i1, min_i2) + 1 >=min_overlap: # overlap
@@ -247,7 +247,7 @@ def cluster_genes(genes, coord_graph, max_distance=25, **kargs):
 		try: d_bin[chrom] += [gene]
 		except KeyError: d_bin[chrom] = [gene]
 	G = nx.Graph()
-	for chrom, genes in d_bin.items():
+	for chrom, genes in list(d_bin.items()):
 		genes = sorted(genes, key=lambda x: coord_graph.node[x]['index'])
 		for i, gene in enumerate(genes[1:]):
 			n1, n2 = genes[i], gene

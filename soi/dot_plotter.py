@@ -4,9 +4,9 @@ import argparse,sys
 import re
 import networkx as nx
 import numpy as np
-from mcscan import Collinearity, Gff, XCollinearity
-from OrthoFinder import OrthoFinder
-from ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
+from .mcscan import Collinearity, Gff, XCollinearity
+from .OrthoFinder import OrthoFinder
+from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
 
 __version__='0.1'
 __LastModified__='20190226'
@@ -59,10 +59,10 @@ def dotplot_args(parser):
 	add_ploidy_opts(group_ploidy)
 def makeArgparse():
 	parser = argparse.ArgumentParser( \
-        formatter_class=argparse.RawDescriptionHelpFormatter,\
-        epilog="Version: {}\nLast Modification Date: {}".format(__version__,__LastModified__),\
-        version="Version: {}".format(__version__),\
-        description="Example: {}".format(__Example__))
+		formatter_class=argparse.RawDescriptionHelpFormatter,\
+		epilog="Version: {}\nLast Modification Date: {}".format(__version__,__LastModified__),\
+		version="Version: {}".format(__version__),\
+		description="Example: {}".format(__Example__))
 
 	dotplot_args(parser)
 	if len(sys.argv)==1:
@@ -77,18 +77,28 @@ def makeArgparse():
 		args.window_step = args.window_size / 5
 	if args.min_overlap is None:
 		args.min_overlap = args.window_size / 2.5
-	elif args.min_overlap < 1:
+	else:
 		args.min_overlap = args.min_overlap*args.window_size
 	if args.of_color:
 		args.max_ks = min(args.max_ks, 1)
 	return args
+
+class Args:
+	def __init__(self):
+		pass
+
+def xmain(**kargs):
+	args = Args()
+	for k,v in kargs.items():
+		setattr(args, k, v)
+	return main(args)
 def main(args):
 	collinearity = args.s
-	gff          = args.g
-	ctl          = args.c
-	prefix       = args.o
-	kaks         = args.kaks
-#	outplot      = prefix + '.pdf'
+	gff		  = args.g
+	ctl		  = args.c
+	prefix	   = args.o
+	kaks		 = args.kaks
+#	outplot	  = prefix + '.pdf'
 #	print args.format
 	ks_args = {'yn00': args.yn00, 'method':args.method, 'fdtv':args.fdtv}
 	if args.hide_blocks is not None:
@@ -120,10 +130,10 @@ def main(args):
 	if kaks and args.plot_dot:
 		outplots = [prefix + '.dot.' + fmt for fmt in args.format]
 		plot_blocks(blocks, outplots, ks = None, max_ks=None, ks_hist=None,
-            xlabels=chrs1, ylabels=chrs2,
-            xpositions=xpositions, ypositions=ypositions,
-            xlines=lines1, ylines=lines2,
-            xlim=max(lines1), ylim=max(lines2))
+			xlabels=chrs1, ylabels=chrs2,
+			xpositions=xpositions, ypositions=ypositions,
+			xlines=lines1, ylines=lines2,
+			xlim=max(lines1), ylim=max(lines2))
 	ploidy_data = coord_path1, coord_path2, coord_graph1, coord_graph2 = parse_gff(gff, chrs1, chrs2)
 	outplots = [prefix + '.' + fmt for fmt in args.format]
 	#print >>sys.stderr, args.__dict__
@@ -131,11 +141,11 @@ def main(args):
 	plot_blocks(blocks, outplots, ks = ks, 
 			#max_ks=args.max_ks, ks_hist=args.ks_hist, ks_cmap=args.ks_cmap, 
 			#clip_ks=args.clip_ks, min_block=args.min_block, ks_step=args.ks_step,
-            xlabels=chrs1, ylabels=chrs2, same_sp=same_sp,
+			xlabels=chrs1, ylabels=chrs2, same_sp=same_sp,
 			#hist_ylim=args.hist_ylim,
-            xpositions=xpositions, ypositions=ypositions,
-            xlines=lines1, ylines=lines2,
-            xlim=max(lines1), ylim=max(lines2),
+			xpositions=xpositions, ypositions=ypositions,
+			xlines=lines1, ylines=lines2,
+			xlim=max(lines1), ylim=max(lines2),
 			ploidy=args.plot_ploidy, ploidy_data = ploidy_data, ortholog_graph=ortholog_graph, **args.__dict__
 			)
 
@@ -166,7 +176,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			y = x * 1.2
 			bbox_inches='standard'
 		else:
-			y = x * 0.95
+			y = x * 1.05
 			bbox_inches='tight'
 	else:
 		y = x * 0.98 #*1.2 if ks_hist else x
@@ -175,7 +185,10 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	if ks_hist:
 		ax = plt.subplot2grid((6,5),(0,0), rowspan=5, colspan=5)
 	else:
-		ax = plt.subplot2grid((5,5),(0,0), rowspan=5, colspan=5)
+		if ks is not None:
+			ax = plt.subplot2grid((21,20),(0,0), rowspan=20, colspan=20)
+		else:
+			ax = plt.subplot2grid((5,5),(0,0), rowspan=5, colspan=5)
 	allKs = []
 	kXs, kYs, Ks = [], [], []
 	for block in blocks:
@@ -237,10 +250,6 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		x, y = -tot_lenx/200, yposition
 		plt.text(x, y, ylabel, horizontalalignment='right',verticalalignment='center',fontsize=ycsize) #rotation=30
 
-	label = 'OrthoIndex' if of_color else 'Ks'
-#	if not ks is None and ks_hist is None:
-#		cbar = plt.colorbar(orientation='horizontal', location='bottom', label=label)
-		# cbar.ax.set_xlabel('Ks', fontsize=14)
 	plt.xlim(xmin,xmax)
 	plt.ylim(ymin,ymax)
 	plt.xticks([])
@@ -249,6 +258,13 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	if number_plots and (ks_hist or ploidy):
 		label = '(a)'
 		plot_label(ax, label, fontsize=lsize)
+
+	label = 'OrthoIndex' if of_color else 'Ks'
+	if not ks is None and ks_hist is None:
+		ax = plt.subplot2grid((21,20),(20,0), colspan=5)
+		plt.axis('off')
+		cbar = plt.colorbar(ax=ax, orientation='horizontal', location='bottom', label=label, shrink=1, fraction=0.5)
+		# cbar.ax.set_xlabel('Ks', fontsize=14)
 
 	if ks_hist:
 		if ploidy:
@@ -354,7 +370,7 @@ def create_ks_map(ks_map, min_ks, max_ks):
 	length = 256
 	#min_ks = 0 
 	maps =  _norm_map(ks_map, min_ks, max_ks, length)
-	print ks_map, min_ks, max_ks, maps
+	print(ks_map, min_ks, max_ks, maps)
 	viridis = cm.get_cmap('viridis', length)
 	newcolors = viridis(np.linspace(0, 1, length))
 #	tab10 = cm.get_cmap('tab10', 10).colors
@@ -363,7 +379,7 @@ def create_ks_map(ks_map, min_ks, max_ks):
 					  [0., 0., 1., 1.], # 蓝
 					  [0., 1., 0., 1.], # 绿
 #					  [0., 1., 1., 1.], # 青
-#                      [1., 1., 0., 1.], # 黄
+#					  [1., 1., 0., 1.], # 黄
 					  [1., 0., 0., 1.], # 红
 #					  [1., 0., 1., 1.], # 深红
 					  [1., 1., 0., 1.], # 黄
@@ -393,7 +409,7 @@ def parse_gff(gff, chrs1, chrs2):
 
 	coord_path1 = []
 	coord_path2 = []
-	for (sp, chrom), lines in d_gff.items():
+	for (sp, chrom), lines in list(d_gff.items()):
 		lines = sorted(lines, key=lambda x:(x.start, -x.end))
 		genes = [line.gene for line in lines]
 		if chrom in set(chrs1):
@@ -418,7 +434,6 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 		cluster=False, diagonal=False, gene_axis=False, source=None, 
 		ofdir=None, of_ratio=0, of_color=False, 
 		matrix=None, min_same_block=None, **ks_args):
-	from mcscan import Collinearity
 	blocks = Collinearity(collinearity, gff=gff, kaks=kaks, homology=homology, source=source, **ks_args)
 	if ofdir:
 		of = OrthoFinder(ofdir)
@@ -485,7 +500,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 	d_offset2, lines2 = _offset(chrs2, d_length)
 
 	xblocks = []
-	for chr_pair, tblocks in d_blocks.items():
+	for chr_pair, tblocks in list(d_blocks.items()):
 		chr1, chr2 = chr_pair
 		for (genes1, genes2, ksS) in tblocks:
 			points = []
@@ -509,19 +524,19 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 		fout = open(matrix, 'w')
 		d_matrix = to_matrix(d_blocks)
 		line = ['#chrom', 'gene'] + chrs2
-		print >> fout, '\t'.join(line)
+		print('\t'.join(line), file=fout)
 		for chr1 in chrs1:
 			for gene1 in blocks.d_chrom[chr1]:
 				genes2 = [d_matrix.get((chr1, chr2, gene1), '')for chr2 in chrs2]
 				line = [chr1, gene1.id] + genes2
-				print >> fout, '\t'.join(line)
+				print('\t'.join(line), file=fout)
 		fout.close()
 	return xblocks, lines1, lines2, ortholog_graph, chrs1, chrs2
 	
 def diagonal_chroms(d_blocks, chrs1, chrs2, **kargs):
 	d_distance = {}
 	
-	for (chr1, chr2), values in d_blocks.items(): #[rc.score, rc.start1, rc.start2, rc.median_ks]
+	for (chr1, chr2), values in list(d_blocks.items()): #[rc.score, rc.start1, rc.start2, rc.median_ks]
 		score = sum([value[0] for value in values])
 		start1 = min([value[1] for value in values])
 		start2 = min([value[2] for value in values])
@@ -554,7 +569,7 @@ def best_match(d_distance, chrs1, chrs2): 	# ref, qry
 	
 def cluster_chroms(d_blocks, chrs1, chrs2, ax=None, **kargs):
 	d_distance = {}
-	for (chr1, chr2), values in d_blocks.items():
+	for (chr1, chr2), values in list(d_blocks.items()):
 		ks = [value[2] for value in values]
 		distance = calculate_distance(ks, **kargs)
 		d_distance[(chr1, chr2)] = d_distance[(chr2, chr1)] = distance
@@ -594,7 +609,7 @@ def calculate_distance(xks, min_ks=0, max_ks=3, **kargs):
 	
 def to_matrix(d_blocks, ):
 	d_genes = {}
-	for (chr1, chr2), blocks in d_blocks.items():
+	for (chr1, chr2), blocks in list(d_blocks.items()):
 		blocks = sorted(blocks, key=lambda x:len(x[0]))
 		for (genes1, genes2, _) in blocks:
 			for gene1, gene2 in zip(genes1, genes2):
@@ -621,10 +636,10 @@ def parse_ctl(ctl):
 		i += 1
 		if i == 3: # x
 			chrs1 = line.strip().strip(',').split(',')
-			chrs1 = map(strip_blank, chrs1)
+			chrs1 = list(map(strip_blank, chrs1))
 		if i >= 4: # y
 			_chrs2 = line.strip().strip(',').split(',')
-			chrs2 += map(strip_blank, _chrs2)
+			chrs2 += list(map(strip_blank, _chrs2))
 	if i < 4:
 		raise ValueError('*.ctl file has without >= 4 lines')
 	#chrs1, chrs2 = map(lambda x:x.strip(), [chrs1, chrs2])
@@ -633,5 +648,5 @@ def parse_ctl(ctl):
 def strip_blank(x):
 	return x.strip()
 if __name__ =='__main__':
-    main(makeArgparse())
+	main(makeArgparse())
 	

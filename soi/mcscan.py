@@ -10,9 +10,9 @@ import itertools
 from Bio import SeqIO, Phylo
 from lazy_property import LazyWritableProperty as lazyproperty
 
-from OrthoFinder import catAln, format_id_for_iqtree, OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder, parse_species, exists_and_size_gt_zero
-from small_tools import mkdirs, flatten, test_s, test_f, parse_kargs, rmdirs
-from RunCmdsMP import run_cmd, run_job, logger
+from .OrthoFinder import catAln, format_id_for_iqtree, OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder, parse_species, exists_and_size_gt_zero
+from .small_tools import mkdirs, flatten, test_s, test_f, parse_kargs, rmdirs
+from .RunCmdsMP import run_cmd, run_job, logger
 #from creat_ctl import sort_version
 
 def get_chrom(chrom):
@@ -110,10 +110,10 @@ class KaKs():
 			self.pair = re.compile(r'(\S+)\-([A-Z][a-z]*[_\-]\S+\|\S+)').match(self.sequence).groups() #tuple(Sequence.split('-'))
 		self.species = self.gene2species(self.pair)
 	def gene2species(self, gene_pair):
-		sp1, sp2 = gene_pair if gene_pair==(None, None) else map(lambda x: x.split('|')[0], gene_pair)
+		sp1, sp2 = gene_pair if gene_pair==(None, None) else [x.split('|')[0] for x in gene_pair]
 		return SpeciesPair(sp1, sp2)
 	def write(self, fout):
-		print >>fout, '\t'.join(self.info)
+		print('\t'.join(self.info), file=fout)
 class KaKsParser:
 	def __init__(self, kaks, **kargs):
 		self.kaks = kaks
@@ -164,7 +164,7 @@ def collinearity_ratio(collinearity, chrmap, outMat, min_N=20):
 		chrs = chrs | set([chr1, chr2 ])
 #	print >> sys.stderr, d_count
 	chrs = sorted(chrs)
-	print >> outMat, '\t'.join(['']+chrs)
+	print('\t'.join(['']+chrs), file=outMat)
 	for chr1 in chrs:
 		n1 = d_chrs[chr1]
 		line = [chr1]
@@ -177,7 +177,7 @@ def collinearity_ratio(collinearity, chrmap, outMat, min_N=20):
 #			print  key, cn, n1,n2, ratio
 			line += [str(ratio)]
 			
-		print >> outMat, '\t'.join(line)
+		print('\t'.join(line), file=outMat)
 class XCollinearity:
 	def __init__(self, collinearities, orthologs=None, homo_class=None, **kargs):
 		self.collinearities = self._parse_list(collinearities)
@@ -267,7 +267,7 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 			for pairs, cls in zip((rc.intersect, rc.substract), ('ortholog', 'non-ortholog')):
 				for pair in pairs:
 					line = list(pair) + [cls]
-					print >> out_class, '\t'.join(line)
+					print('\t'.join(line), file=out_class)
 #					if test_diff:
 						
 	logger.info('Pre-filter: {} blocks, {} pairs; Post-filter: {} ({:.1%}) blocks, {} ({:.1%}) pairs.'.format(
@@ -349,7 +349,7 @@ class Collinearity():
 				try: self.Alignment, self.score, self.e_value, self.N, self.chr1, self.chr2, self.orient = \
 								re.compile(pattern).match(line).groups()
 				except AttributeError:
-					print >>sys.stderr, 'unparsed LINE: {}'.format(line)
+					print('unparsed LINE: {}'.format(line), file=sys.stderr)
 					raise AttributeError()
 				self.chrs = (self.chr1, self.chr2)
 				self.sp1 = self.short_sp1 = self.chr1[:2]
@@ -371,7 +371,7 @@ class Collinearity():
 					#print line
 					try: gene1, gene2 = re.compile(pattern).match(line).groups()
 					except AttributeError:
-						print >>sys.stderr, 'unparsed LINE: {}'.format(line)
+						print('unparsed LINE: {}'.format(line), file=sys.stderr)
 						continue
 				genes1.append(gene1)
 				genes2.append(gene2)
@@ -412,11 +412,11 @@ class Collinearity():
 		return [tuple(map(self.gene2geneid, pair)) for pair in self.pairs]
 	@property
 	def gene_genes(self):
-		return [map(self.gene2geneid, genes) for genes in self.genes]
+		return [list(map(self.gene2geneid, genes)) for genes in self.genes]
 	def gene2geneid(self, gene):
 		return gene.split('|')[1]
 	def parse_genes(self, genes1,genes2):
-		self.pairs = zip(genes1,genes2)
+		self.pairs = list(zip(genes1,genes2))
 		self.ks = []
 		for pair in self.pairs:
 			try: ks = self.d_kaks[pair].ks
@@ -424,8 +424,8 @@ class Collinearity():
 			self.ks.append(ks)
 		self.genes = [genes1,genes2]
 		try:	# Gene obj
-			self.genes1 = map(lambda x: self.d_gene[x], genes1)
-			self.genes2 = map(lambda x: self.d_gene[x], genes2)
+			self.genes1 = [self.d_gene[x] for x in genes1]
+			self.genes2 = [self.d_gene[x] for x in genes2]
 		except KeyError:	# string obj
 			self.genes1, self.genes2 = genes1, genes2
 		self.segment1, self.segment2 = Segment(self.genes1), Segment(self.genes2)
@@ -496,7 +496,7 @@ class Collinearity():
 			genes.add(gene)
 			try: strand = temp[4]
 			except IndexError: strand = None
-			start, end = map(int, [start, end])
+			start, end = list(map(int, [start, end]))
 #			d[gene] = Gene((gene, chr, start, end, strand))
 			g = Gene((gene, chr, start, end, strand))
 			try: d_chr[chr] += [g]
@@ -505,7 +505,7 @@ class Collinearity():
 			except KeyError: d_length[chr] = end
 		d_chrom = {}
 		d_ngenes = {}
-		for chr, genes in d_chr.items():
+		for chr, genes in list(d_chr.items()):
 			genes = sorted(genes, key=lambda x:x.start)
 			d_chrom[chr] = genes
 			d_ngenes[chr] = len(genes)
@@ -584,8 +584,8 @@ def anchors2bed(collinearity, gff, chrmap, left_anchors, right_anchors, outbed=s
 		g1_range = '{}-{}'.format(left_g1.raw_gene, right_g1.raw_gene)
 		id = '{}:{}:{}'.format(sp2, g2_range, g1_range)
 		line = [chr2.split('|')[-1], g2_start-1, g2_end, id, sp2, ]
-		line = map(str, line)
-		print >> outbed, '\t'.join(line)
+		line = list(map(str, line))
+		print('\t'.join(line), file=outbed)
 		left_gs.add(left_g1)
 		right_gs.add(right_g1)
 		anchor_sp = sp1
@@ -594,8 +594,8 @@ def anchors2bed(collinearity, gff, chrmap, left_anchors, right_anchors, outbed=s
 	g1_chr, g1_start, g1_end = left_g1.chr, left_g1.start, right_g1.end
 	id = '{}:{}'.format(anchor_sp, g1_range)
 	line = [anchor_chr.split('|')[-1], g1_start-1, g1_end, id, anchor_sp, ]
-	line = map(str, line)
-	print >> outbed, '\t'.join(line)
+	line = list(map(str, line))
+	print('\t'.join(line), file=outbed)
 	
 
 	
@@ -630,7 +630,7 @@ class Gff:
 		d_length = OrderedDict()
 		d_length2 = OrderedDict()
 		species = set([])
-		for chrom, lines in d_chrom.items():
+		for chrom, lines in list(d_chrom.items()):
 			lines = sorted(lines, key=lambda x:x.start)
 			for i, line in enumerate(lines):
 				line.index = i
@@ -673,11 +673,11 @@ class Gff:
 			cds = prefix + '.cds'
 			pep = prefix + '.pep'
 			if not split and d_handle:
-				d_handle[sp] = d_handle.values()[0]
+				d_handle[sp] = list(d_handle.values())[0]
 			else: 
 				d_handle[sp] = open(gff, 'w'), open(lens, 'w'), None,None #open(cds, 'w'), open(pep, 'w')
 		# gff
-		for line in d_genes.values():
+		for line in list(d_genes.values()):
 		#	print >> sys.stderr, line
 			sp = line.species
 			if sp not in set(species):
@@ -690,11 +690,11 @@ class Gff:
 			chrom = line.chrom
 #			chrom = chrom[2:]
 			line = [chrom, line.gene, line.start, line.end, line.strand, line.index+1, line.gene]
-			print >> gff, '\t'.join(map(str, line))
+			print('\t'.join(map(str, line)), file=gff)
 #			line[0] = line.chrom
 #			print >> all_gff, '\t'.join(map(str, line))
 		# lens
-		for (sp, chrom), (g_len, bp_len) in self.d_length2.items():
+		for (sp, chrom), (g_len, bp_len) in list(self.d_length2.items()):
 			if sp not in set(species):
 				continue
 			if chrom not in set(good_chrs):
@@ -702,7 +702,7 @@ class Gff:
 			_, lens, _,_ = d_handle[sp]
 #			chrom = chrom[2:]
 			line = (chrom, g_len, bp_len)
-			print >> lens, '\t'.join(map(str, line))
+			print('\t'.join(map(str, line)), file=lens)
 		# close files
 		for sp in species:
 			for hd in d_handle[sp]:
@@ -741,7 +741,7 @@ class Gff:
 			try: d_chrom[line.chrom] += [line]
 			except KeyError: d_chrom[line.chrom] = [line]
 		chroms = []
-		for chrom, lines in d_chrom.items():
+		for chrom, lines in list(d_chrom.items()):
 			lines = sorted(lines, key=lambda x:x.start)
 			for i, line in enumerate(lines):
 				line.index = i
@@ -761,9 +761,9 @@ class GffLine:
 		chr, gene, start, end = temp[:4]
 		try: strand = temp[4]
 		except IndexError: strand = None
-		try: start, end = map(int, [start, end])
+		try: start, end = list(map(int, [start, end]))
 		except ValueError as e:
-			print >> sys.stderr, 'Error in line:', temp
+			print('Error in line:', temp, file=sys.stderr)
 			raise ValueError(e)
 		g = Gene((gene, chr, start, end, strand))
 		self.chrom, self.gene, self.start, self.end, self.strand = \
@@ -861,7 +861,7 @@ class Pairs(object):
 	def slims(self):
 		genes = set([])
 		for sg in self.subgraphs():
-			max_node, _ = max(sg.degree().items(), key=lambda x:x[1])
+			max_node, _ = max(list(sg.degree().items()), key=lambda x:x[1])
 			genes = genes | (set(sg.nodes()) - set([max_node]))
 		return genes
 class Tandem(Pairs):
@@ -894,23 +894,23 @@ def block_length(collinearity, sp_pairs=None):
 	datafile = prefix + '.density.data'
 	outfig = prefix + '.density.pdf'
 	with open(datafile, 'w') as f:
-		print >>f, '{}\t{}'.format('pair', 'value')
-		for spp, values in d_genes.items():
-			print spp, values
+		print('{}\t{}'.format('pair', 'value'), file=f)
+		for spp, values in list(d_genes.items()):
+			print(spp, values)
 			for value in values:
 				for v in range(value):
-					print >>f, '{}\t{}'.format(str(spp), value)
+					print('{}\t{}'.format(str(spp), value), file=f)
 	rsrc = prefix + '.density.r'
 	#xlabel, ylabel = 'Block length (gene number)', 'Percent of genes'
 	xlabel, ylabel = 'Block length (gene number)', 'Cumulative number of genes'
 	with open(rsrc, 'w') as f:
-		print >>f, '''datafile = '{datafile}'
+		print('''datafile = '{datafile}'
 data = read.table(datafile, head=T)
 library(ggplot2)
 #p <- ggplot(data, aes(x=value, color=pair)) + geom_line(stat="density", size=1.15) + xlab('{xlabel}') + ylab('{ylabel}')  + scale_colour_hue(l=45)
 p <- ggplot(data, aes(x=value, fill=pair)) + geom_histogram() + xlab('{xlabel}') + ylab('{ylabel}')
 ggsave('{outfig}', p, width=12, height=7)
-'''.format(datafile=datafile, outfig=outfig, xlabel=xlabel, ylabel=ylabel, )
+'''.format(datafile=datafile, outfig=outfig, xlabel=xlabel, ylabel=ylabel, ), file=f)
 	cmd = 'Rscript {}'.format(rsrc)
 	os.system(cmd)
 
@@ -999,7 +999,7 @@ class Chromosomes:
 		return sum([len(chr) for chr in self.chroms])
 	def sort(self):
 		from creat_ctl import sort_version
-		d = dict(zip(self.names, self.chroms))
+		d = dict(list(zip(self.names, self.chroms)))
 		sorted_names = sort_version(self.names)
 		self.names = sorted_names
 		self.chroms = [d[name] for name in self.names]
@@ -1041,7 +1041,7 @@ def cluster_add_outgroup(collinearities, orthogroup, outgroup, fout=sys.stdout, 
 				outgrp_genes += G.neighbors(g)
 		nxg = len(og.genes)
 		add_genes = []
-		for g, count in Counter(outgrp_genes).items():
+		for g, count in list(Counter(outgrp_genes).items()):
 			ratio = 1.0*count/nxg
 			if ratio > min_ratio:
 				add_genes += [g]
@@ -1128,7 +1128,7 @@ class ColinearGroups:
 		sp_dict = parse_spsd(spsd)
 		self.sp_dict = sp_dict #Counter(sp_dict)
 		self.spsd = spsd
-		self.max_ploidy = max(sp_dict.values()+[1])
+		self.max_ploidy = max(list(sp_dict.values())+[1])
 		self.prefix = spsd
 		#print >>sys.stderr, self.sp_dict
 	@property
@@ -1145,17 +1145,17 @@ class ColinearGroups:
 			ogid = 'SOG{}'.format(i)
 			yield OrthoMCLGroupRecord(genes=cmpt, ogid=ogid)
 	def to_synet(self, fout=sys.stdout):
-		d_profile = dict([(sp, []) for sp in self.sp_dict.keys()])
+		d_profile = dict([(sp, []) for sp in list(self.sp_dict.keys())])
 		i = 0
 		for group in self.groups:
 			i += 1
 			counter = group.counter
-			for sp in d_profile.keys():
+			for sp in list(d_profile.keys()):
 				value = '1' if sp in counter else '0'
 				d_profile[sp] += [value]
 		desc = 'ntaxa={};ncluster={}'.format(len(d_profile), i)
-		for sp, values in d_profile.items():
-			print >> fout, '>{} {}\n{}'.format(sp, desc, ''.join(values))
+		for sp, values in list(d_profile.items()):
+			print('>{} {}\n{}'.format(sp, desc, ''.join(values)), file=fout)
 					
 	def infomap(self):
 		mkdirs(self.tmpdir)
@@ -1172,8 +1172,8 @@ class ColinearGroups:
 						i += 1
 						d_id[g] = i
 				i1, i2 = d_id[g1], d_id[g2]
-				print >>f, '{} {}'.format(i1, i2)
-				print >>f, '{} {}'.format(i2, i1)
+				print('{} {}'.format(i1, i2), file=f)
+				print('{} {}'.format(i2, i1), file=f)
 		f.close()
 		cmd = 'infomap {} {} --clu -N 10  -2'.format(graphfile, self.tmpdir)
 		run_cmd(cmd)
@@ -1198,7 +1198,7 @@ class ColinearGroups:
 		if winstep is None:
 			winstep = winsize/10
 		self.root = self.get_root()
-		target_sps = sorted(set(self.sp_dict)-set([self.root]), key=lambda x: self.sp_dict.keys().index(x))
+		target_sps = sorted(set(self.sp_dict)-set([self.root]), key=lambda x: list(self.sp_dict.keys()).index(x))
 		d_sp = OrderedDict([(sp, []) for sp in target_sps])
 #		d_retention = copy.deepcopy(d_sp)
 		sp_comb = [(sp1, sp2) for sp1, sp2 in itertools.combinations(target_sps, 2)]
@@ -1210,13 +1210,13 @@ class ColinearGroups:
 		out_loss = self.prefix + '.loss'
 		f_rete = open(out_rete, 'w')
 		line = ['ichr', 'chr', 'win', 'sp', 'retention']
-		print >> f_rete, '\t'.join(line)
+		print('\t'.join(line), file=f_rete)
 		f_diff = open(out_diff, 'w')
 		line = ['ichr', 'chr', 'win', 'spc', 'diff']
-		print >> f_diff, '\t'.join(line)
+		print('\t'.join(line), file=f_diff)
 		f_loss = open(out_loss, 'w')
 		line = ['ichr', 'chr', 'sp', 'loss']
-		print >> f_loss, '\t'.join(line)
+		print('\t'.join(line), file=f_loss)
 		
 		gff = Gff(self.gff)
 		chroms = gff.to_chroms(species=self.root)
@@ -1234,33 +1234,33 @@ class ColinearGroups:
 				if size < winsize/2:
 					continue
 				d_win = self.count_window(window, graph, d_win)
-				for sp, counts in d_win.items():
+				for sp, counts in list(d_win.items()):
 					retention = [v for v in counts if v>0]
 					rate = 1e2*len(retention) / size
 #					d_retention[sp] += [rate]
 					line = [ichr, chrom.name, i, sp, rate]
-					line = map(str, line)
-					print >> f_rete, '\t'.join(line)
+					line = list(map(str, line))
+					print('\t'.join(line), file=f_rete)
 				for sp1, sp2 in sp_comb:
 					counts1, counts2 = d_win[sp1], d_win[sp2]
 					try: diff = self.count_diff(counts1, counts2)
 					except ZeroDivisionError: continue
 					line = [ichr, chrom.name, i, sp1+'-'+sp2, diff]
-					line = map(str, line)
-					print >> f_diff, '\t'.join(line)
+					line = list(map(str, line))
+					print('\t'.join(line), file=f_diff)
 			d_win = copy.deepcopy(d_sp)
 			d_win = self.count_window(chrom, graph, d_win)
-			for sp, counts in d_win.items():
+			for sp, counts in list(d_win.items()):
 				for loss in self.count_loss(counts):
 					line = [ichr, chrom.name, sp, loss]
-					line = map(str, line)
-					print >> f_loss, '\t'.join(line)
+					line = list(map(str, line))
+					print('\t'.join(line), file=f_loss)
 		f_rete.close()
 		f_loss.close()
 		f_diff.close()
 	def count_window(self, window, graph, d_win):
 		for gene in window:
-			for sp in d_win.keys():
+			for sp in list(d_win.keys()):
 				d_win[sp] += [0]
 			if not gene.id in graph:
 				continue
@@ -1345,14 +1345,14 @@ class ColinearGroups:
 		#	print G[n1][n2]
 		counts = [G[n1][n2]['count'] for n1,n2 in G.edges()]
 		#min_count = np.percentile(counts, min_tile)
-		print 'min_count of cluster', min_count
+		print('min_count of cluster', min_count)
 		for cmpt in nx.connected_components(G):
 			cmpt = sorted(cmpt)
 			sps = [sp for sp,chr in cmpt]
 			sps_count = Counter(sps)
 			less = False
-			print sps_count
-			for sp, count in self.sp_dict.items():
+			print(sps_count)
+			for sp, count in list(self.sp_dict.items()):
 				if sps_count.get(sp, 0) < count:
 					less = True
 					break
@@ -1379,7 +1379,7 @@ class ColinearGroups:
 							break
 						counts += [count]
 					else:
-						print comb, counts
+						print(comb, counts)
 						flt_combs += [comb]
 				#print flt_combs
 				d_count[sp] = len(flt_combs)
@@ -1391,7 +1391,7 @@ class ColinearGroups:
 			#for group in groups:
 			#	for g1 in group:
 			#		print g1
-			print d_count
+			print(d_count)
 			if less: # 如果某个物种缺失，则无法形成染色体组合
 				continue
 			#products = itertools.product(*groups)
@@ -1409,7 +1409,7 @@ class ColinearGroups:
 						break
 					counts += [count]
 				else:
-					print comb, counts
+					print(comb, counts)
 				if less: # 一对染色体数量不足，则弃去这组合
 					continue
 				i += 1
@@ -1417,7 +1417,7 @@ class ColinearGroups:
 				chroms = [chr for sp, chr in comb]
 				yield sort_version(chroms)
 			#	yield group
-			print i
+			print(i)
 	def anchor_trees(self):
 		#self.chr_subgraphs()
 		# chromosome tree
@@ -1440,7 +1440,7 @@ class ColinearGroups:
 				continue
 			alnfiles = self.chrom_tree(chroms)
 			ngene = len(alnfiles)
-			print >>sys.stderr, len(self.d_chroms), self.d_chroms.items()[:10]
+			print(len(self.d_chroms), list(self.d_chroms.items())[:10], file=sys.stderr)
 			prefix = 'CHR_' + '-'.join(chroms) + '_'+str(ngene) + '_' + str(len(alnfiles))
 			cmds = self.concat_tree(alnfiles, prefix, idmap=self.d_chroms, astral=True)
 			treefile = self.iqtree_treefile
@@ -1455,14 +1455,14 @@ class ColinearGroups:
 			#print >> sys.stderr, 'dot', chroms
 #			cmd_list += self.dot_plot(chroms)
 			#print >> sys.stderr, prefix, len(alnfiles)
-		print >> sys.stdout, j, 'chromosome groups'
+		print(j, 'chromosome groups', file=sys.stdout)
 		cmd_file = '{}/chrom-cmds.list'.format(self.tmpdir)
 		if cmd_list:
 			run_job(cmd_file, cmd_list=cmd_list, tc_tasks=100)
-		print >> sys.stdout, i, 'chromosome groups'
-		print >> sys.stdout, '# iqtree'
+		print(i, 'chromosome groups', file=sys.stdout)
+		print('# iqtree', file=sys.stdout)
 		self.print_topology(treefiles, d_gene_count=d_gene_count)
-		print >> sys.stdout, '# astral'
+		print('# astral', file=sys.stdout)
 		self.print_topology(treefiles2, d_gene_count=d_gene_count2)
 		
 		# clean
@@ -1496,7 +1496,7 @@ class ColinearGroups:
 			if same_degree and not min(d_degree.values()) == len(sg.nodes())-1:	 # 互连
 				continue
 			if not same_number:	# 限制物种缺失率，不允许过多缺失。
-				target_sps = [sp for sp,count in sp_count.items() if 0<count<=self.sp_dict[sp]]
+				target_sps = [sp for sp,count in list(sp_count.items()) if 0<count<=self.sp_dict[sp]]
 				missing = 1 - 1.0*len(target_sps) / len(self.sp_dict)
 				if missing > max_missing:
 					continue
@@ -1535,11 +1535,11 @@ class ColinearGroups:
 		
 		logger.info('output markers')
 		for sp in self.sp_dict:
-			print >>fout, '>{}'.format(sp)
+			print('>{}'.format(sp), file=fout)
 			d_chrs = d_chroms[sp]
-			chroms = d_chrs.keys()
+			chroms = list(d_chrs.keys())
 			chroms = sort_version(chroms)
-			print >>sys.stderr, '>{}'.format(sp)
+			print('>{}'.format(sp), file=sys.stderr)
 			total = 0
 			for chrom in chroms:
 				if is_chr0(chrom):
@@ -1556,10 +1556,10 @@ class ColinearGroups:
 					if gene.strand == '-':
 						marker = '-' + marker
 					markers += [marker]
-				print >>fout, ' '.join(markers) + ' $'
-				print >>sys.stderr, chrom, len(markers)
+				print(' '.join(markers) + ' $', file=fout)
+				print(chrom, len(markers), file=sys.stderr)
 				total += len(markers)
-			print >>sys.stderr, 'total', total
+			print('total', total, file=sys.stderr)
 	def to_phylonet(self, outprefix, min_ratio=0.9):
 		'''使用多拷贝基因用于phylonet'''
 		mkdirs(self.tmpdir)
@@ -1574,7 +1574,7 @@ class ColinearGroups:
 		for genes in nx.connected_components(G):
 			sps = [gene2species(gene) for gene in genes]
 			sp_count = Counter(sps)
-			target_sps = [sp for sp,count in sp_count.items() if 0<count<=self.sp_dict[sp]]
+			target_sps = [sp for sp,count in list(sp_count.items()) if 0<count<=self.sp_dict[sp]]
 			if 1.0*len(target_sps) / len(self.sp_dict) < min_ratio:
 				continue
 			
@@ -1631,12 +1631,12 @@ class ColinearGroups:
 		self.cat_genetrees(treefiles, genetrees, idmap=d_idmap2, plain=False, format_confidence='%d')
 		taxamap = '{}.taxamap'.format(outprefix)
 		with open(taxamap, 'w') as fout:
-			print >>fout, self.to_taxa_map(d_idmap)
+			print(self.to_taxa_map(d_idmap), file=fout)
 		
 		self.clean(self.tmpdir)
 	def to_taxa_map(self, d_idmap):	# PHYLONET Taxa Map
 		map = []
-		for sp, indvs in d_idmap.items():
+		for sp, indvs in list(d_idmap.items()):
 			indvs = sorted(set(indvs))
 			indvs = ','.join(indvs)
 			map += ['{}:{}'.format(sp, indvs)]
@@ -1745,12 +1745,12 @@ class ColinearGroups:
 		self.d_species = d_species		# gene id / chrom_id -> sp
 		self.d_chroms = d_chroms		# gene id -> chrom_id
 		self.d_alnfiles = d_alnfiles	# alnfile -> chrom list
-		print >> sys.stdout, i, 'groups'
+		print(i, 'groups', file=sys.stdout)
 		self.print_topology(treefiles)
 		# clean
 		f = open('genetrees.list', 'w')
 		line = GenetreesTitle
-		print >>f, '\t'.join(line)
+		print('\t'.join(line), file=f)
 		j = 0
 		for og, genes, chroms, treefile, iqtreefile in zip(ogs, gene_groups, chrom_lists, treefiles, iqtreefiles):
 			#print chroms
@@ -1768,23 +1768,23 @@ class ColinearGroups:
 				continue
 			j += 1
 			line = [og, genes, tree, min_bs, topl, chroms, topl_chr]
-			line = map(str, line)
-			print >>f, '\t'.join(line)
+			line = list(map(str, line))
+			print('\t'.join(line), file=f)
 		f.close()
-		print >> sys.stdout, j, 'groups with treefile', 1e2*j/i
+		print(j, 'groups with treefile', 1e2*j/i, file=sys.stdout)
 		self.clean(self.tmpdir)
 		return treefiles
 	def print_self(self, d_count):
 		'''统计基因比'''
 		my_counts = []
-		for key, count in d_count.items():
+		for key, count in list(d_count.items()):
 			sps = [sp for sp in self.sp_dict]
 			dcounts = dict([(sp, _count) for sp, _count in key])
 			counts = [dcounts[sp] for sp in sps]
 			my_counts += [[counts, count]]
-		print >>sys.stdout, sps
+		print(sps, file=sys.stdout)
 		for counts, count in sorted(my_counts):
-			print >>sys.stdout, counts, count
+			print(counts, count, file=sys.stdout)
 	def chrom_tree(self, target_chroms, min_ratio=0.3, min_seqs=4):
 		'''按染色体串联（允许丢失）'''
 		prefix = '-'.join(target_chroms)
@@ -1856,12 +1856,12 @@ class ColinearGroups:
 			cmds = ' && '.join(cmds)
 			cmds += '\nrm '+outSeq
 			cmd_list += [cmds]
-		print >> sys.stdout, prefix, '{} used / {} available / {} genes'.format(len(d_alnfiles), j, i)
+		print(prefix, '{} used / {} available / {} genes'.format(len(d_alnfiles), j, i), file=sys.stdout)
 		if cmd_list:
 			cmd_file = '{}/gene-{}-aln-cmds.list'.format(self.tmpdir, prefix)
 			run_job(cmd_file, cmd_list=cmd_list, tc_tasks=100, by_bin=1)
 		
-		alnfiles = d_alnfiles.keys()
+		alnfiles = list(d_alnfiles.keys())
 		self.d_species = d_species		# gene id / chrom_id -> sp
 		self.d_chroms = d_chroms		# gene id -> chrom_id
 		self.d_alnfiles = d_alnfiles	# alnfile -> chrom list
@@ -1875,7 +1875,7 @@ class ColinearGroups:
 		self.treefiles = self.get_trees()	# 基因树，完全符合倍性比
 		#self.print_topology(self.treefiles)
 		d_chromfiles = {}
-		for alnfile, chrom in self.d_alnfiles.items():
+		for alnfile, chrom in list(self.d_alnfiles.items()):
 			try: d_chromfiles[chrom] += [alnfile]
 			except KeyError: d_chromfiles[chrom] = [alnfile]
 	#	print >> sys.stderr, set(map(len, d_chromfiles.keys()))
@@ -1889,7 +1889,7 @@ class ColinearGroups:
 		xxchroms = []
 		d_concat_alnfiles = {}
 		# 按染色体串联建树，只用完全符合倍性比的基因，至少俩基因
-		for chroms, alnfiles in sorted(d_chromfiles.items(), key=lambda x: -len(x[1])):
+		for chroms, alnfiles in sorted(list(d_chromfiles.items()), key=lambda x: -len(x[1])):
 			if len(chroms) > len(set(chroms)) or len(alnfiles) < min_genes:
 				continue
 			xxchroms += [chroms]
@@ -1898,7 +1898,7 @@ class ColinearGroups:
 			
 			cmds = self.concat_tree(alnfiles, prefix, idmap=self.d_chroms, astral=True)
 		#	d_gene_count3[concat_alnfile] = len(alnfiles)
-			print >>sys.stdout, prefix, len(alnfiles) #, alnfiles
+			print(prefix, len(alnfiles), file=sys.stdout) #, alnfiles
 			treefile = self.iqtree_treefile
 			d_gene_count[treefile] = len(alnfiles)
 			treefiles += [treefile]
@@ -1912,11 +1912,11 @@ class ColinearGroups:
 		cmd_file = '{}/merged-cmds.list'.format(self.tmpdir)
 		if cmd_list:
 			run_job(cmd_file, cmd_list=cmd_list, tc_tasks=50)
-		print >> sys.stdout, sum(d_gene_count.values()), 'groups', '/', i, 'clusters'
-		print >> sys.stdout, '# iqtree'
+		print(sum(d_gene_count.values()), 'groups', '/', i, 'clusters', file=sys.stdout)
+		print('# iqtree', file=sys.stdout)
 		#print >> sys.stderr, treefiles, d_gene_count
 		self.print_topology(treefiles, d_gene_count=d_gene_count)
-		print >> sys.stdout, '# astral'
+		print('# astral', file=sys.stdout)
 		self.print_topology(treefiles2, d_gene_count=d_gene_count2)
 
 		self.clean(self.tmpdir)
@@ -1929,9 +1929,9 @@ class ColinearGroups:
 		treefiles2 = []
 		d_gene_count = {}
 		d_gene_count2 = {}
-		print >> sys.stdout, len(d_chromfiles), 'chromosome groups'
+		print(len(d_chromfiles), 'chromosome groups', file=sys.stdout)
 		# 按染色体串联建树，允许部分基因丢失
-		for chroms, alnfiles in sorted(d_chromfiles.items(), key=lambda x: -len(x[1])):
+		for chroms, alnfiles in sorted(list(d_chromfiles.items()), key=lambda x: -len(x[1])):
 			ngene = len(alnfiles)
 			if len(chroms) > len(set(chroms)):
 				continue
@@ -1939,7 +1939,7 @@ class ColinearGroups:
 			if i > max_trees:
 				continue
 			alnfiles = self.chrom_tree(chroms)
-			print >>sys.stderr, len(self.d_chroms), self.d_chroms.items()[:10]
+			print(len(self.d_chroms), list(self.d_chroms.items())[:10], file=sys.stderr)
 			prefix = 'CHR_' + '-'.join(chroms) + '_'+str(ngene) + '_' + str(len(alnfiles))
 			cmds = self.concat_tree(alnfiles, prefix, idmap=self.d_chroms, astral=True)
 			treefile = self.iqtree_treefile
@@ -1957,10 +1957,10 @@ class ColinearGroups:
 		cmd_file = '{}/chrom-cmds.list'.format(self.tmpdir)
 		if cmd_list:
 			run_job(cmd_file, cmd_list=cmd_list, tc_tasks=50)
-		print >> sys.stdout, i, 'chromosome groups'
-		print >> sys.stdout, '# iqtree'
+		print(i, 'chromosome groups', file=sys.stdout)
+		print('# iqtree', file=sys.stdout)
 		self.print_topology(treefiles, d_gene_count=d_gene_count)
-		print >> sys.stdout, '# astral'
+		print('# astral', file=sys.stdout)
 		self.print_topology(treefiles2, d_gene_count=d_gene_count2)
 		
 		# clean
@@ -1970,9 +1970,9 @@ class ColinearGroups:
 		phased_chroms, d_rename = self.phase_trees(xxchroms)
 		alnfiles = [d_concat_alnfiles[chroms] for chroms in phased_chroms]
 		genes = sum([d_gene_count3[alnfile] for alnfile in alnfiles])
-		print >> sys.stderr, '{} groups in {} clusters phased'.format(genes, len(alnfiles)) 
+		print('{} groups in {} clusters phased'.format(genes, len(alnfiles)), file=sys.stderr) 
 		concat_alnfile = '{}/{}.aln'.format(self.tmpdir, 'phased')
-		print >> sys.stderr, alnfiles
+		print(alnfiles, file=sys.stderr)
 		with open(concat_alnfile, 'w') as fout:
 			catAln(alnfiles, fout, idmap=d_rename)
 		root = None
@@ -2084,7 +2084,7 @@ class ColinearGroups:
 					logger.warn('{} not exists'.format(iqtreefile))
 					continue
 				newick = self.get_topology(iqtreefile, idmap=idmap, **kargs)
-				print >>fout, newick
+				print(newick, file=fout)
 	def phase_trees(self, xxchroms):
 		'''[('Cc7', 'Cs3', 'Cs8', 'Ns1', 'Ns2'), ('Cc2', 'Cs3', 'Cs9', 'Ns14', 'Ns18')]'''
 		array = []
@@ -2116,7 +2116,7 @@ class ColinearGroups:
 					chrom_id = '{}-{}'.format(sp, chrom)
 					self.d_species[new_name] = sp
 					d_rename[chrom_id] = new_name
-			print >> sys.stderr, xchroms, '->', phased2
+			print(xchroms, '->', phased2, file=sys.stderr)
 			phased_chroms += [flatten]
 		return phased_chroms, d_rename
 	def groupby_species(self, chroms):
@@ -2128,7 +2128,7 @@ class ColinearGroups:
 		return chroms	# [['Cc7'], ['Cs3', 'Cs8'], ['Ns1', 'Ns2']]
 	def phase_chroms(self, xchroms):
 		'''chroms = [('Cs3', 'Cs8'), ('Cs3', 'Cs9')]'''	# sorted
-		xchroms = map(tuple, xchroms)
+		xchroms = list(map(tuple, xchroms))
 		length = len(xchroms)
 		d_index = {}
 		d_phased = {}
@@ -2139,7 +2139,7 @@ class ColinearGroups:
 				d_phased[chroms] = chroms
 			return d_phased
 		d_phased[chroms] = chroms  # init
-		index = range(ploidy)
+		index = list(range(ploidy))
 		for i, chrom in enumerate(chroms):
 			d_index[chrom] = i
 		xchroms.pop(0)
@@ -2156,7 +2156,7 @@ class ColinearGroups:
 					array = [(d_index[chrom], chrom) for chrom in chroms]
 					phased = [chrom for idx, chrom in sorted(array)]
 					d_phased[chroms] = tuple(phased)
-					print >> sys.stderr, chroms, '->', d_phased[chroms]
+					print(chroms, '->', d_phased[chroms], file=sys.stderr)
 					pops += [j]
 				elif len(chroms) == len(has_index): 	# phased
 					pops += [j]
@@ -2165,7 +2165,7 @@ class ColinearGroups:
 			for idx in reversed(pops):
 				xchroms.pop(idx)
 		
-		print >> sys.stderr, '{} / {} phased for {}..'.format(len(d_phased), length, chroms[0])
+		print('{} / {} phased for {}..'.format(len(d_phased), length, chroms[0]), file=sys.stderr)
 		return d_phased
 	def count_topology(self, treefiles, d_gene_count={}):
 		d_top_count = {}
@@ -2186,8 +2186,8 @@ class ColinearGroups:
 		return d_top_count, d_top_count2
 	def print_topology(self, treefiles, **kargs):
 		d_top_count, d_top_count2 = self.count_topology(treefiles, **kargs)
-		for top, count in sorted(d_top_count.items(), key=lambda x:-x[1]):
-			print >>sys.stdout, top, count, d_top_count2[top]
+		for top, count in sorted(list(d_top_count.items()), key=lambda x:-x[1]):
+			print(top, count, d_top_count2[top], file=sys.stdout)
 	def get_min_bootstrap(self, treefile):
 		tree = Phylo.read(treefile, 'newick')
 		bootraps = [clade.confidence for clade in tree.get_nonterminals() if clade.confidence>=0]
@@ -2207,14 +2207,14 @@ class ColinearGroups:
 		newick = list(Writer([tree]).to_strings(plain=plain, **kargs))[0]
 		return newick
 	def get_root(self):
-		for sp, ploidy in self.sp_dict.items():
+		for sp, ploidy in list(self.sp_dict.items()):
 			if ploidy == 1:
 				return sp
 			return sp
 	def get_min_ks(self):
 		self.d_gff = d_gff = Gff(self.gff).get_genes()
 		d_matrix = {}
-		keys = self.sp_dict.keys()
+		keys = list(self.sp_dict.keys())
 		for sp1, sp2 in itertools.product(keys, keys):
 			d_matrix[(sp1, sp2)] = 0
 		i = 0
@@ -2231,8 +2231,8 @@ class ColinearGroups:
 		#		print >> sys.stderr, gene, d_sg_ks, min_pair
 				sp_pair = tuple(genes2species(min_pair))
 				d_matrix[sp_pair] += 1
-		print >> sys.stderr, i, 'groups'
-		print d_matrix
+		print(i, 'groups', file=sys.stderr)
+		print(d_matrix)
 def orthomcl_to_astral(source='orthomcl', **kargs):
 	ToAstral(source=source, **kargs).run()
 class ToAstral(ColinearGroups):
@@ -2311,7 +2311,7 @@ class ToAstral(ColinearGroups):
 			species = og.species
 			nsp = len(set(species))
 			# compatible with single-copy, low-copy, and limited-copy
-			got_sp = [(sp, genes) for sp, genes in og.spdict.items() if len(genes) <= self.sp_dict.get(sp, self.max_copies) ]
+			got_sp = [(sp, genes) for sp, genes in list(og.spdict.items()) if len(genes) <= self.sp_dict.get(sp, self.max_copies) ]
 			taxa_missing = 1 - 1.0*len(got_sp) / len(self.species)
 			
 			if taxa_missing > self.max_taxa_missing:
@@ -2355,7 +2355,7 @@ class ToAstral(ColinearGroups):
 			
 			if d_root:
 				j += 1
-			root = ' '.join(d_root.values())
+			root = ' '.join(list(d_root.values()))
 			pepAln = pepSeq + '.aln'
 			cdsAln = cdsSeq + '.aln'
 			pepTrim = pepAln + '.trimal'
@@ -2400,7 +2400,7 @@ class ToAstral(ColinearGroups):
 		logger.info('total {} groups, {} rooted'.format(i,j))
 		pepTreefiles = [t for _, t in sorted(zip(roots, pepTreefiles), reverse=1)]	# prefer to rooted
 		with open('/tmp/sort.tree', 'w') as f:
-			print >> f, pepTreefiles
+			print(pepTreefiles, file=f)
 		cdsTreefiles = [t for _, t in sorted(zip(roots, cdsTreefiles), reverse=1)]
 		if self.suffix is None:
 			self.suffix = '{}_to_astral'.format(self.source)
@@ -2478,16 +2478,16 @@ def test():
 	blocks = Collinearity(collinearity, gff, chrmap)
 	for rc in blocks: #.parse():
 		line = [rc.Alignment, rc.chr1, rc.start1, rc.end1, rc.chr2, rc.start2, rc.end2]
-		line = map(str, line)
-		print >> outTab, '\t'.join(line)
+		line = list(map(str, line))
+		print('\t'.join(line), file=outTab)
 		for gene in rc.genes1:
-			print gene.info
+			print(gene.info)
 		
 def list_blocks(collinearity, outTsv, gff=None, kaks=None):
 	'''以共线性块为单位，输出信息'''
 	line = ["Alignment", "species1", "species2", "chr1", "chr2", "start1", "end1", "length1", "start2", "end2", "length2", "strand", "N_gene", "mean_Ks", 'median_Ks', 'score', 'e_value']
 	line = ["id", "species1", "species2", "chr1", "chr2", "start1", "end1", "length1", "start2", "end2", "length2", "strand", "length", "ks_average", 'ks_median', 'score', 'e_value']
-	print >> outTsv, '\t'.join(line)
+	print('\t'.join(line), file=outTsv)
 	for rc in Collinearity(collinearity,gff=gff,kaks=kaks):
 		sp1, sp2 = rc.species
 		chr1, chr2 = rc.chrs
@@ -2497,8 +2497,8 @@ def list_blocks(collinearity, outTsv, gff=None, kaks=None):
 		mean_ks = rc.mean_ks
 		median_ks = rc.median_ks
 		line = [Alignment, sp1, sp2, chr1, chr2, start1, end1, length1, start2, end2, length2, strand, N, mean_ks, median_ks, score, e_value]
-		line = map(str, line)
-		print >> outTsv, '\t'.join(line)
+		line = list(map(str, line))
+		print('\t'.join(line), file=outTsv)
 def gene_class(collinearity, inTsv, outTsv, byAlignment=True):
 	'''将共线性块的分类信息传递到基因对'''
 	d_info = {}
@@ -2512,11 +2512,11 @@ def gene_class(collinearity, inTsv, outTsv, byAlignment=True):
 			continue
 		for g1, g2 in rc.pairs:
 			line = [g1, g2, d_info[Alignment]]
-			print >> outTsv, '\t'.join(line)
+			print('\t'.join(line), file=outTsv)
 def list_pairs(collinearity, outTsv, gff=None, kaks=None, blocks=None):
 	'''提取block内基因对的信息'''
 	line = ['gene1', 'gene2', 'Ks', "chr1", "start1", "end1", "strand1", "chr2", "start2", "end2", "strand2", "Alignment"] # + ["Alignment", "species1", "species2", "chr1", "chr2", "start1", "end1", "length1", "start2", "end2", "length2", "strand", "N_gene", "mean_Ks", 'median_Ks', 'score', 'e_value']
-	print >> outTsv, '\t'.join(line)
+	print('\t'.join(line), file=outTsv)
 	if blocks is not None:
 		d_blocks = {}
 		for line in open(blocks):
@@ -2536,8 +2536,8 @@ def list_pairs(collinearity, outTsv, gff=None, kaks=None, blocks=None):
 		line0 = [Alignment, sp1, sp2, chr1, chr2, start1, end1, length1, start2, end2, length2, strand, N, mean_ks, median_ks, score, e_value]
 		for g1, g2, ks in zip(rc.genes1, rc.genes2, rc.ks):
 			line = [g1.id, g2.id, ks, g1.chr, g1.start, g1.end, g1.strand,  g2.chr, g2.start, g2.end, g2.strand, Alignment] #+ line0
-			line = map(str, line)
-			print >> outTsv, '\t'.join(line)
+			line = list(map(str, line))
+			print('\t'.join(line), file=outTsv)
 def block_ks(collinearity, kaks, outkaks, min_n=10):
 	for rc in Collinearity(collinearity, kaks=kaks):
 		if rc.N < min_n:
@@ -2553,7 +2553,7 @@ def bin_ks_by_chrom(collinearity, gff, kaks, sp1, sp2, out=sys.stdout, bin_size=
 	for rc in Collinearity(collinearity,gff=gff,kaks=kaks):
 		if not rc.is_sp_pair(sp1, sp2):
 			continue
-		chr1, chr2 = map(get_chrom, [rc.chr1, rc.chr2])
+		chr1, chr2 = list(map(get_chrom, [rc.chr1, rc.chr2]))
 		same_order = rc.is_sp_pair(sp1, sp2) == (sp1, sp2)
 		for g1, g2, ks in zip(rc.genes1, rc.genes2, rc.ks):
 			g = g1 if same_order else g2
@@ -2564,7 +2564,7 @@ def bin_ks_by_chrom(collinearity, gff, kaks, sp1, sp2, out=sys.stdout, bin_size=
 	bin = 20
 	for chrom, genes in itertools.groupby(lines, key=lambda x: x.chr):
 		genes = list(genes)
-		for i in xrange(0, len(genes), bin):
+		for i in range(0, len(genes), bin):
 			gs = genes[i:i+bin]
 #		for BIN, gs in itertools.groupby(genes, key=lambda x: x.bin):
 			gs = list(gs)
@@ -2575,22 +2575,22 @@ def bin_ks_by_chrom(collinearity, gff, kaks, sp1, sp2, out=sys.stdout, bin_size=
 #			end = start + bin_size
 #			line = [chrom, start, end, median_ks]
 			line = [chrom, gs[0].start, gs[-1].end, median_ks]
-			line = map(str, line)
-			print >> out, '\t'.join(line)
+			line = list(map(str, line))
+			print('\t'.join(line), file=out)
 
 def count_genes(collinearity, sp1, sp2):
 	d_count = {}
 	for rc in Collinearity(collinearity):
 		if not rc.is_sp_pair(sp1, sp2):
 			continue
-		chr1, chr2 = map(get_chrom, [rc.chr1, rc.chr2])
+		chr1, chr2 = list(map(get_chrom, [rc.chr1, rc.chr2]))
 		if rc.is_sp_pair(sp1, sp2) != (sp1, sp2):
 			chr1, chr2 = chr2, chr1
 		ngene = rc.N
 		try: d_count[chr2] += ngene
 		except KeyError: d_count[chr2] = ngene
 	for chrom, ngene in sorted(d_count.items()):
-		print chrom, ngene
+		print(chrom, ngene)
 def main():
 	import sys
 	subcmd = sys.argv[1]
