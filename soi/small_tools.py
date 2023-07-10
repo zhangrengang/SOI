@@ -27,6 +27,12 @@ from Bio import SeqIO
 from .RunCmdsMP import logger
 
 ISOTIMEFORMAT='%Y-%m-%d %X'
+
+def lazy_decode(line):
+	try: line = line.decode()
+	except AttributeError: pass
+	return line
+
 def mk_ckp(ckgfile, *data, log=True):
 	with open(ckgfile, 'wb') as f:
 		for dat in data:

@@ -1,6 +1,6 @@
 #!/bin/env python
 #coding: utf-8
-import argparse,sys
+import argparse,sys, os
 import re
 import networkx as nx
 import numpy as np
@@ -12,51 +12,73 @@ __version__='0.1'
 __LastModified__='20190226'
 __Example__=''
 def dotplot_args(parser):
-	parser.add_argument('-s', metavar='INPUT_BLOCK_FILE', type=str, required=True, help="the blocks (*.collinearity, output of MCSCANX)")
-	parser.add_argument('-g', metavar='INPUT_GENE_GFF_FILE', type=str, required=True, help="the annotation gff file (one of MCSCANX input)")
-	parser.add_argument('-c', metavar='chr ids config file', type=str, required=True, help="(*.ctl, control file for MCSCANX dotplotter)")
-	parser.add_argument('-o', metavar='OUTPUT_FILE_PREFIX', type=str, default=None, help="the output file prefix. default='-c'")
-	parser.add_argument('--format', metavar='figure file out format', action='append', default=['pdf', 'png'], help="default=%(default)s")
-	parser.add_argument('--plot-dot', action='store_true', default=None, help="also plot dot without Ks. default=%(default)s")
-	parser.add_argument('--min-block', type=int, default=None, help="min gene number in a block. default=%(default)s")
-	parser.add_argument('--min-same-block', type=int, default=25, help="min gene number in a block on the same chromosome. default=%(default)s")
-	parser.add_argument('--homology', action='store_true', default=False, help="-s is homology format. default=%(default)s")
-	parser.add_argument('--hide-blocks', type=str, default=None, help="blocks to hide, one block id per line. default=%(default)s")
-	parser.add_argument('--matrix', type=str, default=None, help="output chrom matrix file")
-	parser.add_argument('--cluster', action='store_true', default=False, help="cluster chromosomes. default=%(default)s")
-	parser.add_argument('--plot-cluster', action='store_true', default=False, help="plot cluster tree. default=%(default)s")
-	parser.add_argument('--diagonal', action='store_true', default=False, help="put blocks onto the diagonal. default=%(default)s")
-	parser.add_argument('--width', type=float, default=18, help="width of whole plot. default=%(default)s")
-	parser.add_argument('--height', type=float, default=1, help="fator of height (actual height = width*height). default=%(default)s")
-	parser.add_argument('--gene-axis', action='store_true', default=False, help="use gene as axis instead of base pair. default=%(default)s")
-	parser.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. default=%(default)s")
-	parser.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. default=%(default)s")
-	parser.add_argument('--number-plots', action='store_true', default=False, help="number subplots with i-iv. default=%(default)s")
-	parser.add_argument('--source', type=str, choices=['mcscanx', 'wgdi'], default=None, help="source of collinearity")
+	parser.add_argument('-s', metavar='FILE', type=str, required=True, help="syntenic block file (*.collinearity, output of MCSCANX/WGDI)")
+	parser.add_argument('-g', metavar='FILE', type=str, required=True, help="gene annotation gff file (*.gff, one of MCSCANX/WGDI input)")
+	parser.add_argument('-c', metavar='FILE', type=str, required=True, help="chromosomes config file (*.ctl, same format as MCSCANX dotplotter)")
+	parser.add_argument('-o', metavar='STR', type=str, default=None, help="output file prefix. [default: the same as `-c`]")
+	parser.add_argument('--format', metavar='FORMAT', action='append', default=['pdf', 'png'], help="output figure format [default=%(default)s]")
+	parser.add_argument('--homology', action='store_true', default=False, help="`-s` is in homology format (gene1<tab>gene2). [default=%(default)s]")
+	parser.add_argument('--cluster', action='store_true', default=False, help="cluster chromosomes. [default=%(default)s]")
+	parser.add_argument('--diagonal', action='store_true', default=False, help="try to put blocks onto the diagonal. [default=%(default)s]")
+	parser.add_argument('--gene-axis', action='store_true', default=False, help="use gene as axis instead of base pair. [default=%(default)s]")
+	parser.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. [default=%(default)s]")
+	parser.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
+	parser.add_argument('--number-plots', action='store_true', default=False, help="number subplots with (a-d). [default=%(default)s]")
+	parser.add_argument('--min-block', metavar='INT', type=int, default=None, help="min gene number in a block. [default=%(default)s]")
+	parser.add_argument('--min-same-block', metavar='INT', type=int, default=25, help="min gene number in a block on the same chromosome. [default=%(default)s]")
+#	parser.add_argument('--plot-dot', action='store_true', default=None, help="also plot dot without Ks. [default=%(default)s]")
+#	parser.add_argument('--hide-blocks', type=str, default=None, help="blocks to hide, one block id per line. default=%(default)s")
+#	parser.add_argument('--matrix', type=str, default=None, help="output chrom matrix file")
+#	parser.add_argument('--plot-cluster', action='store_true', default=False, help="plot cluster tree. default=%(default)s")
+#	parser.add_argument('--width', type=float, default=18, help="width of whole plot. default=%(default)s")
+#	parser.add_argument('--height', type=float, default=1, help="fator of height (actual height = width*height). default=%(default)s")
+#	parser.add_argument('--source', type=str, choices=['mcscanx', 'wgdi'], default=None, help="source of collinearity [default: auto]")
 
-	group_orth = parser.add_argument_group('Orthologue filter/color', 'prior to Ks color')
-	group_orth.add_argument('--ofdir', metavar='dir', type=str, default=None, help="OrthoFinder output directory. default=%(default)s")
-	group_orth.add_argument('--of-ratio', type=float, default=0, help="Orthologue ratio cutoff [default=%(default)s]")
-	group_orth.add_argument('--of-color', action='store_true', default=None, help="default=%(default)s")
+	group_orth = parser.add_argument_group('Orthology Index filter/color', 'filtering or coloring blocks by Orthology Index (prior to Ks color)')
+	group_orth.add_argument('--ofdir', metavar='FOLDER/FILE', type=str, default=None, help="OrthoFinder output folder/ OrthoMCL output pair file. [default=%(default)s]")
+	group_orth.add_argument('--of-ratio', metavar='FLOAT', type=float, default=0, help="Orthology Index cutoff [default=%(default)s]")
+	group_orth.add_argument('--of-color', action='store_true', default=None, help="coloring dots by Orthology Index [default=%(default)s]")
 
 	group_ks = parser.add_argument_group('Ks plot', 'options to plot with Ks')
-	group_ks.add_argument('--kaks', metavar='kaks file', type=str, default=None, help="kaks from KaKs_Calculator. default=%(default)s")
-	group_ks.add_argument('--max-ks', metavar='max ks', type=float, default=1, help="default=%(default)s")
-	group_ks.add_argument('--ks-hist', action='store_true', default=None, help="default=%(default)s")
-	group_ks.add_argument('--ks-cmap', type=float, nargs='+', default=None, help="color map. default=%(default)s")
-	group_ks.add_argument('--ks-step', type=float, default=0.02, help="ks step [default=%(default)s]")
-	group_ks.add_argument('--clip-ks', action='store_true', default=None, help="clip ks > max-ks. default=%(default)s")
-	group_ks.add_argument('--hist-ylim', type=float, default=None, help="max y axis of Ks histgram. default=%(default)s")
-	group_ks.add_argument('--use-median', action='store_true', default=False, help="use median Ks for a block. default=%(default)s")
-	parser.add_argument('--yn00', action='store_true', default=False, help='turn to YN00[default=%(default)s]')
-	parser.add_argument('--method', metavar='meth', type=str, default='NG86', help='[default=%(default)s]]')
-	parser.add_argument('--fdtv', action='store_true', default=False, help='turn to 4DTV[default=%(default)s]')
-	group_ks.add_argument('--lower-ks', metavar='ks', type=float, default=None, help="lower limit of median ks. default=%(default)s")
-	group_ks.add_argument('--upper-ks', metavar='ks', type=float, default=None, help="upper limit of median ks. default=%(default)s")
+	group_ks.add_argument('--kaks', metavar='FILE', type=str, default=None, help="kaks output from KaKs_Calculator/WGDI. [default=%(default)s]")
+	group_ks.add_argument('--ks-hist', action='store_true', default=None, help="plot histogram or not [default=%(default)s]")
+	group_ks.add_argument('--max-ks', metavar='Ks', type=float, default=1, help="max Ks (x limit) [default=%(default)s]")
+	group_ks.add_argument('--ks-cmap', metavar='Ks', type=float, nargs='+', default=None, help="color map for Ks. [default=%(default)s]")
+	group_ks.add_argument('--ks-step', metavar='Ks', type=float, default=0.02, help="Ks step of histogram [default=%(default)s]")
+	group_ks.add_argument('--use-median', action='store_true', default=False, help="use median Ks for a block. [default=%(default)s]")
+	group_ks.add_argument('--method', metavar='STR', type=str, default='NG86', help='Ks calculation method [default=%(default)s]')
+	group_ks.add_argument('--lower-ks', metavar='Ks', type=float, default=None, help="lower limit of median Ks. [default=%(default)s]")
+	group_ks.add_argument('--upper-ks', metavar='Ks', type=float, default=None, help="upper limit of median Ks. [default=%(default)s]")
+#	group_ks.add_argument('--clip-ks', action='store_true', default=None, help="clip ks > max-ks. [default=%(default)s]")
+#	group_ks.add_argument('--hist-ylim', type=float, default=None, help="max y axis of Ks histgram. [default=%(default)s]")
+#	group_ks.add_argument('--yn00', action='store_true', default=False, help='turn to YN00[default=%(default)s]')
+#	group_ks.add_argument('--fdtv', action='store_true', default=False, help='turn to 4DTV[default=%(default)s]')
 
-	group_ploidy = parser.add_argument_group('ploidy plot', 'options to plot relative ploidy')
-	group_ploidy.add_argument('--plot-ploidy', action='store_true', default=False, help="plot relative ploidy. default=%(default)s")
+	group_ploidy = parser.add_argument_group('ploidy plot', 'options to plot relative ploidy (synteny depth)')
+	group_ploidy.add_argument('--plot-ploidy', action='store_true', default=False, help="plot relative ploidy. [default=%(default)s]")
 	add_ploidy_opts(group_ploidy)
+def reset_args(args):
+	args.matrix = None
+	args.hide_blocks = None
+	args.plot_dot = None
+	args.source = None
+	args.yn00 = False
+	args.fdtv = False
+	args.clip_ks = None
+	args.hist_ylim = None
+		
+	if args.o is None:
+		args.o = os.path.splitext(os.path.basename(args.c))[0]
+	# ploidy
+	if args.window_step is None:
+		args.window_step = args.window_size / 5
+	if args.min_overlap is None:
+		args.min_overlap = args.window_size / 2.5
+	else:
+		args.min_overlap = args.min_overlap*args.window_size
+	if args.of_color:
+		args.max_ks = min(args.max_ks, 1)
+		
 def makeArgparse():
 	parser = argparse.ArgumentParser( \
 		formatter_class=argparse.RawDescriptionHelpFormatter,\
@@ -69,18 +91,7 @@ def makeArgparse():
 		args = parser.parse_args(['-h'])
 	else:
 		args = parser.parse_args()
-	if args.o is None:
-		import os
-		args.o = os.path.splitext(os.path.basename(args.c))[0]
-	# ploidy
-	if args.window_step is None:
-		args.window_step = args.window_size / 5
-	if args.min_overlap is None:
-		args.min_overlap = args.window_size / 2.5
-	else:
-		args.min_overlap = args.min_overlap*args.window_size
-	if args.of_color:
-		args.max_ks = min(args.max_ks, 1)
+	
 	return args
 
 class Args:
@@ -93,6 +104,7 @@ def xmain(**kargs):
 		setattr(args, k, v)
 	return main(args)
 def main(args):
+	reset_args(args)
 	collinearity = args.s
 	gff		  = args.g
 	ctl		  = args.c
@@ -195,14 +207,18 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		if min_block is not None and len(block) < min_block:
 			continue
 		Xs, Ys, = [], [],
+		#print(block)
 		for pos1, pos2, myks in block:
 			if clip_ks is not None and myks > max_ks:
+				continue
+			if myks is None:
 				continue
 			Xs += [pos1]
 			Ys += [pos2]
 		#	if ks <= max_ks:
 		#		allKs += [ks]
-			myks = min(myks, max_ks)
+		#	print(myks, max_ks)
+			myks = min(myks, max_ks) #if  myks is not None else None
 			Ks += [myks]
 			allKs += [myks]
 		kXs += Xs
@@ -342,7 +358,7 @@ def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False
 	else:
 		ylabel = 'Number' + ylabel
 #	print allKs
-	n,bins,patches = ax.hist(allKs, bins=bins, normed=normed, facecolor='white', alpha=0)
+	n,bins,patches = ax.hist(allKs, bins=bins, density=normed, facecolor='white', alpha=0)
 	Xs, Ys = [], []
 	for i in range(len(bins)-1):
 		X = (bins[i] + bins[i+1])/2
@@ -360,7 +376,7 @@ def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False
 	ax.set_xlabel(xlabel)
 	ax.set_ylabel(ylabel)
 	ax.minorticks_on()
-	cbar = plt.colorbar()
+	cbar = plt.colorbar(ax=ax)
 	return xlim, ylim
 
 def create_ks_map(ks_map, min_ks, max_ks):
@@ -434,7 +450,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 		cluster=False, diagonal=False, gene_axis=False, source=None, 
 		ofdir=None, of_ratio=0, of_color=False, 
 		matrix=None, min_same_block=None, **ks_args):
-	blocks = Collinearity(collinearity, gff=gff, kaks=kaks, homology=homology, source=source, **ks_args)
+	blocks = XCollinearity(collinearity, orthologs=ofdir, gff=gff, kaks=kaks, homology=homology, source=source, **ks_args)
 	if ofdir:
 		of = OrthoFinder(ofdir)
 		ortholog_pairs = {tuple(sorted(x)) for x in of.get_orthologs()}
@@ -445,7 +461,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 	d_blocks2 = {}
 	ortholog_graph = nx.Graph()
 	
-	for rc in blocks.parse():
+	for rc in blocks: #.parse():
 		if not ((rc.chr1 in chrs1s and rc.chr2 in chrs2s) or ( rc.chr1 in chrs2s and rc.chr2 in chrs1s)):
 			continue
 		if hide_blocks is not None and rc.Alignment in hide_blocks:
@@ -470,9 +486,9 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 			ks = [rc.median_ks] * len(ks)
 
 		if ofdir:
-			pairs = { tuple(sorted(x)) for x in rc.pairs}
-			intersect = pairs & ortholog_pairs
-			ratio = 1.0*len(intersect) / len(pairs)
+#			pairs = { tuple(sorted(x)) for x in rc.pairs}
+#			intersect = pairs & ortholog_pairs
+			ratio = rc.oi #1.0*len(intersect) / len(pairs)
 			if not ratio >= of_ratio:
 				continue
 			if of_color:

@@ -71,7 +71,7 @@ def args_outgroup(parser):
 	parser.add_argument('-outgroup', type=str, required=True, metavar='TAXON',
 					dest='outgroup', nargs='*',
 					help="Outgroups to include to orthogroups [required]")
-	parser.add_argument('-cutoff',  type=float, default=0.1,
+	parser.add_argument('-cutoff',  type=float, default=0.2,
 					dest='min_ratio',  metavar='FLOAT',
 					help="Cutoff (lower limit) of links to outgroup genes [default=%(default)s]")
 def func_outgroup(**kargs):

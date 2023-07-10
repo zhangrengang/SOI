@@ -12,14 +12,14 @@ __version__ = '0.1'
 __LastModified__ = '20200616'
 __Example__ = None
 def add_ploidy_opts(parser):
-	parser.add_argument('--window_size', type=int, default=50, help="window_size. default=%(default)s")
-	parser.add_argument('--window_step', type=int, default=10, help="window_step. default=%(default)s")
-	parser.add_argument('--min_block', type=int, default=10, help="min genes for a block. default=%(default)s")
-	parser.add_argument('--max_distance', type=int, default=20, help="max_distance. default=%(default)s")
-	parser.add_argument('--max_ploidy',  type=int, default=10, help="x limit. default=%(default)s")
-	parser.add_argument('--min_overlap', type=float, default=0.4, help="min_overlap. default=%(default)s")
-	parser.add_argument('--color',  type=str, default=None, help="bar fill color. default=%(default)s")
-	parser.add_argument('--edgecolor', type=str, default=None, help="bar edge color. default=%(default)s")
+	parser.add_argument('--window_size', metavar='INT', type=int, default=50, help="window_size. [default=%(default)s]")
+	parser.add_argument('--window_step', metavar='INT', type=int, default=10, help="window_step. [default=%(default)s]")
+	parser.add_argument('--min_block', metavar='INT',type=int, default=10, help="min genes for a block. [default=%(default)s]")
+	parser.add_argument('--max_distance', metavar='INT', type=int, default=20, help="max distance. [default=%(default)s]")
+	parser.add_argument('--max_ploidy', metavar='INT', type=int, default=10, help="x limit. [default=%(default)s]")
+	parser.add_argument('--min_overlap', metavar='FLOAT', type=float, default=0.4, help="min overlap. [default=%(default)s]")
+	parser.add_argument('--color', metavar='COLOR', type=str, default=None, help="bar fill color. [default=%(default)s]")
+	parser.add_argument('--edgecolor', metavar='COLOR', type=str, default=None, help="bar edge color. [default=%(default)s]")
 	
 def makeArgparse():
 	parser = argparse.ArgumentParser( \
@@ -231,8 +231,8 @@ def overlap_blocks(blocks, coord_graph, min_overlap=3, **kargs):
 	for b in blocks:
 		G.add_node(b)
 	for b1, b2 in itertools.combinations(blocks, 2):
-		i1 = [coord_graph.node[x]['index'] for x in b1]
-		i2 = [coord_graph.node[x]['index'] for x in b2]
+		i1 = [coord_graph.nodes[x]['index'] for x in b1]
+		i2 = [coord_graph.nodes[x]['index'] for x in b2]
 		min_i1, max_i1 = min(i1), max(i1)
 		min_i2, max_i2 = min(i2), max(i2)
 		if min(max_i1, max_i2) - max(min_i1, min_i2) + 1 >=min_overlap: # overlap
@@ -242,16 +242,16 @@ def cluster_genes(genes, coord_graph, max_distance=25, **kargs):
 	'''根据坐标，将gene聚类为block'''
 	d_bin = {}
 	for gene in genes:
-		try: chrom = coord_graph.node[gene]['chrom']
+		try: chrom = coord_graph.nodes[gene]['chrom']
 		except KeyError: continue
 		try: d_bin[chrom] += [gene]
 		except KeyError: d_bin[chrom] = [gene]
 	G = nx.Graph()
 	for chrom, genes in list(d_bin.items()):
-		genes = sorted(genes, key=lambda x: coord_graph.node[x]['index'])
+		genes = sorted(genes, key=lambda x: coord_graph.nodes[x]['index'])
 		for i, gene in enumerate(genes[1:]):
 			n1, n2 = genes[i], gene
-			i1, i2 = coord_graph.node[n1]['index'], coord_graph.node[n2]['index']
+			i1, i2 = coord_graph.nodes[n1]['index'], coord_graph.nodes[n2]['index']
 			if i2 - i1 < max_distance:
 				G.add_edge(n1, n2)
 	return G

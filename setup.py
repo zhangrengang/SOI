@@ -17,12 +17,12 @@ setup(
     author='Zhang, Ren-Gang and Wang, Zhao-Xuan',
     license='GPL-3.0',
 
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     packages=find_packages(),
     include_package_data=True,
     scripts=[],
     entry_points={
-        'console_scripts': ['soi = orthoindex.options:main',
+        'console_scripts': ['soi = soi.options:main',
         ],
     },
 )

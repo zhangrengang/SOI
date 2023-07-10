@@ -17,7 +17,7 @@ def add_ploidy_opts(parser):
 	parser.add_argument('--min_block', type=int, default=10, help="min genes for a block. default=%(default)s")
 	parser.add_argument('--max_distance', type=int, default=20, help="max_distance. default=%(default)s")
 	parser.add_argument('--max_ploidy',  type=int, default=10, help="x limit. default=%(default)s")
-	parser.add_argument('--min_overlap', type=float, default=20, help="min_overlap. default=%(default)s")
+	parser.add_argument('--min_overlap', type=float, default=0.4, help="min_overlap. default=%(default)s")
 	parser.add_argument('--color',  type=str, default=None, help="bar fill color. default=%(default)s")
 	parser.add_argument('--edgecolor', type=str, default=None, help="bar edge color. default=%(default)s")
 	

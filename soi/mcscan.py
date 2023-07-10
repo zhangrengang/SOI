@@ -11,8 +11,9 @@ from Bio import SeqIO, Phylo
 from lazy_property import LazyWritableProperty as lazyproperty
 
 from .OrthoFinder import catAln, format_id_for_iqtree, OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder, parse_species, exists_and_size_gt_zero
-from .small_tools import mkdirs, flatten, test_s, test_f, parse_kargs, rmdirs
+from .small_tools import mkdirs, flatten, test_s, test_f, parse_kargs, rmdirs, lazy_decode
 from .RunCmdsMP import run_cmd, run_job, logger
+from .small_tools import open_file as open
 #from creat_ctl import sort_version
 
 def get_chrom(chrom):
@@ -122,8 +123,10 @@ class KaKsParser:
 		return self._parse()
 	def _parse(self):
 		for line in open(self.kaks):
+			line = lazy_decode(line)
 			temp = line.rstrip().split()
 #			print >> sys.stderr, temp
+			#print(temp)
 			if temp[0] in {'Sequence', 'id1'}:
 				if temp[1] == 'dS-YN00':
 					self.kargs['yn00'] = True
@@ -188,8 +191,10 @@ class XCollinearity:
 		return self._parse()
 	def _parse_list(self, _collinearities):
 		collinearities = []
+		if isinstance(_collinearities, str):
+			return [_collinearities]
 		for collinearity in _collinearities:
-			if open(collinearity).read(1) == '#':
+			if lazy_decode(open(collinearity).read(1)) == '#':
 				collinearities += [collinearity]
 			else:
 				collinearities += [line.strip().split()[0] for line in open(collinearity)]
@@ -198,8 +203,10 @@ class XCollinearity:
 		if self.orthologs is not None:
 			ortholog_pairs = set(XOrthology(self.orthologs, **self.kargs))
 			logger.info('{} homologous pairs in total'.format(len(ortholog_pairs)))
+		logger.info('{} collinearity files to parse: {}...'.format(
+			len(self.collinearities), self.collinearities[:3]))
 		for collinearity in self.collinearities:
-			logger.info('parsing {}'.format(collinearity))
+	#		logger.info('parsing {}'.format(collinearity))
 			for rc in Collinearity(collinearity, **self.kargs):
 				if self.orthologs is not None:
 					pairs = {CommonPair(*x) for x in rc.pairs}
@@ -212,10 +219,16 @@ class XCollinearity:
 				yield rc
 class XOrthology:
 	def __init__(self, orthologs, **kargs):
-		self.orthologs = orthologs
+		self.orthologs = self._parse_list(orthologs)
 		self.kargs = kargs
 	def __iter__(self):
 		return self._parse()
+	def _parse_list(self, _orthologs):
+#		orthologs = []
+		if isinstance(_orthologs, str):
+			return [_orthologs]
+		else:
+			return _orthologs
 	def _parse(self):
 		for ortholog in self.orthologs:
 			logger.info('parsing {}'.format(ortholog))
@@ -309,6 +322,7 @@ class Collinearity():
 			head = []
 			self.head = 1
 			for line in open(self.collinearity):
+				line = lazy_decode(line)
 				if re.compile(r'#+ Alignment').match(line):	# mcscanx or wgdi
 					if self.source is None and re.compile(r'# Alignment').match(line):
 						self.source = 'wgdi'
@@ -335,6 +349,7 @@ class Collinearity():
 				yield self
 		else:
 			for line in open(self.collinearity):
+				line = lazy_decode(line)
 				self.parse_homology_line(line)
 				yield self
 	
@@ -489,6 +504,7 @@ class Collinearity():
 		d_chr = {}
 		d_length = {}
 		for line in open(self.gff):
+			line = lazy_decode(line)
 			temp = line.rstrip().split('\t')
 			chr, gene, start, end = temp[:4]
 			if gene in genes:	# remove repeat
@@ -754,7 +770,7 @@ class Gff:
 
 class GffLine:
 	def __init__(self, line):
-		self.line = line
+		self.line = lazy_decode(line)
 		self._parse()
 	def _parse(self):
 		temp = self.line.rstrip().split('\t')
@@ -1024,7 +1040,8 @@ def cluster_graph(collinearity, logs='b', **kargs): 	# logs: b: both, o: ortholo
 		G.add_edges_from(rc.pairs)
 	return G
 def cluster_add_outgroup(collinearities, orthogroup, outgroup, fout=sys.stdout, min_ratio=0):
-	outgroup = set(outgroup)
+	outgroup = set(parse_group(outgroup))
+	logger.info('outgroup: {}'.format(outgroup))
 	G = nx.Graph()
 	for rc in XCollinearity(collinearities):
 		sp1,sp2 = rc.species
@@ -1033,6 +1050,7 @@ def cluster_add_outgroup(collinearities, orthogroup, outgroup, fout=sys.stdout, 
 		if not (sp1 in outgroup or sp2 in outgroup):
 			continue
 		G.add_edges_from(rc.pairs)
+	logger.info('{} nodes in outgroup graph'.format(len(G)))
 	nog, ng = 0,0
 	for og in OrthoMCLGroup(orthogroup):
 		outgrp_genes = []
@@ -1066,6 +1084,9 @@ def parse_group(groups):
 def cluster_by_mcl(collinearities, orthologs=None, inflation=2, outgroup=None, ingroup=None, outpre='cluster'):
 	ingroup = set(parse_group(ingroup))
 	outgroup = set(parse_group(outgroup))
+	logger.info('outgroup: {}'.format(outgroup))
+	logger.info('ingroup: {}'.format(ingroup))
+
 	network = '{}.network'.format(outpre)
 	fout = open(network, 'w')
 	np = 0
@@ -2404,6 +2425,8 @@ class ToAstral(ColinearGroups):
 		cdsTreefiles = [t for _, t in sorted(zip(roots, cdsTreefiles), reverse=1)]
 		if self.suffix is None:
 			self.suffix = '{}_to_astral'.format(self.source)
+		xs = 'sc' if self.singlecopy else 'mc'
+		self.suffix = '{}.{}'.format(self.suffix, xs)
 
 		nbin = 10
 		cmd_file = '{}/{}.cmds.list'.format(self.tmpdir, self.suffix)
