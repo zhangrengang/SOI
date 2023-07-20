@@ -35,4 +35,7 @@ soi dotplot -s Populus_trichocarpa-Salix_dunnii.collinearity.gz \
 # filter
 soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o OrthoFinder/OrthoFinder/Results_*/ \
 	-c 0.6 > Populus_trichocarpa-Salix_dunnii.collinearity.ortho
+# or (alter input format)
+soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o Populus_trichocarpa-Salix_dunnii.orthologs.gz \
+	-c 0.6 > Populus_trichocarpa-Salix_dunnii.collinearity.ortho
 

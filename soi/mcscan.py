@@ -237,6 +237,7 @@ class XOrthology:
 					yield CommonPair(*pair)
 			else:	# orthomcl or similar format
 				for rc in Pairs(ortholog, parser=CommonPair):
+#					print(rc, file=sys.stderr)
 					yield rc
 def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.stdout, 
 		gff=None, kaks=None, source=None, #paralog=False, both=True 
@@ -864,6 +865,7 @@ class Pairs(object):
 		return self._parse()
 	def _parse(self):
 		for line in open(self.pairs):
+			line = lazy_decode(line)
 			yield split_pair(line, self.sep, self.parser)
 	def graph(self):
 		G = nx.Graph()
