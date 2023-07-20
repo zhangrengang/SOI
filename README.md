@@ -6,3 +6,5 @@ python3 setup.py install
 cd example_data/
 sh example.sh
 ```
+
+![dotplots](example_data/mege_4dot.png)
