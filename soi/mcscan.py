@@ -240,7 +240,7 @@ class XOrthology:
 #					print(rc, file=sys.stderr)
 					yield rc
 def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.stdout, 
-		gff=None, kaks=None, source=None, #paralog=False, both=True 
+		gff=None, kaks=None, source=None, min_n=0, #paralog=False, both=True 
 		min_ratio=0.5, max_ratio=1, species=None, homo_class=None, test_diff=False):
 	if species is not None:
 		species = parse_species(species)
@@ -265,6 +265,8 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 				gff=gff, kaks=kaks, source=source, sps=species, homo_class=homo_class):
 		pre_nb += 1
 		pre_ng += rc.N
+		if rc.N < min_n:
+			continue
 #		pairs = { tuple(sorted(x)) for x in rc.pairs}
 #		pairs = {CommonPair(*x) for x in rc.pairs}
 #		intersect = pairs & ortholog_pairs
@@ -1092,13 +1094,17 @@ def cluster_by_mcl(collinearities, orthologs=None, inflation=2, outgroup=None, i
 	network = '{}.network'.format(outpre)
 	fout = open(network, 'w')
 	np = 0
+	i,j,k = 0,0,0
 	for rc in XCollinearity(collinearities, orthologs=orthologs):
 		sp1,sp2 = rc.species
 		if sp1 == sp2:	# exclude paralogs
+			i += 1
 			continue
 		if sp1 in outgroup or sp2 in outgroup:  # exclude outgoup
+			j += 1
 			continue
 		if ingroup and not (sp1 in ingroup and sp2 in ingroup):	# only include ingroup
+			k += 1
 			continue
 		for g1, g2 in rc.pairs:
 			np += 1
@@ -1107,6 +1113,7 @@ def cluster_by_mcl(collinearities, orthologs=None, inflation=2, outgroup=None, i
 				line += [str(rc.oi)]
 			fout.write('{}\n'.format('\t'.join(line)))
 	fout.close()
+	logger.info('excluded: {} paralogs, {} in outgroup, {} not in ingroup'.format(i,j,k))
 	cluster = '{}.mcl'.format(outpre)
 	cmd = '''mcl {input} --abc -I {inflation} -o - -te {ncpu} | \
 awk 'NF>1' | awk '{{split($0,a,"\\t");sl=asort(a);for (i=1;i<=sl;i++){{printf("%s ", a[i])}}; printf "\\n"}}' | \

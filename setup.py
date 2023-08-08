@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from orthoindex.__version__ import version
+from soi.__version__ import version
 
 from setuptools import setup, find_packages
 from distutils.extension import Extension

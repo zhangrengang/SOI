@@ -29,6 +29,9 @@ def args_filter(parser):
 	parser.add_argument('-upper',  type=float, default=1,
 					dest='max_ratio',  metavar='FLOAT',
 					help="Upper limit of Orthology Index [default=%(default)s]")
+	parser.add_argument('-n', '-min_n',  type=int, default=0,
+                    dest='min_n',  metavar='INT',
+                    help="Minimum gene number in a block [default=%(default)s]")
 
 def func_filter(**kargs):
 	from .mcscan import identify_orthologous_blocks
@@ -74,6 +77,7 @@ def args_outgroup(parser):
 	parser.add_argument('-cutoff',  type=float, default=0.2,
 					dest='min_ratio',  metavar='FLOAT',
 					help="Cutoff (lower limit) of links to outgroup genes [default=%(default)s]")
+
 def func_outgroup(**kargs):
 	from .mcscan import cluster_add_outgroup
 	cluster_add_outgroup(**kargs)
@@ -140,7 +144,7 @@ def makeArgs():
 		)
 	# subcommands
 	subparsers = parser.add_subparsers(help='sub-command help')
-	parser_dot = subparsers.add_parser('dotplot', help='Generate colored dot plots')
+	parser_dot = subparsers.add_parser('dotplot',  help='Generate colored dot plots')
 	args_dotplot(parser_dot)
 	parser_flt = subparsers.add_parser('filter', help='Filter synteny with Orthology Index (standard output)')
 	args_filter(parser_flt)
@@ -148,7 +152,7 @@ def makeArgs():
 	args_cluster(parser_clst)
 	parser_ogrp = subparsers.add_parser('outgroup', help='Add outgroups for SOGs from synteny')
 	args_outgroup(parser_ogrp)
-	parser_phylo = subparsers.add_parser('phylo', help='Build gene trees from SOGs')
+	parser_phylo = subparsers.add_parser('phylo',  help='Build gene trees from SOGs')
 	args_phylo(parser_phylo)
 
 	args = parser.parse_args()
