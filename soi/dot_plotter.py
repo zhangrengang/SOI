@@ -5,7 +5,7 @@ import re
 import networkx as nx
 import numpy as np
 from .mcscan import Collinearity, Gff, XCollinearity
-from .OrthoFinder import OrthoFinder
+#from .OrthoFinder import OrthoFinder
 from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
 
 __version__='0.1'
@@ -35,7 +35,7 @@ def dotplot_args(parser):
 #	parser.add_argument('--source', type=str, choices=['mcscanx', 'wgdi'], default=None, help="source of collinearity [default: auto]")
 
 	group_orth = parser.add_argument_group('Orthology Index filter/color', 'filtering or coloring blocks by Orthology Index (prior to Ks color)')
-	group_orth.add_argument('--ofdir', metavar='FOLDER/FILE', type=str, default=None, help="OrthoFinder output folder/ OrthoMCL output pair file. [default=%(default)s]")
+	group_orth.add_argument('--ofdir', metavar='FOLDER/FILE', type=str, nargs='+', default=None, help="OrthoFinder output folder/ OrthoMCL output pair file. [default=%(default)s]")
 	group_orth.add_argument('--of-ratio', metavar='FLOAT', type=float, default=0, help="Orthology Index cutoff [default=%(default)s]")
 	group_orth.add_argument('--of-color', action='store_true', default=None, help="coloring dots by Orthology Index [default=%(default)s]")
 
@@ -451,10 +451,10 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 		ofdir=None, of_ratio=0, of_color=False, 
 		matrix=None, min_same_block=None, **ks_args):
 	blocks = XCollinearity(collinearity, orthologs=ofdir, gff=gff, kaks=kaks, homology=homology, source=source, **ks_args)
-	if ofdir:
-		of = OrthoFinder(ofdir)
-		ortholog_pairs = {tuple(sorted(x)) for x in of.get_orthologs()}
-		ortholog_pairs = ortholog_pairs | {tuple(sorted(x)) for x in of.get_paralogs2()}
+#	if ofdir:
+#		of = OrthoFinder(ofdir)
+#		ortholog_pairs = {tuple(sorted(x)) for x in of.get_orthologs()}
+#		ortholog_pairs = ortholog_pairs | {tuple(sorted(x)) for x in of.get_paralogs2()}
 
 	chrs1s, chrs2s = set(chrs1), set(chrs2)
 	d_blocks = {}
