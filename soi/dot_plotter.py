@@ -12,7 +12,7 @@ __version__='0.1'
 __LastModified__='20190226'
 __Example__=''
 def dotplot_args(parser):
-	parser.add_argument('-s', metavar='FILE', type=str, required=True, help="syntenic block file (*.collinearity, output of MCSCANX/WGDI)")
+	parser.add_argument('-s', metavar='FILE', type=str, required=True, nargs='+', help="syntenic block file (*.collinearity, output of MCSCANX/WGDI)")
 	parser.add_argument('-g', metavar='FILE', type=str, required=True, help="gene annotation gff file (*.gff, one of MCSCANX/WGDI input)")
 	parser.add_argument('-c', metavar='FILE', type=str, required=True, help="chromosomes config file (*.ctl, same format as MCSCANX dotplotter)")
 	parser.add_argument('-o', metavar='STR', type=str, default=None, help="output file prefix. [default: the same as `-c`]")
