@@ -39,6 +39,7 @@ def dotplot_args(parser):
 	group_art.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
 	group_art.add_argument('--figsize', metavar='NUM', type=float, default=18, help="figure size [default=%(default)s]")
 	group_art.add_argument('--fontsize', metavar='NUM', type=float, default=10, help="baseline font size [default=%(default)s]")
+	group_art.add_argument('--dotsize', metavar='NUM', type=float, default=0.8, dest='point_size', help="dot size [default=%(default)s]")
 
 
 	group_orth = parser.add_argument_group('Orthology Index filter/color', 'filtering or coloring blocks by Orthology Index (prior to Ks color)')
@@ -172,8 +173,8 @@ def _remove_prefix(labels):
 	return [label[2:] for label in labels]
 def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=None, clip_ks=None, min_block=None, ks_step=0.02,
 			xlabels=None, ylabels=None, xpositions=None, ypositions=None, xlines=None, ylines=None, xlim=None, ylim=None,
-			figsize=18, fontsize=10, 
-			hist_ylim=None, point_size=0.8, xlabel=None, ylabel=None, remove_prefix=True, number_plots=True, same_sp=False,
+			figsize=18, fontsize=10, point_size=0.8, 
+			hist_ylim=None, xlabel=None, ylabel=None, remove_prefix=True, number_plots=True, same_sp=False,
 			ploidy=False, ploidy_data=None, ortholog_graph=None, of_color=False, homology=False, **kargs
 			):
 	import matplotlib
