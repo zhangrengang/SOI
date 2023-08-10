@@ -21,8 +21,8 @@ def dotplot_args(parser):
 	parser.add_argument('--cluster', action='store_true', default=False, help="cluster chromosomes. [default=%(default)s]")
 	parser.add_argument('--diagonal', action='store_true', default=False, help="try to put blocks onto the diagonal. [default=%(default)s]")
 	parser.add_argument('--gene-axis', action='store_true', default=False, help="use gene as axis instead of base pair. [default=%(default)s]")
-	parser.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. [default=%(default)s]")
-	parser.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
+#	parser.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. [default=%(default)s]")
+#	parser.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
 	parser.add_argument('--number-plots', action='store_true', default=False, help="number subplots with (a-d). [default=%(default)s]")
 	parser.add_argument('--min-block', metavar='INT', type=int, default=None, help="min gene number in a block. [default=%(default)s]")
 	parser.add_argument('--min-same-block', metavar='INT', type=int, default=25, help="min gene number in a block on the same chromosome. [default=%(default)s]")
@@ -33,6 +33,13 @@ def dotplot_args(parser):
 #	parser.add_argument('--width', type=float, default=18, help="width of whole plot. default=%(default)s")
 #	parser.add_argument('--height', type=float, default=1, help="fator of height (actual height = width*height). default=%(default)s")
 #	parser.add_argument('--source', type=str, choices=['mcscanx', 'wgdi'], default=None, help="source of collinearity [default: auto]")
+
+	group_art = parser.add_argument_group('Art settings', 'art settings for plots')
+	group_art.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. [default=%(default)s]")
+	group_art.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
+	group_art.add_argument('--figsize', metavar='NUM', type=float, default=18, help="figure size [default=%(default)s]")
+	group_art.add_argument('--fontsize', metavar='NUM', type=float, default=10, help="baseline font size [default=%(default)s]")
+
 
 	group_orth = parser.add_argument_group('Orthology Index filter/color', 'filtering or coloring blocks by Orthology Index (prior to Ks color)')
 	group_orth.add_argument('--ofdir', metavar='FOLDER/FILE', type=str, nargs='+', default=None, help="OrthoFinder output folder/ OrthoMCL output pair file. [default=%(default)s]")
@@ -165,24 +172,26 @@ def _remove_prefix(labels):
 	return [label[2:] for label in labels]
 def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=None, clip_ks=None, min_block=None, ks_step=0.02,
 			xlabels=None, ylabels=None, xpositions=None, ypositions=None, xlines=None, ylines=None, xlim=None, ylim=None,
+			figsize=18, fontsize=10, 
 			hist_ylim=None, point_size=0.8, xlabel=None, ylabel=None, remove_prefix=True, number_plots=True, same_sp=False,
 			ploidy=False, ploidy_data=None, ortholog_graph=None, of_color=False, homology=False, **kargs
 			):
 	import matplotlib
 	import matplotlib.pyplot as plt
 	import matplotlib.cm as cm
-	xcsize, ycsize = 10, 10
+	xcsize = ycsize = fontsize
+	xsize = ysize = fontsize * 2
 	if xlabel is not None and xlabels is not None and remove_prefix:
 		xlabels = _remove_prefix(xlabels)
-		xcsize, xsize = 15, 20
+		xcsize = xcsize*1.5 
 	if ylabel is not None and ylabels is not None and remove_prefix:
 		ylabels = _remove_prefix(ylabels)
-		ycsize, ysize = 15, 20
+		ycsize = ycsize*1.5
 #	if ks_cmap:
 #		cmap = create_ks_map(ks_cmap, max_ks)
 #	else:
 #		cmap = cm.jet
-	x = 18.0
+	x = figsize
 	if ks is not None:
 		if ks_hist is not None:
 			y = x * 1.2
@@ -230,6 +239,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			plt.plot(Xs, Ys, color="grey", ls='-', alpha=0.45, linewidth=0.55)
 #		else:
 			#plt.plot(Xs, Ys)
+	# species label
 	if xlabel:
 		ax.set_xlabel(xlabel, ha='center', fontsize=xsize, labelpad=10)
 		ax.xaxis.set_label_position('top')
@@ -255,6 +265,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	if same_sp:
 		plt.plot((xmin, xmax), (ymin, ymax), ls='--', color="grey")
 	tot_lenx, tot_leny = xlim, ylim
+	# chromosome label
 	for xlabel, xposition, xline in zip(xlabels, xpositions, xlines):
 		x = xline
 		plt.vlines(x, ymin, ymax, color="grey", linewidth=0.4)
