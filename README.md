@@ -7,7 +7,7 @@ cd example_data/
 sh example.sh
 
 # example.sh:
-# dot plot
+# dot plots
 # A
 soi dotplot -s Populus_trichocarpa-Salix_dunnii.collinearity.gz \
         -g Populus_trichocarpa-Salix_dunnii.gff.gz -c Populus_trichocarpa-Salix_dunnii.ctl  \
@@ -57,4 +57,4 @@ It is straightforward, representing the proportion of orthologous gene pairs wit
 
 ### Phylogenomics pipeline ###
 
-Refer to [evolution_example](evolution_example) for a pipeline of phylogenomics analyses based on Orthology Index.
+Refer to [evolution_example](https://github.com/zhangrengang/evolution_example/) for a pipeline of phylogenomics analyses based on Orthology Index.

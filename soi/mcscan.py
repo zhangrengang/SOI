@@ -2504,8 +2504,8 @@ class ToAstral(ColinearGroups):
 		run_job(cmd_file, cmd_list=cmd_list, tc_tasks=self.ncpu, by_bin=nbin, fail_exit=False)
 
 		# cat genetrees
-		pepGenetrees = '{}.pep.genetrees'.format(self.suffix)
-		cdsGenetrees = '{}.cds.genetrees'.format(self.suffix)
+		pepGenetrees = '{}.pep.mm{}.genetrees'.format(self.suffix, self.max_taxa_missing)
+		cdsGenetrees = '{}.cds.mm{}.genetrees'.format(self.suffix, self.max_taxa_missing)
 		for treefiles, genetrees in zip([pepTreefiles, cdsTreefiles], [pepGenetrees, cdsGenetrees]):
 			self.cat_genetrees(treefiles, genetrees, idmap=d_idmap, plain=False, format_confidence='%d')
 
