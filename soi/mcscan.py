@@ -212,10 +212,12 @@ class XCollinearity:
 					pairs = {CommonPair(*x) for x in rc.pairs}
 					intersect = pairs & ortholog_pairs
 					ratio = 1.0*len(intersect) / len(pairs)
+					rc.on = len(intersect) # syntenic orthologs
 					rc.oi = ratio
 					if self.homo_class is not None:
 						rc.intersect = intersect
 						rc.substract = pairs - ortholog_pairs
+				rc.ton = len(ortholog_pairs)	# all syntenic orthologs
 				yield rc
 class XOrthology:
 	def __init__(self, orthologs, **kargs):
@@ -260,6 +262,8 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 	if test_diff:
 		d_ks = {}
 	pre_nb, pre_ng, post_nb, post_ng = 0, 0,0,0
+	post_no = 0
+	total_oi = 0
 	logger.info('filtering collinearity...')
 	for rc in XCollinearity(collinearities, orthologs=orthologs, 
 				gff=gff, kaks=kaks, source=source, sps=species, homo_class=homo_class):
@@ -275,6 +279,8 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 			continue
 		post_nb += 1
 		post_ng += rc.N
+		post_no += rc.on # syntenic orthologs
+		total_oi += rc.oi * rc.N
 #		info = rc.info + [ratio]
 #		print >> sys.stderr, '\t'.join(map(str, info))
 		rc.write(fout)
@@ -286,8 +292,11 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 					print('\t'.join(line), file=out_class)
 #					if test_diff:
 						
-	logger.info('Pre-filter: {} blocks, {} pairs; Post-filter: {} ({:.1%}) blocks, {} ({:.1%}) pairs.'.format(
+	logger.info('Synteny: Pre-filter: {} blocks, {} pairs; Post-filter: {} ({:.1%}) blocks, {} ({:.1%}) pairs.'.format(
 		pre_nb, pre_ng, post_nb, 1.0*post_nb/pre_nb, post_ng, 1.0*post_ng/pre_ng))
+	logger.info('Orthology: Pre-filter: {} pairs; Post-filter: {} ({:.1%}) pairs.'.format(
+        rc.ton, post_no, 1.0*post_no/rc.ton))
+	logger.info('Mean OrthoIndex: {:.2f}'.format(total_oi/post_ng))
 	if homo_class is not None:
 		out_class.close()
 
@@ -2265,8 +2274,11 @@ class ColinearGroups:
 		print(d_matrix)
 def orthomcl_to_astral(source='orthomcl', **kargs):
 	ToAstral(source=source, **kargs).run()
+def orthomcl_stats(source='orthomcl', **kargs):
+	ToAstral(source=source, **kargs).stat()
+
 class ToAstral(ColinearGroups):
-	def __init__(self, input, pep, spsd=None, cds=None, tmpdir='tmp', root=None, both=True, suffix=None, 
+	def __init__(self, input=None, pep=None, spsd=None, cds=None, tmpdir='tmp', root=None, both=True, suffix=None, 
 			ncpu=50, max_taxa_missing=0.5, max_mean_copies=10, max_copies=5, singlecopy=False,  
 			source=None, orthtype='Orthogroups', fast=True, concat=False, clean=False,
 			trimal_opts='-automated1', iqtree_opts=''):
@@ -2287,7 +2299,7 @@ class ToAstral(ColinearGroups):
 		self.concat = concat
 		self.fast = fast
 		self.sp_dict = parse_spsd(spsd, skip=True)
-		self.suffix = suffix
+		self.suffix = input if suffix is None else suffix 
 		self.orthtype = orthtype
 		self.source = source
 		self.trimal_opts = trimal_opts
@@ -2321,6 +2333,56 @@ class ToAstral(ColinearGroups):
 		self.species = species
 		self.source = source
 		return groups
+	def stat(self, nbin=20):
+		ng, rg = 0, 0
+		d_taxon = {}
+		d_gene = {}
+		for og in self.lazy_get_groups(orthtype=self.orthtype):
+			rg += 1
+			got_sp = [(sp, genes) for sp, genes in list(og.spdict.items()) if len(genes) <= self.sp_dict.get(sp, self.max_copies) ]
+			taxa_occupancy = 1e2*len(got_sp) / len(self.species)
+			d_taxon[og.ogid] = taxa_occupancy
+			taxa_missing = 1 - taxa_occupancy/100
+			if taxa_missing > self.max_taxa_missing:
+				continue
+			ng += 1
+			for sp, genes in got_sp:
+				ngs = len(genes)
+				try: d_gene[sp] += [ngs]
+				except KeyError: d_gene[sp] = [ngs]
+		# 
+		xs = 'sc' if self.singlecopy else 'mc'
+		self.suffix = '{}.{}'.format(self.suffix, xs)
+		logger.info('{} taxa; {} -> {} genes'.format(len(self.species), rg, ng))
+
+		# taxa missing
+		step = 100//nbin
+		d_bin = {}
+			
+		for val in d_taxon.values():
+			bin = int(val) // step * step
+			try: d_bin[bin] += 1
+			except KeyError: d_bin[bin] = 1
+		f = open(self.suffix + '.taxa_occupancy', 'w')
+		line = ['taxa_occupancy', 'gene_count']
+		f.write('\t'.join(map(str, line)) + '\n')
+		for bin, count in sorted(d_bin.items()):
+			line = [bin, count]
+			f.write('\t'.join(map(str, line)) + '\n')
+		f.close()
+
+		# gene occupancy
+		self.suffix = '{}.mm{}'.format(self.suffix, self.max_taxa_missing)
+		f = open(self.suffix + '.gene_occupancy', 'w')
+		line = ['species', 'gene_count', 'gene_occupancy', 'median_copy', 'mean_copy']
+		f.write('\t'.join(map(str, line)) + '\n')
+		for sp in sorted(self.species):
+			xg = d_gene[sp]
+			xng = len(xg)
+			line = [sp, xng, 1e2*xng/ng, np.median(xg), np.mean(xg)]
+			f.write('\t'.join(map(str, line)) + '\n')
+		f.close()
+		
 	def run(self):
 		#logger.info('VARS: {}'.format(self.__dict__))
 		mafft_template = '. ~/.bashrc; mafft --auto {} > {} 2> /dev/null'
@@ -2338,8 +2400,8 @@ class ToAstral(ColinearGroups):
 		roots = []
 		i,j = 0, 0
 		for og in self.lazy_get_groups(orthtype=self.orthtype):
-			species = og.species
-			nsp = len(set(species))
+			#species = og.species
+			#nsp = len(set(species))
 			# compatible with single-copy, low-copy, and limited-copy
 			got_sp = [(sp, genes) for sp, genes in list(og.spdict.items()) if len(genes) <= self.sp_dict.get(sp, self.max_copies) ]
 			taxa_missing = 1 - 1.0*len(got_sp) / len(self.species)

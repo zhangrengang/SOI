@@ -24,7 +24,7 @@ try:
 	import drmaa    # for grid
 	GRID = True
 	from tempfile import NamedTemporaryFile
-except (RuntimeError,ImportError,AttributeError) as e:
+except (RuntimeError,ImportError,AttributeError,OSError) as e:
 #	if "DRMAA_LIBRARY_PATH" in format(e):
 #		logger.warning('Grid computing is not available because DRMAA not configured properly: {}'.format(e))
 #	else:

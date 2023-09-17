@@ -30,8 +30,8 @@ def args_filter(parser):
 					dest='max_ratio',  metavar='FLOAT',
 					help="Upper limit of Orthology Index [default=%(default)s]")
 	parser.add_argument('-n', '-min_n',  type=int, default=0,
-                    dest='min_n',  metavar='INT',
-                    help="Minimum gene number in a block [default=%(default)s]")
+					dest='min_n',  metavar='INT',
+					help="Minimum gene number in a block [default=%(default)s]")
 
 def func_filter(**kargs):
 	from .mcscan import identify_orthologous_blocks
@@ -81,6 +81,28 @@ def args_outgroup(parser):
 def func_outgroup(**kargs):
 	from .mcscan import cluster_add_outgroup
 	cluster_add_outgroup(**kargs)
+def args_phylo_common(parser):
+	parser.add_argument('-mc', '-max_copies', type=float, default=6,
+					dest='max_copies', metavar='INT',
+					help="To limit a common maximum copy number for every species. [default=%(default)s]")
+	parser.add_argument('-sc', '-singlecopy', default=None,
+					dest='singlecopy', action='store_true',
+					help="Only retrieve singlecopy genes (=`-max_copies 1`). [default=%(default)s]")
+	parser.add_argument('-ss', '-spsd', type=str, default=None,
+					dest='spsd',  metavar='FILE',
+					help="To limit a specific copy number for each species (format: 'TAXON<tab>NUMBER'). [default=%(default)s]")
+def args_stats(parser):
+	parser.add_argument('-og', '-orthogroup', required=True,  type=str,
+					dest='input',  metavar='FILE',
+					help="Orthogroups output from `cluster` or `outgroup` sub-commands. [required]")
+	parser.add_argument('-mm', '-max_missing', type=float, default=0.4,
+                    dest='max_taxa_missing', metavar='FLOAT',
+                    help="To allow maximum ratio of missing species. [default=%(default)s]")
+
+	args_phylo_common(parser)
+def func_stats(**kargs):
+	from .mcscan import orthomcl_stats
+	orthomcl_stats(**kargs)
 
 def args_phylo(parser):
 	parser.add_argument('-og', '-orthogroup', required=True,  type=str,
@@ -107,17 +129,9 @@ def args_phylo(parser):
 					dest='suffix', metavar='STR',
 					help="Output prefix. [default=%(default)s]")
 	parser.add_argument('-mm', '-max_missing', type=float, default=0.4,
-					dest='max_taxa_missing', metavar='FLOAT',
-					help="To allow maximum ratio of missing species. [default=%(default)s]")
-	parser.add_argument('-mc', '-max_copies', type=float, default=6,
-					dest='max_copies', metavar='INT',
-					help="To limit a common maximum copy number for every species. [default=%(default)s]")
-	parser.add_argument('-sc', '-singlecopy', default=None,
-					dest='singlecopy', action='store_true',
-					help="Only retrieve singlecopy genes (=`-max_copies 1`). [default=%(default)s]")
-	parser.add_argument('-ss', '-spsd', type=str, default=None,
-					dest='spsd',  metavar='FILE',
-					help="To limit a specific copy number for each species (format: 'TAXON<tab>NUMBER'). [default=%(default)s]")
+                    dest='max_taxa_missing', metavar='FLOAT',
+                    help="To allow maximum ratio of missing species. [default=%(default)s]")
+	args_phylo_common(parser)
 
 	parser.add_argument('-concat', default=None,
 					dest='concat', action='store_true',
@@ -154,7 +168,8 @@ def makeArgs():
 	args_outgroup(parser_ogrp)
 	parser_phylo = subparsers.add_parser('phylo',  help='Build gene trees from SOGs')
 	args_phylo(parser_phylo)
-
+	parser_stats = subparsers.add_parser('stats',  help='Make statistics of SOGs for phylogeny')
+	args_stats(parser_stats)
 	args = parser.parse_args()
 	return args
 
@@ -164,6 +179,7 @@ FUNC = {
 		'cluster': func_cluster,
 		'outgroup': func_outgroup,
 		'phylo': func_phylo, 
+		'stats': func_stats,
 		}
 def main():
 	args = makeArgs()

@@ -38,7 +38,7 @@ def dotplot_args(parser):
 	group_art.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. [default=%(default)s]")
 	group_art.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
 	group_art.add_argument('--figsize', metavar='NUM', type=float, default=18, help="figure size [default=%(default)s]")
-	group_art.add_argument('--fontsize', metavar='NUM', type=float, default=10, help="baseline font size [default=%(default)s]")
+	group_art.add_argument('--fontsize', metavar='NUM', type=float, default=10, help="font size [default=%(default)s]")
 	group_art.add_argument('--dotsize', metavar='NUM', type=float, default=0.8, dest='point_size', help="dot size [default=%(default)s]")
 
 
