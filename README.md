@@ -51,11 +51,42 @@ soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o Populus_tricho
 ### Example output dot plots ###
 ![dotplots](example_data/mege_4dot.png)
 
+## Table of Contents
+
+   * [Introduction](#introduction)
+   * [Subcommands](#Subcommands)
+      - [filter](#filter)
+      - [cluster](#cluster)
+      - [outgroup](#outgroup)
+      - [phylo](#phylo)
+      - [dotplot](#dotplot)
+   * [Phylogenomics pipeline](#Phylogenomics-pipeline)
+   * [Singularity/Apptainer](#Singularity/Apptainer)
+
 ## Introduction ##
 Orthology Index (OrthoIndex or OI) incorporates algorithmic advances of two methods (orthology inference and synteny detection), to determine the orthology of a syntenic block. 
 It is straightforward, representing the proportion of orthologous gene pairs within a syntenic block. 
 
 ## Subcommands ##
+```
+$ soi -h
+usage: soi [-h] {dotplot,filter,cluster,outgroup,phylo,stats} ...
+
+Play with Orthology Index
+
+positional arguments:
+  {dotplot,filter,cluster,outgroup,phylo,stats}
+                        sub-command help
+    dotplot             Generate colored dot plots
+    filter              Filter synteny with Orthology Index (standard output)
+    cluster             Cluster syntenic orthogroups (SOGs)
+    outgroup            Add outgroups for SOGs from synteny
+    phylo               Build gene trees from SOGs
+    stats               Make statistics of SOGs for phylogeny
+
+optional arguments:
+  -h, --help            show this help message and exit
+```
 #### `filter` ####
 The subcommand `filter` filters orthologous blocks with a default minimum index of 0.6:
 ```
@@ -118,7 +149,7 @@ soi cluster -s collinearity.ortho -prefix cluster
 # exclude outgroup species that do not share the INGROUP-specific WGD event
 soi cluster -s collinearity.ortho -outgroup XXX YYY
 ```
-The defualt output file is `cluster.mcl`.
+The defualt output file is `cluster.mcl`, with the orthogroup format of legacy OrthoMCL.
 
 #### `outgroup` ####
 The subcommand ‘outgroup’ retrieves syntenic orthologs from outgroups that lack WGDs shared with ingroups. 
@@ -261,7 +292,7 @@ ploidy plot:
   --edgecolor COLOR     bar edge color. [default=None]
 ```
 
-Usage examples: see [Quick Start](Quick-Start)
+Usage examples: see [Quick Start](#Quick-Start)
 
 ### Phylogenomics pipeline ###
 
