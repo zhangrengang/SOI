@@ -217,7 +217,8 @@ class XCollinearity:
 					if self.homo_class is not None:
 						rc.intersect = intersect
 						rc.substract = pairs - ortholog_pairs
-				rc.ton = len(ortholog_pairs)	# all syntenic orthologs
+				if self.orthologs is not None:
+					rc.ton = len(ortholog_pairs)	# all syntenic orthologs
 				yield rc
 class XOrthology:
 	def __init__(self, orthologs, **kargs):

@@ -2,7 +2,13 @@
 ```
 git clone https://github.com/zhangrengang/orthoindex.git
 cd orthoindex
+
+# install
+conda env create -f orthoindex.yaml
+conda activate orthoindex
 python3 setup.py install
+
+# test
 cd example_data/
 sh example.sh
 
@@ -292,8 +298,8 @@ ploidy plot:
   --edgecolor COLOR     bar edge color. [default=None]
 ```
 
-Usage examples: see [Quick Start](#Quick-Start)
+Usage examples: see [Quick Start](#Quick-Start).
 
 ### Phylogenomics pipeline ###
 
-Refer to [evolution_example](https://github.com/zhangrengang/evolution_example/) for a pipeline of phylogenomics analyses based on Orthology Index.
+See [evolution_example](https://github.com/zhangrengang/evolution_example/) for a pipeline of phylogenomics analyses based on Orthology Index.
