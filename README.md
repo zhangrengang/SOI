@@ -4,8 +4,8 @@ git clone https://github.com/zhangrengang/orthoindex.git
 cd orthoindex
 
 # install
-conda env create -f orthoindex.yaml
-conda activate orthoindex
+conda env create -f OrthoIndex.yaml
+conda activate OrthoIndex
 python3 setup.py install
 
 # test
