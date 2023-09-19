@@ -284,6 +284,7 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 		total_oi += rc.oi * rc.N
 #		info = rc.info + [ratio]
 #		print >> sys.stderr, '\t'.join(map(str, info))
+#		print(rc.source, rc.head, file=sys.stderr)
 		rc.write(fout)
 		if homo_class:
 			substract = pairs - ortholog_pairs
@@ -326,28 +327,29 @@ class Collinearity():
 	def __repr__(self):
 		return '<MCSCANX Collinearity parser>'
 	def write(self, f, ):
-		if self.head:
+		if self.has_head:
 			f.write(self.header)
 		f.write(self.block)
 	def parse(self):
 		if not self.homology:
 			lines = []
 			head = []
-			self.head = 1
+			self.has_head = 1
 			for line in open(self.collinearity):
 				line = lazy_decode(line)
 				if re.compile(r'#+ Alignment').match(line):	# mcscanx or wgdi
 					if self.source is None and re.compile(r'# Alignment').match(line):
 						self.source = 'wgdi'
-					self.head = 0
+						self.has_head = 0
 					self.header = ''.join(head)
 					if lines:
 						self.parse_lines(lines)
 						yield self
 						lines = []
 					lines.append(line)
-				elif re.compile(r'####$').match(line):	# jcvi
+				elif re.compile(r'###$').match(line):	# jcvi
 					self.source = 'jcvi'
+					self.has_head = 0
 					if lines:
 						self.parse_lines(lines)
 						yield self
