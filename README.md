@@ -60,6 +60,7 @@ soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o Populus_tricho
 ## Table of Contents
 
    * [Introduction](#introduction)
+   * [Installation](#Installation)
    * [Subcommands](#Subcommands)
       - [filter](#filter)
       - [cluster](#cluster)
@@ -69,11 +70,35 @@ soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o Populus_tricho
    * [Phylogenomics pipeline](#Phylogenomics-pipeline)
    * [Input formats](#input-formats)
    * [Output formats](#output-formats)
-   * [Singularity/Apptainer](#Singularity/Apptainer)
 
 ## Introduction ##
 Orthology Index (OrthoIndex or OI) incorporates algorithmic advances of two methods (orthology inference and synteny detection), to determine the orthology of a syntenic block. 
 It is straightforward, representing the proportion of orthologous gene pairs within a syntenic block. 
+
+## Installation ##
+#### conda ####
+You can install the environment using [conda](https://anaconda.org/):
+```
+git clone https://github.com/zhangrengang/orthoindex.git
+cd orthoindex
+
+conda env create -f OrthoIndex.yaml
+conda activate OrthoIndex
+python3 setup.py install
+soi -h
+```
+
+#### Apptainer/Singularity ####
+To use the container, you need to have installed [Apptainer](https://apptainer.org/docs/user/latest/index.html) or 
+[Singularity](https://sylabs.io/docs/). 
+Then you can download the image and run:
+```
+apptainer remote add --no-login SylabsCloud cloud.sylabs.io
+apptainer remote use SylabsCloud
+apptainer pull orthoindex.sif library://shang-hongyun/collection/centos8dock-orthoindex.sif:1.0
+./orthoindex.sif soi -h
+```
+The image can be founde [here](https://cloud.sylabs.io/library/shang-hongyun/collection/centos8dock-orthoindex.sif).
 
 ## Subcommands ##
 ```
@@ -312,14 +337,14 @@ See [evolution_example](https://github.com/zhangrengang/evolution_example/) for 
 All the output format of state-of-the-art synteny detectors, including [JCVI](https://github.com/tanghaibao/jcvi), 
 [MCscanX](http://chibba.pgml.uga.edu/mcscan2) and [WGDI](https://github.com/SunPengChuan/wgdi), are supported:
 ```
-# WGDI -icl (*.collinearity)
+# WGDI -icl (*.collinearity):
 # Alignment 1: score=3194 pvalue=0.0265 N=80 Dc1&Lj1 plus
 Daucus_carota|DCAR_003996 3506 Lonicera_japonica|Lj1C1189G6 4566 -1
 Daucus_carota|DCAR_004004 3514 Lonicera_japonica|Lj1P1192T21 4580 1
 Daucus_carota|DCAR_004005 3515 Lonicera_japonica|Lj1P1192T26 4581 1
 .....
 
-# MCscanX (*.collinearity)
+# MCscanX (*.collinearity):
 ############### Parameters ###############
 # MATCH_SCORE: 50
 # ....
@@ -331,7 +356,7 @@ Daucus_carota|DCAR_004005 3515 Lonicera_japonica|Lj1P1192T26 4581 1
  28-  4:        Ananas_comosus|Aco009492.1      Arabidopsis_thaliana|AT1G72480        0
 .....
 
-# JCVI (*.anchors)
+# JCVI (*.anchors):
 ###
 Tetracendron_sinense|Tesin01G0059600    Trochodendron_aralioides|evm.TU.group9.733      1780
 Tetracendron_sinense|Tesin01G0060100    Trochodendron_aralioides|evm.TU.group9.725      334
@@ -348,7 +373,7 @@ The outputs from [OrthoFinder2](https://github.com/davidemms/OrthoFinder) and Or
 # OrthoFinder2 output directory like:
 OrthoFinder/OrthoFinder/Results_Jun25/
 
-# OrthoMCL
+# OrthoMCL:
 Tetracendron_sinense|Tesin01G0059600    Trochodendron_aralioides|evm.TU.group9.733      ...
 Tetracendron_sinense|Tesin01G0060100    Trochodendron_aralioides|evm.TU.group9.725      
 Tetracendron_sinense|Tesin01G0060800    Trochodendron_aralioides|evm.TU.group9.710
@@ -359,21 +384,21 @@ Tetracendron_sinense|Tesin01G0060800    Trochodendron_aralioides|evm.TU.group9.7
 #### Gene coordinate format ####
 The gff/bed format for JCVI, MCscanX and WGDI are also supported:
 ```
-# gff for WGDI
+# gff for WGDI:
 Dc1     Daucus_carota|DCAR_000504       20809   26333   +       1       Daucus_carota|DCAR_000504
 Dc1     Daucus_carota|DCAR_000505       30205   39120   +       2       Daucus_carota|DCAR_000505
 Dc1     Daucus_carota|DCAR_000506       53069   54763   +       3       Daucus_carota|DCAR_000506
 Dc1     Daucus_carota|DCAR_000507       56557   60502   -       4       Daucus_carota|DCAR_000507
 ....
 
-# gff for MCscanX
+# gff for MCscanX:
 Dc1     Daucus_carota|DCAR_000504       20809   26333   
 Dc1     Daucus_carota|DCAR_000505       30205   39120   
 Dc1     Daucus_carota|DCAR_000506       53069   54763   
 Dc1     Daucus_carota|DCAR_000507       56557   60502   
 ....
 
-# bed for JCVI
+# bed for JCVI:
 Dc1       20809   26333     Daucus_carota|DCAR_000504   0	+
 Dc1       30205   39120     Daucus_carota|DCAR_000505	0	+
 Dc1       53069   54763     Daucus_carota|DCAR_000506	0	+
@@ -383,18 +408,14 @@ Dc1       53069   54763     Daucus_carota|DCAR_000506	0	+
 #### Ks table format ####
 The outputs from [KaKsCalculator](https://sourceforge.net/projects/kakscalculator2/) and WGDI are supported:
 ```
-# KaKsCalculator
-Sequence        Method  Ka      Ks      Ka/Ks   P-Value(Fisher) Length  S-Sites N-Sites Fold-Sites(0:2:4)       Substitutions   S-Substitutions N-Substitutions Fold-S-Substitutions(0:2:4)
-     Fold-N-Substitutions(0:2:4)     Divergence-Time Substitution-Rate-Ratio(rTC:rAG:rTA:rCG:rTG:rCA/rCA)    GC(1:2:3)       ML-Score        AICc    Akaike-Weight   Model
-Arabidopsis_thaliana|AT1G29430-Oryza_sativa|LOC_Os09g37470      YN      0.650185        3.49784 0.185882        3.0186e-10      420     106.037 313.963 NA      218     82.1279 135.872 NA
-      NA      1.36913 2.07932:2.07932:1:1:1:1 0.477381(0.467857:0.428571:0.535714)    NA      NA      NA      NA
-Arabidopsis_thaliana|AT1G29440-Oryza_sativa|LOC_Os09g37420      YN      0.541299        3.27405 0.16533 3.75171e-12     330     78.6813 251.319 NA      161     64.364  96.636  NA      NA
-      1.19287 1.62285:1.62285:1:1:1:1 0.468182(0.431818:0.459091:0.513636)    NA      NA      NA      NA
-Arabidopsis_thaliana|AT1G29460-Oryza_sativa|LOC_Os09g37410      YN      0.60446 3.48369 0.173511        1.7716e-11      408     104.055 303.945 NA      207     81.5585 125.441 NA      NA
-      1.33877 2.28955:2.28955:1:1:1:1 0.470588(0.452206:0.419118:0.540441)    NA      NA      NA      NA
+# KaKsCalculator:
+Sequence        Method  Ka      Ks      Ka/Ks   P-Value(Fisher) Length  S-Sites N-Sites Fold-Sites(0:2:4)       Substitutions   S-Substitutions N-Substitutions Fold-S-Substitutions(0:2:4)      Fold-N-Substitutions(0:2:4)     Divergence-Time Substitution-Rate-Ratio(rTC:rAG:rTA:rCG:rTG:rCA/rCA)    GC(1:2:3)       ML-Score        AICc    Akaike-Weight   Model
+Arabidopsis_thaliana|AT1G29430-Oryza_sativa|LOC_Os09g37470      YN      0.650185        3.49784 0.185882        3.0186e-10      420     106.037 313.963 NA      218     82.1279 135.872 NA       NA      1.36913 2.07932:2.07932:1:1:1:1 0.477381(0.467857:0.428571:0.535714)    NA      NA      NA      NA
+Arabidopsis_thaliana|AT1G29440-Oryza_sativa|LOC_Os09g37420      YN      0.541299        3.27405 0.16533 3.75171e-12     330     78.6813 251.319 NA      161     64.364  96.636  NA      NA       1.19287 1.62285:1.62285:1:1:1:1 0.468182(0.431818:0.459091:0.513636)    NA      NA      NA      NA
+Arabidopsis_thaliana|AT1G29460-Oryza_sativa|LOC_Os09g37410      YN      0.60446 3.48369 0.173511        1.7716e-11      408     104.055 303.945 NA      207     81.5585 125.441 NA      NA       1.33877 2.28955:2.28955:1:1:1:1 0.470588(0.452206:0.419118:0.540441)    NA      NA      NA      NA
 ....
 
-# WGDI -ks
+# WGDI -ks:
 id1     id2     ka_NG86 ks_NG86 ka_YN00 ks_YN00
 Angelica_sinensis|AS08G00315    Daucus_carota|DCAR_007041       0.0685  0.3645  0.0717  0.328
 Angelica_sinensis|AS01G00334    Daucus_carota|DCAR_027727       0.0871  0.4938  0.0815  0.8313
