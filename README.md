@@ -67,6 +67,8 @@ soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o Populus_tricho
       - [phylo](#phylo)
       - [dotplot](#dotplot)
    * [Phylogenomics pipeline](#Phylogenomics-pipeline)
+   * [Input formats](#input-formats)
+   * [Output formats](#output-formats)
    * [Singularity/Apptainer](#Singularity/Apptainer)
 
 ## Introduction ##
@@ -303,3 +305,124 @@ Usage examples: see [Quick Start](#Quick-Start).
 ### Phylogenomics pipeline ###
 
 See [evolution_example](https://github.com/zhangrengang/evolution_example/) for a pipeline of phylogenomics analyses based on Orthology Index.
+
+### Input formats ###
+
+#### Synteny format ####
+All the output format of state-of-the-art synteny detectors, including [JCVI](https://github.com/tanghaibao/jcvi), 
+[MCscanX](http://chibba.pgml.uga.edu/mcscan2) and [WGDI](https://github.com/SunPengChuan/wgdi), are supported:
+```
+# WGDI -icl (*.collinearity)
+# Alignment 1: score=3194 pvalue=0.0265 N=80 Dc1&Lj1 plus
+Daucus_carota|DCAR_003996 3506 Lonicera_japonica|Lj1C1189G6 4566 -1
+Daucus_carota|DCAR_004004 3514 Lonicera_japonica|Lj1P1192T21 4580 1
+Daucus_carota|DCAR_004005 3515 Lonicera_japonica|Lj1P1192T26 4581 1
+.....
+
+# MCscanX (*.collinearity)
+############### Parameters ###############
+# MATCH_SCORE: 50
+# ....
+## Alignment 28: score=500.0 e_value=1.3e-24 N=11 Ac1&Ah1 plus
+ 28-  0:        Ananas_comosus|Aco009515.1      Arabidopsis_thaliana|AT1G72340        0
+ 28-  1:        Ananas_comosus|Aco009511.1      Arabidopsis_thaliana|AT1G72360        0
+ 28-  2:        Ananas_comosus|Aco009507.1      Arabidopsis_thaliana|AT1G72370        0
+ 28-  3:        Ananas_comosus|Aco009502.1      Arabidopsis_thaliana|AT1G72410        0
+ 28-  4:        Ananas_comosus|Aco009492.1      Arabidopsis_thaliana|AT1G72480        0
+.....
+
+# JCVI (*.anchors)
+###
+Tetracendron_sinense|Tesin01G0059600    Trochodendron_aralioides|evm.TU.group9.733      1780
+Tetracendron_sinense|Tesin01G0060100    Trochodendron_aralioides|evm.TU.group9.725      334
+Tetracendron_sinense|Tesin01G0060800    Trochodendron_aralioides|evm.TU.group9.710      868
+Tetracendron_sinense|Tesin01G0061600    Trochodendron_aralioides|evm.TU.group9.757      294
+Tetracendron_sinense|Tesin01G0062600    Trochodendron_aralioides|evm.TU.group9.777      1400
+....
+
+```
+
+#### Orthology format ####
+The outputs from [OrthoFinder2](https://github.com/davidemms/OrthoFinder) and OrthoMCL are supported:
+```
+# OrthoFinder2 output directory like:
+OrthoFinder/OrthoFinder/Results_Jun25/
+
+# OrthoMCL
+Tetracendron_sinense|Tesin01G0059600    Trochodendron_aralioides|evm.TU.group9.733      ...
+Tetracendron_sinense|Tesin01G0060100    Trochodendron_aralioides|evm.TU.group9.725      
+Tetracendron_sinense|Tesin01G0060800    Trochodendron_aralioides|evm.TU.group9.710
+...
+
+```
+
+#### Gene coordinate format ####
+The gff/bed format for JCVI, MCscanX and WGDI are also supported:
+```
+# gff for WGDI
+Dc1     Daucus_carota|DCAR_000504       20809   26333   +       1       Daucus_carota|DCAR_000504
+Dc1     Daucus_carota|DCAR_000505       30205   39120   +       2       Daucus_carota|DCAR_000505
+Dc1     Daucus_carota|DCAR_000506       53069   54763   +       3       Daucus_carota|DCAR_000506
+Dc1     Daucus_carota|DCAR_000507       56557   60502   -       4       Daucus_carota|DCAR_000507
+....
+
+# gff for MCscanX
+Dc1     Daucus_carota|DCAR_000504       20809   26333   
+Dc1     Daucus_carota|DCAR_000505       30205   39120   
+Dc1     Daucus_carota|DCAR_000506       53069   54763   
+Dc1     Daucus_carota|DCAR_000507       56557   60502   
+....
+
+# bed for JCVI
+Dc1       20809   26333     Daucus_carota|DCAR_000504   0	+
+Dc1       30205   39120     Daucus_carota|DCAR_000505	0	+
+Dc1       53069   54763     Daucus_carota|DCAR_000506	0	+
+....
+```
+
+#### Ks table format ####
+The outputs from [KaKsCalculator](https://sourceforge.net/projects/kakscalculator2/) and WGDI are supported:
+```
+# KaKsCalculator
+Sequence        Method  Ka      Ks      Ka/Ks   P-Value(Fisher) Length  S-Sites N-Sites Fold-Sites(0:2:4)       Substitutions   S-Substitutions N-Substitutions Fold-S-Substitutions(0:2:4)
+     Fold-N-Substitutions(0:2:4)     Divergence-Time Substitution-Rate-Ratio(rTC:rAG:rTA:rCG:rTG:rCA/rCA)    GC(1:2:3)       ML-Score        AICc    Akaike-Weight   Model
+Arabidopsis_thaliana|AT1G29430-Oryza_sativa|LOC_Os09g37470      YN      0.650185        3.49784 0.185882        3.0186e-10      420     106.037 313.963 NA      218     82.1279 135.872 NA
+      NA      1.36913 2.07932:2.07932:1:1:1:1 0.477381(0.467857:0.428571:0.535714)    NA      NA      NA      NA
+Arabidopsis_thaliana|AT1G29440-Oryza_sativa|LOC_Os09g37420      YN      0.541299        3.27405 0.16533 3.75171e-12     330     78.6813 251.319 NA      161     64.364  96.636  NA      NA
+      1.19287 1.62285:1.62285:1:1:1:1 0.468182(0.431818:0.459091:0.513636)    NA      NA      NA      NA
+Arabidopsis_thaliana|AT1G29460-Oryza_sativa|LOC_Os09g37410      YN      0.60446 3.48369 0.173511        1.7716e-11      408     104.055 303.945 NA      207     81.5585 125.441 NA      NA
+      1.33877 2.28955:2.28955:1:1:1:1 0.470588(0.452206:0.419118:0.540441)    NA      NA      NA      NA
+....
+
+# WGDI -ks
+id1     id2     ka_NG86 ks_NG86 ka_YN00 ks_YN00
+Angelica_sinensis|AS08G00315    Daucus_carota|DCAR_007041       0.0685  0.3645  0.0717  0.328
+Angelica_sinensis|AS01G00334    Daucus_carota|DCAR_027727       0.0871  0.4938  0.0815  0.8313
+Angelica_sinensis|ASUnG00186    Daucus_carota|DCAR_004673       0.1858  0.5447  0.1871  0.5516
+....
+
+```
+#### Chromosome config format ####
+The ctl format for MCscanX (dot_plotter) is supported:
+```
+1500
+1500
+As1,As2,As3,As4,As5,As6,As7,As8,As9,As10,As11
+Dc1,Dc2,Dc3,Dc4,Dc5,Dc6,Dc7,Dc8,Dc9
+```
+
+In summary, users may be not needed to preprare additional files for this tool. And other popular format can be supported upon request.
+
+### Output formats ###
+
+#### Synteny format ####
+The output fommat is just the same as the [input format](#input-formats).
+
+#### Orthogroup format ####
+The output format of `cluster` and `outgroup` subcommands is the same as the OrthoMCL output format (legacy format):
+```
+SOG3000: Angelica_sinensis|AS08G01493 Angelica_sinensis|AS09G02085 Apium_graveolens|Ag7G00949 Aralia_elata|AE10G00968 Centella_asiatica|evm.TU.Scaffold_1.3269 Coriandrum_sativum|Cs09G02292 Coriandrum_sativum|Cs09G02294 Daucus_carota|DCAR_003880 Daucus_carota|DCAR_007867 Eleutherococcus_senticosus|Ese12G000172 Panax_ginseng|GWHGBEIL036624.1 Panax_ginseng|GWHGBEIL065014.1 Panax_notoginseng|PN028370
+SOG3001: Angelica_sinensis|AS08G03434 Angelica_sinensis|AS08G03435 Apium_graveolens|Ag6G02640 Aralia_elata|AE12G02374 Centella_asiatica|evm.TU.Scaffold_7.2677 Coriandrum_sativum|Cs09G00377 Daucus_carota|DCAR_001654 Eleutherococcus_senticosus|Ese19G002246 Panax_ginseng|GWHGBEIL023685.1 Panax_ginseng|GWHGBEIL043114.1 Panax_ginseng|GWHGBEIL043118.1 Panax_ginseng|GWHGBEIL043125.1 Panax_notoginseng|PN013450
+SOG3002: Angelica_sinensis|AS10G01791 Apium_graveolens|Ag1G00857 Apium_graveolens|Ag6G02641 Aralia_elata|AE12G02379 Centella_asiatica|evm.TU.Scaffold_7.2680 Coriandrum_sativum|Cs06G01941 Coriandrum_sativum|Cs06G01943 Coriandrum_sativum|Cs09G00381 Daucus_carota|DCAR_001660 Daucus_carota|DCAR_029095 Panax_ginseng|GWHGBEIL023683.1 Panax_ginseng|GWHGBEIL043112.1 Panax_notoginseng|PN013453
+...
+```

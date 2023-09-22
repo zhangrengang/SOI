@@ -183,10 +183,10 @@ def collinearity_ratio(collinearity, chrmap, outMat, min_N=20):
 		print('\t'.join(line), file=outMat)
 class XCollinearity:
 	def __init__(self, collinearities, orthologs=None, homo_class=None, **kargs):
-		self.collinearities = self._parse_list(collinearities)
 		self.orthologs = orthologs
 		self.homo_class = homo_class
 		self.kargs = kargs
+		self.collinearities = self._parse_list(collinearities)
 	def __iter__(self):
 		return self._parse()
 	def _parse_list(self, _collinearities):
@@ -194,10 +194,27 @@ class XCollinearity:
 		if isinstance(_collinearities, str):
 			return [_collinearities]
 		for collinearity in _collinearities:
-			if lazy_decode(open(collinearity).read(1)) == '#':
+			if lazy_decode(open(collinearity).read(1)) == '#': # or self.kargs.get('homology'):
 				collinearities += [collinearity]
 			else:
-				collinearities += [line.strip().split()[0] for line in open(collinearity)]
+				files, _unknown = [], []
+				i = 0
+				for line in open(collinearity):
+					_file = line.strip().split()[0]
+					if _file:
+						i += 1
+					if test_s(_file):
+						files += [_file]
+					else:
+						_unknown += [_file]
+				if len(files) == i:
+					collinearities += files
+				elif len(files) == 0:
+					collinearities += [collinearity]
+				else:
+					logger.warn('Files not exists: {}'.format(_unknown))
+					collinearities += files
+#				collinearities += [line.strip().split()[0] for line in open(collinearity)]
 		return collinearities
 	def _parse(self):
 		if self.orthologs is not None:
@@ -298,7 +315,8 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 		pre_nb, pre_ng, post_nb, 1.0*post_nb/pre_nb, post_ng, 1.0*post_ng/pre_ng))
 	logger.info('Orthology: Pre-filter: {} pairs; Post-filter: {} ({:.1%}) pairs.'.format(
         rc.ton, post_no, 1.0*post_no/rc.ton))
-	logger.info('Mean OrthoIndex: {:.2f}'.format(total_oi/post_ng))
+#		print >> sys.stderr, '\t'.join(map(str, info))
+	logger.info('Post-filter mean OrthoIndex: {:.2f}'.format(total_oi/post_ng))
 	if homo_class is not None:
 		out_class.close()
 
@@ -794,8 +812,14 @@ class GffLine:
 		except IndexError: strand = None
 		try: start, end = list(map(int, [start, end]))
 		except ValueError as e:
-			print('Error in line:', temp, file=sys.stderr)
-			raise ValueError(e)
+			# bed
+			gene, start, end = start, end, gene
+			try: strand = temp[5]
+			except IndexError: strand = None
+			try: start, end = list(map(int, [start, end]))
+			except ValueError as e:
+				print('Error in line:', temp, file=sys.stderr)
+				raise ValueError(e)
 		g = Gene((gene, chr, start, end, strand))
 		self.chrom, self.gene, self.start, self.end, self.strand = \
 			chr, gene, start, end, strand
