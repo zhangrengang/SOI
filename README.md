@@ -61,6 +61,8 @@ soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o Populus_tricho
 
    * [Introduction](#introduction)
    * [Installation](#Installation)
+      - [conda](#conda)
+      - [Apptainer/Singularity](#apptainersingularity)
    * [Subcommands](#Subcommands)
       - [filter](#filter)
       - [cluster](#cluster)
