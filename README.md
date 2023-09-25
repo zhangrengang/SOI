@@ -1,3 +1,20 @@
+## Table of Contents
+
+   * [Quick start](#Quick-start)
+   * [Introduction](#introduction)
+   * [Installation](#Installation)
+      - [conda](#conda)
+      - [Apptainer/Singularity](#apptainersingularity)
+   * [Subcommands](#Subcommands)
+      - [filter](#filter)
+      - [cluster](#cluster)
+      - [outgroup](#outgroup)
+      - [phylo](#phylo)
+      - [dotplot](#dotplot)
+   * [Phylogenomics pipeline](#Phylogenomics-pipeline)
+   * [Input formats](#input-formats)
+   * [Output formats](#output-formats)
+
 ## Quick start ##
 ```
 git clone https://github.com/zhangrengang/orthoindex.git
@@ -56,22 +73,22 @@ soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o Populus_tricho
 ```
 ### Example output dot plots ###
 ![dotplots](example_data/mege_4dot.png)
-
-## Table of Contents
-
-   * [Introduction](#introduction)
-   * [Installation](#Installation)
-      - [conda](#conda)
-      - [Apptainer/Singularity](#apptainersingularity)
-   * [Subcommands](#Subcommands)
-      - [filter](#filter)
-      - [cluster](#cluster)
-      - [outgroup](#outgroup)
-      - [phylo](#phylo)
-      - [dotplot](#dotplot)
-   * [Phylogenomics pipeline](#Phylogenomics-pipeline)
-   * [Input formats](#input-formats)
-   * [Output formats](#output-formats)
+Figure. The Orthology Index in identifying orthologous synteny: a typical case. 
+A) Ks-colored dot plots showing synteny detected by WGDI, 
+with an observable distinction of three categories of syntenic blocks derived from three evolutionary events 
+(three peaks: Ks ≈ 1.5, Ks ≈ 0.27, and Ks ≈ 0.13). 
+B) Ks-colored dot plots illustrating orthology inferred by OrthoFinder2, with an observable high proportion of hidden out-paralogs (Ks ≈ 0.27). 
+C) Orthology Index (OI)-colored dot plots: integrating synteny (A) and orthology (B), 
+with polarized and scalable distinction of three categories of syntenic blocks 
+(three peaks: OI ≈ 0, OI ≈ 0.1, and OI ≈ 0.9). 
+D) Ks-colored dot plots of synteny after applying an OI cutoff of 0.6, 
+with clean 1:1 orthology as expected from the evolutionary history. 
+A-D are plotted using the `dotplot` subcommand with four subplots: 
+a) dot plots with colored by Ks or OI (x-axis and y-axis, chromosomes of the two genomes; 
+a dot indicates a homologous gene pair between the two genomes), 
+b) histogram (with the same color map as the dot plots) of Ks or OI 
+(x-axis, Ks or OI; y-axis, number of homologous gene pairs), 
+c-d) synteny depth (relative ploidy) derived from 50-gene windows (x-axis, synteny depth; y-axis, number of windows).
 
 ## Introduction ##
 Orthology Index (OrthoIndex or OI) incorporates algorithmic advances of two methods (orthology inference and synteny detection), to determine the orthology of a syntenic block. 
@@ -79,7 +96,7 @@ It is straightforward, representing the proportion of orthologous gene pairs wit
 
 ## Installation ##
 #### conda ####
-You can install the environment using [conda](https://anaconda.org/):
+You can install the environment and the lasest verion using [conda](https://anaconda.org/):
 ```
 git clone https://github.com/zhangrengang/orthoindex.git
 cd orthoindex
@@ -93,14 +110,14 @@ soi -h
 #### Apptainer/Singularity ####
 To use the container, you need to have installed [Apptainer](https://apptainer.org/docs/user/latest/index.html) or 
 [Singularity](https://sylabs.io/docs/). 
-Then you can download the image and run:
+Then you can download the container image and run:
 ```
 apptainer remote add --no-login SylabsCloud cloud.sylabs.io
 apptainer remote use SylabsCloud
 apptainer pull orthoindex.sif library://shang-hongyun/collection/centos8dock-orthoindex.sif:1.0
 ./orthoindex.sif soi -h
 ```
-The image can be founde [here](https://cloud.sylabs.io/library/shang-hongyun/collection/centos8dock-orthoindex.sif).
+The image can be found [here](https://cloud.sylabs.io/library/shang-hongyun/collection/centos8dock-orthoindex.sif).
 
 ## Subcommands ##
 ```
@@ -142,17 +159,17 @@ optional arguments:
 Usage examples:
 ```
 # from outputs of WGDI and OrthoFinder
-soi filter -s wgdi/*.collinearity -o OrthoFinder/*/Result*/ > collinearity.ortho
+soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ > collinearity.ortho
 
 # from outputs of MCscanX and OrthoMCL
-soi filter -s mcscanx/*.collinearity -o orthologs.txt > collinearity.ortho
+soi filter -s mcscanx/*.collinearity -o pairs/orthologs.txt > collinearity.ortho
 
 # from a list file and increase the cutoff
 ls wgdi/*.collinearity > collinearity.list
-soi filter -s collinearity.list -o OrthoFinder/*/Result*/ -c 0.7 > collinearity.ortho
+soi filter -s collinearity.list -o OrthoFinder/OrthoFinder/Result*/ -c 0.7 > collinearity.ortho
 
 # filter a paralogous peak
-soi filter -s wgdi/*.collinearity -o OrthoFinder/*/Result*/ -c 0.05 -upper 0.4 > collinearity.para
+soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -c 0.05 -upper 0.4 > collinearity.para
 ```
 #### `cluster` ####
 The subcommand ‘cluster’ groups orthologous syntenic genes into syntenic orthogroups (SOGs), through constructing an orthologous syntenic graph 
