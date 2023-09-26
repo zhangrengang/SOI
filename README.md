@@ -96,7 +96,7 @@ It is straightforward, representing the proportion of orthologous gene pairs wit
 
 ## Installation ##
 #### conda ####
-You can install the environment and the lasest verion using [conda](https://anaconda.org/):
+You can install the environment and the lasest verion using [conda](https://anaconda.org/) or [mamba](https://github.com/mamba-org/mamba):
 ```
 git clone https://github.com/zhangrengang/orthoindex.git
 cd orthoindex
@@ -106,7 +106,13 @@ conda activate OrthoIndex
 python3 setup.py install
 soi -h
 ```
-
+Alternatviely, the released version can by installed through [conda](https://anaconda.org/) or [mamba](https://github.com/mamba-org/mamba):
+```
+mamba env create -n OrthoIndex
+mamba install -n OrthoIndex -c mouseking9 -c conda-forge -c bioconda  orthoindex
+mamba activate OrthoIndex
+soi -h
+```
 #### Apptainer/Singularity ####
 To use the container, you need to have installed [Apptainer](https://apptainer.org/docs/user/latest/index.html) or 
 [Singularity](https://sylabs.io/docs/). 
