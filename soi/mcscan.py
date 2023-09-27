@@ -2518,8 +2518,8 @@ class ToAstral(ColinearGroups):
 			cmd_list += [cmds]
 		logger.info('total {} groups, {} rooted'.format(i,j))
 		pepTreefiles = [t for _, t in sorted(zip(roots, pepTreefiles), reverse=1)]	# prefer to rooted
-		with open('/tmp/sort.tree', 'w') as f:
-			print(pepTreefiles, file=f)
+#		with open('/tmp/sort.tree', 'w') as f:
+#			print(pepTreefiles, file=f)
 		cdsTreefiles = [t for _, t in sorted(zip(roots, cdsTreefiles), reverse=1)]
 		if self.suffix is None:
 			self.suffix = '{}_to_astral'.format(self.source)
