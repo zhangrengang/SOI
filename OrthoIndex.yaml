@@ -7,7 +7,7 @@ dependencies:
   - _openmp_mutex=4.5
   - alsa-lib=1.2.3.2
   - aria2=1.36.0
-  - astral=3.2
+  - aster=1.15
   - biopython=1.81
   - blast=2.14.1
   - brotli=1.1.0
