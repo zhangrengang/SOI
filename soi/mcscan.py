@@ -2269,6 +2269,8 @@ class ColinearGroups:
 		tree = Phylo.read(treefile, 'newick')
 		if idmap:
 			for clade in tree.get_terminals():
+				if idmap and clade.name not in idmap:
+					logger.warn('ID `{}` in {} is not exists in idmap'.format(clade.name, treefile))
 				clade.name = idmap.get(clade.name, clade.name)
 		newick = list(Writer([tree]).to_strings(plain=plain, **kargs))[0]
 		return newick
@@ -2307,7 +2309,7 @@ def orthomcl_stats(source='orthomcl', **kargs):
 class ToAstral(ColinearGroups):
 	def __init__(self, input=None, pep=None, spsd=None, cds=None, tmpdir='tmp', root=None, both=True, suffix=None, 
 			ncpu=50, max_taxa_missing=0.5, max_mean_copies=10, max_copies=5, singlecopy=False,  
-			source=None, orthtype='Orthogroups', fast=True, concat=False, clean=False,
+			source=None, orthtype='Orthogroups', fast=True, concat=False, clean=False, overwrite=False, 
 			trimal_opts='-automated1', iqtree_opts=''):
 		self.input = input
 		self.pep = pep
@@ -2332,6 +2334,7 @@ class ToAstral(ColinearGroups):
 		self.trimal_opts = trimal_opts
 		self.iqtree_opts = iqtree_opts
 		self.clean = clean
+		self.overwrite = overwrite
 	def lazy_get_groups(self, orthtype='Orthogroups'):
 		species = parse_species(self.spsd)
 		if os.path.isdir(self.input): # orthofinder
@@ -2482,7 +2485,7 @@ class ToAstral(ColinearGroups):
 			pepTreefile = pepTrim + '.treefile'
 			cdsTreefile = cdsTrim + '.treefile'
 			treefile = cdsTreefile if self.cds and not self.both else pepTreefile
-			cmd = '[ ! -s {} ]'.format(treefile)
+			cmd = '[ ! -s {} ]'.format(treefile) if not self.overwrite else '[ true ]'
 			cmds = [cmd]
 			cmd = mafft_template.format(pepSeq, pepAln)
 			cmds += [cmd]
@@ -2534,6 +2537,7 @@ class ToAstral(ColinearGroups):
 		pepGenetrees = '{}.pep.mm{}.genetrees'.format(self.suffix, self.max_taxa_missing)
 		cdsGenetrees = '{}.cds.mm{}.genetrees'.format(self.suffix, self.max_taxa_missing)
 		for treefiles, genetrees in zip([pepTreefiles, cdsTreefiles], [pepGenetrees, cdsGenetrees]):
+			logger.info('combining {} gene trees into `{}`'.format(len(treefiles), genetrees))
 			self.cat_genetrees(treefiles, genetrees, idmap=d_idmap, plain=False, format_confidence='%d')
 
 		# concat alignments
@@ -2541,6 +2545,7 @@ class ToAstral(ColinearGroups):
 		pepCatAln = '{}.pep.mm{}.concat.aln'.format(self.suffix, self.max_taxa_missing)
 		if self.singlecopy and self.concat:
 			for alnfiles, _catAln in zip([pepAlnfiles, cdsAlnfiles], [pepCatAln, cdsCatAln]):
+				logger.info('concatenating {} alignments into `{}`'.format(len(alnfiles), _catAln))
 				with open(_catAln, 'w') as outAln:
 					catAln(alnfiles, outAln, idmap=d_idmap)
 		# clean

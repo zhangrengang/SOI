@@ -108,7 +108,6 @@ dependencies:
   - networkx=3.1
   - newick_utils=1.6
   - nspr=4.35
-  - nss=3.92
   - numpy=1.24.4
   - openjpeg=2.5.0
   - openmpi=4.1.5
@@ -171,7 +170,7 @@ dependencies:
   - pip=23.2.1
   - platformdirs=3.10.0
   - pooch=1.7.0
-  - pp=1.6.5
+  - pp=1.6.4.4
   - psutil=5.9.5
   - pthread-stubs=0.4
   - pyparsing=3.0.9

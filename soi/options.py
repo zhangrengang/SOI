@@ -105,6 +105,10 @@ def func_stats(**kargs):
 	orthomcl_stats(**kargs)
 
 def args_phylo(parser):
+	import uuid
+	uid = uuid.uuid1()
+	default_tmpdir = './tmp-{}'.format(uid)
+
 	parser.add_argument('-og', '-orthogroup', required=True,  type=str,
 					dest='input',  metavar='FILE',
 					help="Orthogroups output from `cluster` or `outgroup` sub-commands. [required]")
@@ -139,13 +143,13 @@ def args_phylo(parser):
 	parser.add_argument('-p', '-ncpu', type=float, default=20,
 					dest='ncpu', metavar='INT',
 					help="Number of processors. [default=%(default)s]")
-	parser.add_argument('-tmp', '-tmpdir', type=str, default='./tmp/',
+	parser.add_argument('-tmp', '-tmpdir', type=str, default=default_tmpdir,
 					dest='tmpdir',  metavar='FOLDER',
 					help="Temporary folder. [default=%(default)s]")
 	parser.add_argument('-clean', default=None,
 					dest='clean', action='store_true',
 					help="Cleanup temporary folder. [default=%(default)s]")
-
+	# overwrite
 
 def func_phylo(**kargs):
 	from .mcscan import orthomcl_to_astral
