@@ -314,7 +314,7 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 	logger.info('Synteny: Pre-filter: {} blocks, {} pairs; Post-filter: {} ({:.1%}) blocks, {} ({:.1%}) pairs.'.format(
 		pre_nb, pre_ng, post_nb, 1.0*post_nb/pre_nb, post_ng, 1.0*post_ng/pre_ng))
 	logger.info('Orthology: Pre-filter: {} pairs; Post-filter: {} ({:.1%}) pairs.'.format(
-        rc.ton, post_no, 1.0*post_no/rc.ton))
+		rc.ton, post_no, 1.0*post_no/rc.ton))
 #		print >> sys.stderr, '\t'.join(map(str, info))
 	logger.info('Post-filter mean OrthoIndex: {:.2f}'.format(total_oi/post_ng))
 	if homo_class is not None:
@@ -428,6 +428,10 @@ class Collinearity():
 			self.Alignment, self.score, self.e_value = 0,0,0
 		self.parse_species(gene1, gene2)
 		self.parse_genes(genes1,genes2)
+	@property
+	def mean_score(self):
+		try:return self.score / self.N
+		except: return 1
 	@property
 	def info(self):
 		return [self.id, self.species1, self.species2, self.chr1, self.chr2, 
@@ -800,6 +804,111 @@ class Gff:
 			chrom.name = name
 			chroms += [chrom]
 		return Chromosomes(chroms)
+	def to_graph(self):
+		G = GffGraph() #nx.DiGraph()
+		d_chrom = OrderedDict()
+		for line in self:
+			try: d_chrom[line.chrom] += [line]
+			except KeyError: d_chrom[line.chrom] = [line]
+		for chrom, lines in list(d_chrom.items()):
+			lines = sorted(lines, key=lambda x:x.start)
+			for i, line in enumerate(lines):
+				line.index = i
+			path = lines #[line.id for line in lines]
+			G.add_path(path)
+		return G
+class SyntenyGraph(nx.Graph):
+	def __init__(self, *args, **kargs):
+		super().__init__(*args, **kargs)
+	def score_node(self, node):
+		return sum([1/attr['weight'] for _, attr in self[node].items()])
+	def score_path(self, path):
+		return sum([self.score_node(node) for node in path])
+
+class Path:
+	def __init__(self, path):
+		self.path = path
+	def __iter__(self):
+		return iter(self.path)
+	def __repr__(self):
+		return str(self.path)
+	def __len__(self):
+		return len(self.path)
+	def __getitem__(self, index):
+		if isinstance(index, int):
+			return self.path[index]
+		else:
+			return self.__class__(self.path[index])
+
+class GffGraph(nx.DiGraph):
+	def __init__(self, *args, **kargs):
+		super().__init__(*args, **kargs)
+	def remove_internals(self, internals):
+		for node in internals:
+			if node not in self:
+				continue
+			predecessors = list(self.predecessors(node))
+			successors = list(self.successors(node))
+			for n1, n2 in itertools.product(predecessors, successors):
+				self.add_edge(n1, n2)
+			self.remove_node(node)
+	def add_path(self, path):
+		self.add_edges_from([path[i:i+2] for i in range(len(path)-1)])
+	@property
+	def starts(self):
+		for node, pred in self.pred.items():
+			if not pred:
+				yield node
+	def iter_chrom(self, node):	# linear
+		return self.fetch_chrom(node)
+	@property
+	def chroms(self):
+		for start in self.starts:
+			yield self.iter_chrom(start)
+	def to_wgdi(self, prefix):
+		fgff = open(prefix+'.gff', 'w')
+		flen = open(prefix+'.lens', 'w')
+		for chrom in self.chroms:
+			for i,node in enumerate(chrom):
+				node.index = i+1
+				node.to_wgdi(fgff)
+			line = [node.chrom, node.end, node.index]
+			flen.write('\t'.join(map(str, line))+'\n')
+		fgff.close()
+		flen.close()
+	def fetch_chrom(self, start, end=None, reverse=False):	# linear
+		node = start
+		yield node
+		while True:
+			suc = self.predecessors(node) if reverse else self.successors(node)
+			suc = list(suc)
+			if not suc:
+				break
+			node = suc[0]
+			yield node
+			if end and node == end:
+				break
+	def lazy_fetch_chrom(self, start, end, **kargs):	# linear
+		chrom = list(self.fetch_chrom(start, end, reverse=True, **kargs))
+		if chrom[-1] == end:
+			return Path(chrom)
+		chrom = list(self.fetch_chrom(start, end, reverse=False, **kargs))
+		if chrom[-1] == end:
+			return Path(chrom)
+	def index(self):
+		for start in self.starts:
+			for i, node in enumerate(self.iter_chrom(start)):
+				node.index = i
+	def insert_path(self, n1, n2, path):
+		self.remove_edge(n1, n2)
+		self.add_path([n1] + list(path) + [n2])
+	def to_gfa(self, fout):
+		for node in self.nodes:
+			line = ['S', node, '*']
+			print('\t'.join(map(str, line)), file=fout)
+		for node1, node2 in self.edges:
+			line = ['L', node1, '+', node2, '+', '0M']
+			print('\t'.join(map(str, line)), file=fout)
 
 class GffLine:
 	def __init__(self, line):
@@ -826,8 +935,23 @@ class GffLine:
 		self.Gene = g
 		self.id = gene
 		self.species, self.raw_gene = gene.split('|', 1)
+	def __hash__(self):
+		return hash(self.id)
+	def __str__(self):
+		return self.id
+	def __repr__(self):
+		return self.id
+	def __lt__(self, other):
+		return self.id < other.id
+	def __eq__(self, other):
+		return self.id == other.id
 	def write(self, fout):
 		fout.write(self.line)
+	def to_wgdi(self, fout):
+		line = [self.chrom, self.gene, self.start, self.end, self.strand, self.index, self.gene]
+		self.line = '\t'.join(map(str, line)) + '\n'
+		self.write(fout)
+
 def get_gff(gff, species, fout):
 	sps = {line.strip().split()[0] for line in open(species)}
 	Gff(gff).get_sps(sps, fout)
@@ -1183,6 +1307,8 @@ class ColinearGroups:
 				kaks=None, seqfile=None, gff=None, 
 				min_size=0, tmpdir='./tmp', 
 				orthologs=None, 	# 直系同源关系。共线性的备选，无基因组或染色体时使用
+				noparalog=True,	# no paralogs
+				nosamechr=False,	# no same chromosome
 				):
 		self.collinearity = collinearity
 		self.kaks = kaks
@@ -1191,6 +1317,8 @@ class ColinearGroups:
 		self.min_size = min_size
 		self.tmpdir = tmpdir
 		self.orthologs = orthologs
+		self.noparalog = noparalog
+		self.nosamechr = nosamechr
 		sp_dict = parse_spsd(spsd)
 		self.sp_dict = sp_dict #Counter(sp_dict)
 		self.spsd = spsd
@@ -1201,7 +1329,9 @@ class ColinearGroups:
 	def groups(self):
 		G = nx.Graph()
 		for rc in Collinearity(self.collinearity):
-			if len(set(rc.species)) == 1: # discard paralog
+			if self.noparalog and len(set(rc.species)) == 1: # discard paralog
+				continue
+			if self.nosamechr and rc.chr1 == rc.chr2:
 				continue
 			for pair in rc.pairs:
 				G.add_edge(*pair)
@@ -1383,13 +1513,29 @@ class ColinearGroups:
 					continue
 				G.add_edge(*pair.pair)
 		return G
-	
+	def filter_blocks(self):
+		for rc in Collinearity(self.collinearity):
+			if rc.N < self.min_size:	# min length
+				continue
+			if self.noparalog and len(set(rc.species)) == 1:
+				continue
+			if self.nosamechr and rc.chr1 == rc.chr2:
+				continue
+			if self.sp_dict and set(rc.species) - set(self.sp_dict):
+				continue
+			yield rc
+	def to_graph(self):
+		G = SyntenyGraph()
+		for rc in self.filter_blocks():
+			for pair in rc.pairs:
+				G.add_edge(*pair, weight=1/rc.score)
+		return G
 	@property
 	def chr_graph(self):
 		G = nx.Graph()
 		for rc in Collinearity(self.collinearity):
 			if rc.N < self.min_size:	# 至少20
-				ontinue
+				continue
 			if set(rc.species) - set(self.sp_dict):	# both be in sp_dict
 				continue
 			chr1 = (rc.species1, rc.chr1)
