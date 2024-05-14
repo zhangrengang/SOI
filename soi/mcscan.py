@@ -212,19 +212,22 @@ class XCollinearity:
 				elif len(files) == 0:
 					collinearities += [collinearity]
 				else:
-					logger.warn('Files not exists: {}'.format(_unknown))
+					logger.warn('Files empty or not exists: {}'.format(_unknown))
 					collinearities += files
 #				collinearities += [line.strip().split()[0] for line in open(collinearity)]
 		return collinearities
 	def _parse(self):
 		if self.orthologs is not None:
 			ortholog_pairs = set(XOrthology(self.orthologs, **self.kargs))
-			logger.info('{} homologous pairs in total'.format(len(ortholog_pairs)))
-		logger.info('{} collinearity files to parse: {}...'.format(
+			logger.info('\t{} homologous pairs'.format(len(ortholog_pairs)))
+		logger.info('parsing {} collinearity files: {}...'.format(
 			len(self.collinearities), self.collinearities[:3]))
+		nblock, ngene = 0, 0
 		for collinearity in self.collinearities:
 	#		logger.info('parsing {}'.format(collinearity))
 			for rc in Collinearity(collinearity, **self.kargs):
+				nblock += 1
+				ngene += rc.N
 				if self.orthologs is not None:
 					pairs = {CommonPair(*x) for x in rc.pairs}
 					intersect = pairs & ortholog_pairs
@@ -237,6 +240,7 @@ class XCollinearity:
 				if self.orthologs is not None:
 					rc.ton = len(ortholog_pairs)	# all syntenic orthologs
 				yield rc
+		logger.info('\t{} collinearity blocks, {} collinearity genes'.format(nblock, ngene))
 class XOrthology:
 	def __init__(self, orthologs, **kargs):
 		self.orthologs = self._parse_list(orthologs)
@@ -251,7 +255,7 @@ class XOrthology:
 			return _orthologs
 	def _parse(self):
 		for ortholog in self.orthologs:
-			logger.info('parsing {}'.format(ortholog))
+			logger.info('parsing {}...'.format(ortholog))
 			if os.path.isdir(ortholog):	# orthofinder
 				for pair in OrthoFinder(ortholog).get_homologs(**self.kargs):
 					yield CommonPair(*pair)
@@ -870,12 +874,30 @@ class GffGraph(nx.DiGraph):
 		flen = open(prefix+'.lens', 'w')
 		for chrom in self.chroms:
 			for i,node in enumerate(chrom):
+				if i == 0:
+					_chrom = node.chrom
+					_spec  = node.species
+				node.start, node.end = i*100+1, (i+1)*100
+				node.chrom = _chrom
+				node.gene = _spec + '|' + node.gene.split('|', 1)[-1]
 				node.index = i+1
 				node.to_wgdi(fgff)
 			line = [node.chrom, node.end, node.index]
 			flen.write('\t'.join(map(str, line))+'\n')
 		fgff.close()
 		flen.close()
+	def to_idmap(self):
+		fidmap = open('id_map.txt', 'w')
+		for chrom in self.chroms:
+			for i,node in enumerate(chrom):
+				if i == 0:
+					_chrom = node.chrom
+				node.start, node.end = i*100+1, (i+1)*100
+				node.chrom = _chrom
+				node.index = i+1
+				line = [node.id, node.id, node.id, node.id, node.chrom, node.start, node.end, node.strand, None]
+				fidmap.write('\t'.join(map(str, line))+'\n')
+		fidmap.close()
 	def fetch_chrom(self, start, end=None, reverse=False):	# linear
 		node = start
 		yield node
@@ -948,7 +970,7 @@ class GffLine:
 	def write(self, fout):
 		fout.write(self.line)
 	def to_wgdi(self, fout):
-		line = [self.chrom, self.gene, self.start, self.end, self.strand, self.index, self.gene]
+		line = [self.chrom, self.gene, self.start, self.end, self.strand, self.index, self.id]
 		self.line = '\t'.join(map(str, line)) + '\n'
 		self.write(fout)
 
@@ -2455,7 +2477,7 @@ def orthomcl_stats(source='orthomcl', **kargs):
 class ToAstral(ColinearGroups):
 	def __init__(self, input=None, pep=None, spsd=None, cds=None, tmpdir='tmp', root=None, both=True, suffix=None, 
 			ncpu=50, max_taxa_missing=0.5, max_mean_copies=10, max_copies=5, singlecopy=False,  
-			source=None, orthtype='Orthogroups', fast=True, concat=False, clean=False, overwrite=False, 
+			source=None, orthtype='orthologues', fast=True, concat=False, clean=False, overwrite=False, 
 			trimal_opts='-automated1', iqtree_opts=''):
 		self.input = input
 		self.pep = pep

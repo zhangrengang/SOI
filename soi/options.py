@@ -122,7 +122,7 @@ def args_phylo(parser):
 					dest='both', action='store_true',
 					help="To use both CDS and PEP to build gene trees. [default: only CDS when `-cds` is true]")
 	parser.add_argument('-fmt', type=str, default='orthomcl',
-					dest='source', metavar='STR', choices=['orthomcl', 'orthofinder', 'mcscanx'],
+					dest='source', choices=['orthomcl', 'orthofinder', 'mcscanx'],
 					help="Format of `-orthogroup` input. [default=%(default)s]")
 
 	parser.add_argument('-root', '-outgroup', type=str, metavar='TAXON',
@@ -140,6 +140,14 @@ def args_phylo(parser):
 	parser.add_argument('-concat', default=None,
 					dest='concat', action='store_true',
 					help="To concatenate alignments for tools such as IQTREE (valid when `-singlecopy` is true). [default=%(default)s]")
+
+	parser.add_argument('-trimal_opts', type=str, default='-automated1',
+                    dest='trimal_opts',  metavar='STR',
+                    help="TrimAl options. [default='%(default)s']")
+	parser.add_argument('-iqtree_opts', type=str, default='',
+                    dest='iqtree_opts',  metavar='STR',
+                    help="IQ-TREE options. [default='%(default)s']")
+
 	parser.add_argument('-p', '-ncpu', type=float, default=20,
 					dest='ncpu', metavar='INT',
 					help="Number of processors. [default=%(default)s]")

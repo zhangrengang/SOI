@@ -32,7 +32,7 @@ def akr(collinearity, gff, anc, spsd, rounds=3):
 	for i in range(rounds):
 		logger.info('round {}'.format(i))
 #		logger.info(len(TANDEM))
-		d_ancs = process_synG(synG, ancG, TANDEM=TANDEM)
+		d_ancs = process_synG(synG, ancG)
 #		logger.info(len(TANDEM))
 		logger.info(len(ancG))
 		# remove tandem
@@ -49,10 +49,11 @@ def akr(collinearity, gff, anc, spsd, rounds=3):
 
 		with open('sny.{}.gfa'.format(i), 'w') as fout:
 			ancG.to_gfa(fout)
-	d_ancs = process_synG(synG, ancG, TANDEM=TANDEM)
-	ancG.remove_internals(set(ancG.nodes) - set(d_ancs))
-	print(len(ancG))
-#	ancG.to_wgdi()
+#	d_ancs = process_synG(synG, ancG, TANDEM=TANDEM)
+#	ancG.remove_internals(set(ancG.nodes) - set(d_ancs))
+	logger.info(len(ancG))
+	ancG.to_wgdi(anc+'.akr')
+	ancG.to_idmap()
 def insert_syn(ancG, gffG, d_ancs, synG, max_dist=5, TANDEM=set([])):
 	starts = list(ancG.starts)
 	i,j = 0,0
@@ -128,15 +129,8 @@ def identify_tandem(synG, max_dist=1):
 			tandems = tandems | tandem
 	return tandems
 
-def process_synG(synG, ancG, max_dist=1, min_sps=2, TANDEM=set([])):
-#	print_edge(synG, 'P_MK|Thecc1EG003734')
-#	print_edge(synG, 'P_MK|Thecc1EG001793')
-#	ancG_nodes = set(ancG)
-#	tandems = set([])	# to be removed
-#	remove_edges = []
-#	anc_cores = []
+def process_synG(synG, ancG, max_dist=1, min_sps=2):
 	d_ancs = {}
-#	frees = []
 	i,j,k,m,n = 0,0,0,0,0
 	for cmpt in nx.connected_components(synG):
 		n +=1
@@ -145,40 +139,12 @@ def process_synG(synG, ancG, max_dist=1, min_sps=2, TANDEM=set([])):
 		sps = {nd.species for nd in cmpt}
 		if len(ancNodes) ==0 or len(sps) < min_sps:
 			i+=1
-#			frees += [cmpt]
 			continue
 		elif len(ancNodes) == 1:	# only one core
 			j +=1
-#			anc_cores += ancNodes
 			d_ancs[ancNodes[0]] = cmpt
 			continue
 		sg = synG.subgraph(cmpt)
-		# slim tandem
-#		tanG = nx.Graph()
-#		for g1, g2 in itertools.combinations(ancNodes, 2):
-#			tanG.add_nodes_from([g1, g2])
-#			if is_adj(g1, g2, max_dist):	# tandem
-#				tanG.add_edge(g1, g2)
-#		grps = [c for c in nx.connected_components(tanG)]
-#		cores = []	# core genes
-#		d_core = {}
-#		for grp in grps:
-#			grp = grp - TANDEM
-#			if len(grp) ==1 :
-#				cores += list(grp)
-#				continue
-#			d_weight = {node: synG.score_node(node) for node in grp}
-#			core = max(grp, key=lambda x: d_weight[x])
-#			cores += [core]
-#			tandem = set(grp) - set([core])
-#			tandems = tandems | tandem
-#			for node in grp:
-#				d_core[node] = core
-#		anc_cores += cores
-#		if len(cores) == 1:	# all tandem
-#			k += 1
-#			d_ancs[cores[0]] = cmpt
-#			continue
 		# multi core, to split
 		m +=1
 		#bin
@@ -193,19 +159,8 @@ def process_synG(synG, ancG, max_dist=1, min_sps=2, TANDEM=set([])):
 				core = min(cores, key=lambda x: dists[x])
 			try: d_groups[core] += [node]
 			except KeyError: d_groups[core] = [node]
-#		for nodes1, nodes2 in itertools.combinations(d_groups.values(), 2):
-#			remove_edges += list( itertools.product(nodes1, nodes2) )
 		d_ancs.update(d_groups)	# >=1 groups
-#	print(i,j,k,m,n, len(tandems))
-##	synG.remove_nodes_from(tandems)
-##	synG.remove_edges_from(remove_edges)		
-#	print(len(list(nx.connected_components(synG))), len(anc_cores), len(d_ancs))
-#	with open('/tmp/test', 'w') as f:
-#		for c in nx.connected_components(synG):
-#			print(c, file=f)
-	#test_single(synG, anc)
-#	TANDEM = TANDEM | tandems
-	return d_ancs #, frees
+	return d_ancs
 
 def test_single(synG, anc):
 	for cmpt in nx.connected_components(synG):

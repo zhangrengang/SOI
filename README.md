@@ -50,7 +50,7 @@ soi dotplot -s Populus_trichocarpa-Salix_dunnii.orthologs.gz    \
 soi dotplot -s Populus_trichocarpa-Salix_dunnii.collinearity.gz \
         -g Populus_trichocarpa-Salix_dunnii.gff.gz -c Populus_trichocarpa-Salix_dunnii.ctl  \
         --xlabel '$Populus\ trichocarpa$' --ylabel '$Salix\ dunnii$' \
-        --ks-hist --max-ks 1 -o Populus_trichocarpa-Salix_dunnii.io    \
+        --ks-hist -o Populus_trichocarpa-Salix_dunnii.io    \
         --plot-ploidy --gene-axis --number-plots \
         --ofdir OrthoFinder/OrthoFinder/Results_*/ --of-color   # coloring by Orthology Index
 # D

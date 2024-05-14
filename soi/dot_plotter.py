@@ -12,17 +12,12 @@ __version__='0.1'
 __LastModified__='20190226'
 __Example__=''
 def dotplot_args(parser):
-	parser.add_argument('-s', metavar='FILE', type=str, required=True, nargs='+', help="syntenic block file (*.collinearity, output of MCSCANX/WGDI)")
-	parser.add_argument('-g', metavar='FILE', type=str, required=True, help="gene annotation gff file (*.gff, one of MCSCANX/WGDI input)")
-	parser.add_argument('-c', metavar='FILE', type=str, required=True, help="chromosomes config file (*.ctl, same format as MCSCANX dotplotter)")
+	parser.add_argument('-s', metavar='FILE', type=str, required=True, nargs='+', help="syntenic block file (*.collinearity, output of MCSCANX/WGDI)[required]")
+	parser.add_argument('-g', metavar='FILE', type=str, required=True, help="gene annotation gff file (*.gff, one of MCSCANX/WGDI input)[required]")
+	parser.add_argument('-c', metavar='FILE', type=str, required=True, help="chromosomes config file (*.ctl, same format as MCSCANX dotplotter)[required]")
 	parser.add_argument('-o', metavar='STR', type=str, default=None, help="output file prefix. [default: the same as `-c`]")
 	parser.add_argument('--format', metavar='FORMAT', action='append', default=['pdf', 'png'], help="output figure format [default=%(default)s]")
 	parser.add_argument('--homology', action='store_true', default=False, help="`-s` is in homology format (gene1<tab>gene2). [default=%(default)s]")
-	parser.add_argument('--cluster', action='store_true', default=False, help="cluster chromosomes. [default=%(default)s]")
-	parser.add_argument('--diagonal', action='store_true', default=False, help="try to put blocks onto the diagonal. [default=%(default)s]")
-	parser.add_argument('--gene-axis', action='store_true', default=False, help="use gene as axis instead of base pair. [default=%(default)s]")
-#	parser.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. [default=%(default)s]")
-#	parser.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
 	parser.add_argument('--number-plots', action='store_true', default=False, help="number subplots with (a-d). [default=%(default)s]")
 	parser.add_argument('--min-block', metavar='INT', type=int, default=None, help="min gene number in a block. [default=%(default)s]")
 	parser.add_argument('--min-same-block', metavar='INT', type=int, default=25, help="min gene number in a block on the same chromosome. [default=%(default)s]")
@@ -34,12 +29,18 @@ def dotplot_args(parser):
 #	parser.add_argument('--height', type=float, default=1, help="fator of height (actual height = width*height). default=%(default)s")
 #	parser.add_argument('--source', type=str, choices=['mcscanx', 'wgdi'], default=None, help="source of collinearity [default: auto]")
 
-	group_art = parser.add_argument_group('Art settings', 'art settings for plots')
-	group_art.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. [default=%(default)s]")
-	group_art.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
-	group_art.add_argument('--figsize', metavar='NUM', type=float, default=18, help="figure size [default=%(default)s]")
-	group_art.add_argument('--fontsize', metavar='NUM', type=float, default=10, help="font size [default=%(default)s]")
-	group_art.add_argument('--dotsize', metavar='NUM', type=float, default=0.8, dest='point_size', help="dot size [default=%(default)s]")
+	group_dot = parser.add_argument_group('Dot plot', 'settings for dot plots')
+	group_dot.add_argument('--cluster', action='store_true', default=False, help="cluster chromosomes. [default=%(default)s]")
+	group_dot.add_argument('--diagonal', action='store_true', default=False, help="try to put blocks onto the diagonal. [default=%(default)s]")
+	group_dot.add_argument('--gene-axis', action='store_true', default=False, help="use gene as axis instead of base pair. [default=%(default)s]")
+	group_dot.add_argument('--xlines', metavar='FILE', type=str, default=None, help="bed/pos file to add vertical lines. [default=%(default)s]")
+	group_dot.add_argument('--ylines', metavar='FILE', type=str, default=None, help="bed/pos file to add horizontal lines. [default=%(default)s]")
+
+	group_dot.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. [default=%(default)s]")
+	group_dot.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
+	group_dot.add_argument('--figsize', metavar='NUM', type=float, nargs='+', default=[18], help="figure size (width [height]) [default=%(default)s]")
+	group_dot.add_argument('--fontsize', metavar='NUM', type=float, default=10, help="font size of chromosome labels [default=%(default)s]")
+	group_dot.add_argument('--dotsize', metavar='NUM', type=float, default=0.8, dest='point_size', help="dot size [default=%(default)s]")
 
 
 	group_orth = parser.add_argument_group('Orthology Index filter/color', 'filtering or coloring blocks by Orthology Index (prior to Ks color)')
@@ -47,7 +48,7 @@ def dotplot_args(parser):
 	group_orth.add_argument('--of-ratio', metavar='FLOAT', type=float, default=0, help="Orthology Index cutoff [default=%(default)s]")
 	group_orth.add_argument('--of-color', action='store_true', default=None, help="coloring dots by Orthology Index [default=%(default)s]")
 
-	group_ks = parser.add_argument_group('Ks plot', 'options to plot with Ks')
+	group_ks = parser.add_argument_group('Ks plot', 'options to histogram plot with Ks')
 	group_ks.add_argument('--kaks', metavar='FILE', type=str, default=None, help="kaks output from KaKs_Calculator/WGDI. [default=%(default)s]")
 	group_ks.add_argument('--ks-hist', action='store_true', default=None, help="plot histogram or not [default=%(default)s]")
 	group_ks.add_argument('--max-ks', metavar='Ks', type=float, default=1, help="max Ks (x limit) [default=%(default)s]")
@@ -125,7 +126,7 @@ def main(args):
 		args.hide_blocks = set([line.strip().split()[0] for line in open(args.hide_blocks)])
 	chrs1, chrs2 = parse_ctl(ctl)
 	same_sp = True if chrs1 == chrs2 else False
-	blocks, lines1, lines2, ortholog_graph,chrs1, chrs2 = parse_collinearity(
+	blocks, lines1, lines2, ortholog_graph,chrs1, chrs2, d_offset1, d_offset2 = parse_collinearity(
 		collinearity, gff, chrs1, chrs2, kaks, args.homology, 
 		source = args.source, 
 		ofdir=args.ofdir, of_ratio=args.of_ratio, of_color=args.of_color,
@@ -137,6 +138,9 @@ def main(args):
 	xpositions = [(lines1[i] + lines1[i+1]) / 2 for i in range(len(lines1)-1)]
 	ypositions = [(lines2[i] + lines2[i+1]) / 2 for i in range(len(lines2)-1)]
 	blocks = sorted(blocks, key=lambda x: abs(x[-1][0] - x[0][0]))	# sort by block length
+	xclines = add_offset(parse_hvlines(args.xlines), d_offset1) if args.xlines else None
+	yclines = add_offset(parse_hvlines(args.ylines), d_offset2) if args.ylines else None
+
 	if kaks:
 		prefix += '.ksmax' + str(args.max_ks)
 		if args.use_median:
@@ -147,7 +151,7 @@ def main(args):
 		prefix += '.oimin' + str(args.of_ratio)
 	if args.diagonal:
 		prefix += '.diagonal'
-	if kaks and args.plot_dot:
+	if kaks and args.plot_dot: # skip
 		outplots = [prefix + '.dot.' + fmt for fmt in args.format]
 		plot_blocks(blocks, outplots, ks = None, max_ks=None, ks_hist=None,
 			xlabels=chrs1, ylabels=chrs2,
@@ -156,15 +160,16 @@ def main(args):
 			xlim=max(lines1), ylim=max(lines2))
 	ploidy_data = coord_path1, coord_path2, coord_graph1, coord_graph2 = parse_gff(gff, chrs1, chrs2)
 	outplots = [prefix + '.' + fmt for fmt in args.format]
-	#print >>sys.stderr, args.__dict__
 	ks = None if kaks is None and args.ofdir is None else True
+	#print(lines2, yclines, d_offset2, parse_hvlines(args.ylines))
 	plot_blocks(blocks, outplots, ks = ks, 
 			#max_ks=args.max_ks, ks_hist=args.ks_hist, ks_cmap=args.ks_cmap, 
 			#clip_ks=args.clip_ks, min_block=args.min_block, ks_step=args.ks_step,
 			xlabels=chrs1, ylabels=chrs2, same_sp=same_sp,
 			#hist_ylim=args.hist_ylim,
 			xpositions=xpositions, ypositions=ypositions,
-			xlines=lines1, ylines=lines2,
+			xelines=lines1, yelines=lines2,
+			xclines=xclines, yclines=yclines, # such as centromere
 			xlim=max(lines1), ylim=max(lines2),
 			ploidy=args.plot_ploidy, ploidy_data = ploidy_data, ortholog_graph=ortholog_graph, **args.__dict__
 			)
@@ -172,16 +177,16 @@ def main(args):
 def _remove_prefix(labels):
 	return [label[2:] for label in labels]
 def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=None, clip_ks=None, min_block=None, ks_step=0.02,
-			xlabels=None, ylabels=None, xpositions=None, ypositions=None, xlines=None, ylines=None, xlim=None, ylim=None,
-			figsize=18, fontsize=10, point_size=0.8, 
+			xlabels=None, ylabels=None, xpositions=None, ypositions=None, xelines=None, yelines=None, xlim=None, ylim=None,
+			figsize=18, fontsize=10, point_size=0.8, xclines=None, yclines=None,
 			hist_ylim=None, xlabel=None, ylabel=None, remove_prefix=True, number_plots=True, same_sp=False,
 			ploidy=False, ploidy_data=None, ortholog_graph=None, of_color=False, homology=False, **kargs
 			):
 	import matplotlib
 	import matplotlib.pyplot as plt
 	import matplotlib.cm as cm
-	xcsize = ycsize = fontsize
-	xsize = ysize = fontsize * 2
+	xcsize = ycsize = fontsize	# chromosome label
+	xsize = ysize = fontsize * 3	# species label
 	if xlabel is not None and xlabels is not None and remove_prefix:
 		xlabels = _remove_prefix(xlabels)
 		xcsize = xcsize*1.5 
@@ -192,17 +197,19 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 #		cmap = create_ks_map(ks_cmap, max_ks)
 #	else:
 #		cmap = cm.jet
-	x = figsize
+	x = figsize[0]
 	if ks is not None:
 		if ks_hist is not None:
-			y = x * 1.2
+			_y = x * 1.2
 			bbox_inches='standard'
 		else:
-			y = x * 1.05
+			_y = x * 1.05
 			bbox_inches='tight'
 	else:
-		y = x * 0.98 #*1.2 if ks_hist else x
+		_y = x * 0.98 #*1.2 if ks_hist else x
 		bbox_inches='tight'
+	bbox_inches='tight'
+	y = _y if len(figsize) ==1 else figsize[1]
 	plt.figure(figsize=(x,y))
 	if ks_hist:
 		ax = plt.subplot2grid((6,5),(0,0), rowspan=5, colspan=5)
@@ -253,13 +260,16 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			min_ks = min([v for v in Ks if v >0])
 		except ValueError:	# ValueError: min() arg is an empty sequence
 			min_ks = 0
-		if len(Ks) > 0 and max(Ks) > max_ks:
-			max_ks = max(Ks)
+	#	if len(Ks) > 0 and max(Ks) > max_ks:
+	#		max_ks = max(Ks)
 		if ks_cmap:
 			cmap = create_ks_map(ks_cmap, min_ks, max_ks)
 		else:
 			cmap = cm.jet
 	if not ks is None:
+		kXs += [None, None]
+		kYs += [None, None]
+		Ks += [0, max_ks]	# unify the scale
 		plt.scatter(kXs, kYs, marker=',', s=point_size, c = Ks, cmap = cmap, )
 	ymin, ymax = 0, ylim
 	xmin, xmax = 0, xlim
@@ -267,15 +277,21 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		plt.plot((xmin, xmax), (ymin, ymax), ls='--', color="grey")
 	tot_lenx, tot_leny = xlim, ylim
 	# chromosome label
-	for xlabel, xposition, xline in zip(xlabels, xpositions, xlines):
+	for xlabel, xposition, xline in zip(xlabels, xpositions, xelines):
 		x = xline
-		plt.vlines(x, ymin, ymax, color="grey", linewidth=0.4)
-		x, y = xposition, -tot_leny/200
+		plt.vlines(x, ymin, ymax, color="black", linewidth=0.4)
+		x, y = xposition, -tot_leny/150
 		plt.text(x, y, xlabel, horizontalalignment='center',verticalalignment='top',fontsize=xcsize) #, rotation=30)
-	for ylabel, yposition, yline in zip(ylabels, ypositions, ylines):
+	if xclines:
+		for xline in xclines:
+			plt.vlines(xline, ymin, ymax, color="grey", linewidth=0.5, ls='--')
+	if yclines:
+		for yline in yclines:
+			plt.hlines(yline, xmin, xmax, color="grey", linewidth=0.5, ls='--')
+	for ylabel, yposition, yline in zip(ylabels, ypositions, yelines):
 		y = yline
-		plt.hlines(y, xmin, xmax, color="grey", linewidth=0.4)
-		x, y = -tot_lenx/200, yposition
+		plt.hlines(y, xmin, xmax, color="black", linewidth=0.4)
+		x, y = -tot_lenx/150, yposition
 		plt.text(x, y, ylabel, horizontalalignment='right',verticalalignment='center',fontsize=ycsize) #rotation=30
 
 	plt.xlim(xmin,xmax)
@@ -288,7 +304,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		plot_label(ax, label, fontsize=lsize)
 
 	label = 'OrthoIndex' if of_color else 'Ks'
-	if not ks is None and ks_hist is None:
+	if not ks is None and ks_hist is None and False:	# color map only
 		ax = plt.subplot2grid((21,20),(20,0), colspan=5)
 		plt.axis('off')
 		cbar = plt.colorbar(ax=ax, orientation='horizontal', location='bottom', label=label, shrink=1, fraction=0.5)
@@ -335,7 +351,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		plot_fold(ax, titles, coord_path2, coord_graph2, coord_graph1, ortholog_graph, xlabel=xlabel, ylabel=None, **kargs)
 		if number_plots:
 			plot_label(ax, label, fontsize=lsize)
-	plt.subplots_adjust(hspace=0.25)
+	plt.subplots_adjust(hspace=0.3)
 	for outplot in outplots:
 		plt.savefig(outplot, bbox_inches='tight')
 	
@@ -381,15 +397,40 @@ def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False
 		ylim = 1.2*max(Ys[:-1])
 	line = ax.plot(Xs, Ys, ls='--', c='grey')
 #	line.set_zorder(5)
+	Xs += [0, xlim] # unify the scale
+	Ys += [None, None]
 	point = ax.scatter(Xs, Ys, marker=',', s=14, c = Xs, cmap = cmap)
 #	point.set_zorder(10)
 	ax.set_xlim(0, xlim)
 	ax.set_ylim(0, ylim)
-	ax.set_xlabel(xlabel)
+	ax.set_xlabel(xlabel)	# Ks/OrthoIndex; fontsize
 	ax.set_ylabel(ylabel)
 	ax.minorticks_on()
 	cbar = plt.colorbar(ax=ax)
 	return xlim, ylim
+def parse_hvlines(bedfile, min_span=10):
+	lines = []
+	for line in open(bedfile):
+		temp = line.strip().split()
+		id = temp[0]
+		start = int(temp[1])
+		lines += [(id, start)]
+		try:
+			end = int(temp[2])
+			if end-start < min_span:
+				continue
+			lines += [(id, end)]
+		except: pass
+	return lines
+
+def add_offset(positions, d_left):
+	lines = []
+	for id, pos in positions:
+		if id not in d_left:
+			logger.warn('{ID: not in the offset}'.format(id))
+			continue
+		lines += [d_left[id] + pos]
+	return lines
 
 def create_ks_map(ks_map, min_ks, max_ks):
 	import numpy as np
@@ -559,7 +600,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 				line = [chr1, gene1.id] + genes2
 				print('\t'.join(line), file=fout)
 		fout.close()
-	return xblocks, lines1, lines2, ortholog_graph, chrs1, chrs2
+	return xblocks, lines1, lines2, ortholog_graph, chrs1, chrs2, d_offset1, d_offset2
 	
 def diagonal_chroms(d_blocks, chrs1, chrs2, **kargs):
 	d_distance = {}
