@@ -701,6 +701,12 @@ class Gff:
 		#self.d_chrom = d_chrom
 		self.species = species
 		return d_genes
+	def get_index(self):
+		d_genes = self.get_indexed_genes()
+		d_index = {}
+		for gene, line in d_genes.items():
+			d_index[(line.chrom, line.index+1)] = line
+		return d_index
 	def to_wgdi(self, chrLst='chr.list', pep='pep.faa', cds='cds.fa', indir='.', outdir='wgdi', species=None, split=True):
 		from creat_ctl import get_good_chrs
 		self.gff = os.path.join(indir, self.gff)

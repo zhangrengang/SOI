@@ -7,6 +7,7 @@ import numpy as np
 from .mcscan import Collinearity, Gff, XCollinearity
 #from .OrthoFinder import OrthoFinder
 from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
+from .WGDI import AK
 from .RunCmdsMP import logger
 
 __version__='0.1'
@@ -36,6 +37,10 @@ def dotplot_args(parser):
 	group_dot.add_argument('--gene-axis', action='store_true', default=False, help="use gene as axis instead of base pair. [default=%(default)s]")
 	group_dot.add_argument('--xlines', metavar='FILE', type=str, default=None, help="bed/pos file to add vertical lines. [default=%(default)s]")
 	group_dot.add_argument('--ylines', metavar='FILE', type=str, default=None, help="bed/pos file to add horizontal lines. [default=%(default)s]")
+	group_dot.add_argument('--xbars', metavar='FILE', type=str, default=None, help="ancetor file to set colorbar for x axis. [default=%(default)s]")
+	group_dot.add_argument('--ybars', metavar='FILE', type=str, default=None, help="ancetor file to set colorbar for y axis. [default=%(default)s]")
+	group_dot.add_argument('--xbarlab', action='store_true', default=False, help="plot labels for x bars. [default=%(default)s]")
+	group_dot.add_argument('--ybarlab', action='store_true', default=False, help="plot labels for y bars. [default=%(default)s]")
 
 	group_dot.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. [default=%(default)s]")
 	group_dot.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
@@ -172,6 +177,7 @@ def main(args):
 			xelines=lines1, yelines=lines2,
 			xclines=xclines, yclines=yclines, # such as centromere
 			xlim=max(lines1), ylim=max(lines2),
+			xoffset=d_offset1, yoffset=d_offset2, gff=gff, 
 			ploidy=args.plot_ploidy, ploidy_data = ploidy_data, ortholog_graph=ortholog_graph, **args.__dict__
 			)
 
@@ -180,6 +186,7 @@ def _remove_prefix(labels):
 def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=None, clip_ks=None, min_block=None, ks_step=0.02,
 			xlabels=None, ylabels=None, xpositions=None, ypositions=None, xelines=None, yelines=None, xlim=None, ylim=None,
 			figsize=18, fontsize=10, point_size=0.8, xclines=None, yclines=None,
+			xoffset=None, yoffset=None, xbars=None, ybars=None, gff=None, gene_axis=None, xbarlab=True, ybarlab=True, 
 			hist_ylim=None, xlabel=None, ylabel=None, remove_prefix=True, number_plots=True, same_sp=False,
 			ploidy=False, ploidy_data=None, ortholog_graph=None, of_color=False, homology=False, **kargs
 			):
@@ -187,7 +194,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	import matplotlib.pyplot as plt
 	import matplotlib.cm as cm
 	xcsize = ycsize = fontsize	# chromosome label
-	xsize = ysize = fontsize * 3	# species label
+	xsize = ysize = fontsize * 2.5	# species label
 	if xlabel is not None and xlabels is not None and remove_prefix:
 		xlabels = _remove_prefix(xlabels)
 		xcsize = xcsize*1.5 
@@ -248,12 +255,34 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			plt.plot(Xs, Ys, color="grey", ls='-', alpha=0.45, linewidth=0.55)
 #		else:
 			#plt.plot(Xs, Ys)
+	ymin, ymax = 0, ylim
+	xmin, xmax = 0, xlim
+
+	# bars
+	xlabelpad, ylabelpad = 10, 8
+	if xbars:
+		y = ylim
+		width = ylim/50.0
+		ylim += width
+		has_lab = AK(xbars).plot_dotplot(xy=y, align='edge', d_offset=xoffset, axis='x', width=width, label=xbarlab, 
+			gene_axis=gene_axis, gff=gff, fontsize=xcsize)
+		if has_lab:
+			xlabelpad += xcsize
+	if ybars:
+		x = xlim
+		width = xlim/50.0
+		xlim += width
+		has_lab = AK(ybars).plot_dotplot(xy=x, align='edge', d_offset=yoffset, axis='y', width=width, label=ybarlab,
+			gene_axis=gene_axis, gff=gff, fontsize=ycsize)
+		if has_lab:
+			ylabelpad += ycsize * 0.8
+
 	# species label
 	if xlabel:
-		ax.set_xlabel(xlabel, ha='center', fontsize=xsize, labelpad=10)
+		ax.set_xlabel(xlabel, ha='center', fontsize=xsize, labelpad=xlabelpad)
 		ax.xaxis.set_label_position('top')
 	if ylabel:
-		ax.set_ylabel(ylabel, rotation='vertical', ha='center', fontsize=ysize, labelpad=10)
+		ax.set_ylabel(ylabel, rotation='vertical', ha='center', fontsize=ysize, labelpad=ylabelpad)
 		ax.yaxis.set_label_position('right')
 	#print kXs, kYs, Ks
 	if ks is not None:
@@ -272,8 +301,6 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		kYs += [None, None]
 		Ks += [0, max_ks]	# unify the scale
 		plt.scatter(kXs, kYs, marker=',', s=point_size, c = Ks, cmap = cmap, )
-	ymin, ymax = 0, ylim
-	xmin, xmax = 0, xlim
 	if same_sp:
 		plt.plot((xmin, xmax), (ymin, ymax), ls='--', color="grey", linewidth=0.8)
 	tot_lenx, tot_leny = xlim, ylim
@@ -281,9 +308,11 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	for xlabel, xposition, xline in zip(xlabels, xpositions, xelines):
 		x = xline
 		plt.vlines(x, ymin, ymax, color="black", linewidth=1)
-		x, y = xposition, -tot_leny/150
+		x, y = xposition, -tot_leny/150.0
 		plt.text(x, y, xlabel, horizontalalignment='center',verticalalignment='top',fontsize=xcsize) #, rotation=30)
-	print(xclines, yclines)
+	for x in [xmin, xmax]:
+		plt.vlines(x, ymin, ymax, color="black", linewidth=1)
+#	print(xclines, yclines)
 	if xclines:
 		for xline in xclines:
 			plt.vlines(xline, ymin, ymax, color="grey", linewidth=1, ls='--')
@@ -293,13 +322,20 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	for ylabel, yposition, yline in zip(ylabels, ypositions, yelines):
 		y = yline
 		plt.hlines(y, xmin, xmax, color="black", linewidth=1)
-		x, y = -tot_lenx/150, yposition
+		x, y = -tot_lenx/150.0, yposition
 		plt.text(x, y, ylabel, horizontalalignment='right',verticalalignment='center',fontsize=ycsize) #rotation=30
+	for y in [ymin, ymax]:
+		plt.hlines(y, xmin, xmax, color="black", linewidth=1)
 
-	plt.xlim(xmin,xmax)
-	plt.ylim(ymin,ymax)
+	plt.xlim(xmin,xlim)
+	plt.ylim(ymin,ylim)
 	plt.xticks([])
 	plt.yticks([])
+	ax.spines['right'].set_color('none')
+	ax.spines['top'].set_color('none')
+	ax.spines['left'].set_color('none')
+	ax.spines['bottom'].set_color('none')
+
 	lsize = 17
 	if number_plots and (ks_hist or ploidy):
 		label = '(a)'
@@ -312,6 +348,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		cbar = plt.colorbar(ax=ax, orientation='horizontal', location='bottom', label=label, shrink=1, fraction=0.5)
 		# cbar.ax.set_xlabel('Ks', fontsize=14)
 
+	# ax2
 	if ks_hist:
 		if ploidy:
 			ax = plt.subplot2grid((6,5),(5,0), colspan=3)
@@ -322,10 +359,11 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		#print min(allKs), max(allKs)
 #		ylabel = ' of syntenic gene pairs' if homology else ' of syntenic gene pairs'
 		ylabel = ' of gene pairs'
-		_histgram(ax, allKs, cmap=cmap, xlim = max_ks, ylim=hist_ylim, bins=bins, normed=False, xlabel=xlabel, ylabel=ylabel)
+		_histgram(ax, allKs, cmap=cmap, xlim = max_ks, ylim=hist_ylim, bins=bins, normed=False, xlabel=xlabel, ylabel=ylabel, fontsize=xcsize)
 		label = '(b)'
 		if number_plots:
 			plot_label(ax, label, fontsize=lsize)
+	# ax3, ax4
 	if ploidy:
 		coord_path1, coord_path2, coord_graph1, coord_graph2 = ploidy_data
 		# bar1
@@ -374,7 +412,7 @@ def plot_fold(ax, titles, ref_coord_paths, ref_coord_graph, qry_coord_graph, rq_
 	data = [np.array(sorted(d_fold.items()))]
 	#print >>sys.stderr, kargs
 	plot_bars(data, titles, ax=ax, ncol=1, nrow=1, **kargs)
-def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False, xlabel='Ks', ylabel=' of syntenic gene pairs'):
+def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False, xlabel='Ks', ylabel=' of syntenic gene pairs', fontsize=10):
 	import matplotlib.pyplot as plt
 	import matplotlib.cm as cm
 	import matplotlib
@@ -405,8 +443,8 @@ def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False
 #	point.set_zorder(10)
 	ax.set_xlim(0, xlim)
 	ax.set_ylim(0, ylim)
-	ax.set_xlabel(xlabel)	# Ks/OrthoIndex; fontsize
-	ax.set_ylabel(ylabel)
+	ax.set_xlabel(xlabel, fontsize=fontsize*1.1)	# Ks/OrthoIndex; fontsize
+	ax.set_ylabel(ylabel, fontsize=fontsize*0.8)
 	ax.minorticks_on()
 	cbar = plt.colorbar(ax=ax)
 	return xlim, ylim
