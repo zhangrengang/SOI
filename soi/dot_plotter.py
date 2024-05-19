@@ -7,6 +7,7 @@ import numpy as np
 from .mcscan import Collinearity, Gff, XCollinearity
 #from .OrthoFinder import OrthoFinder
 from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
+from .RunCmdsMP import logger
 
 __version__='0.1'
 __LastModified__='20190226'
@@ -40,7 +41,7 @@ def dotplot_args(parser):
 	group_dot.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
 	group_dot.add_argument('--figsize', metavar='NUM', type=float, nargs='+', default=[18], help="figure size (width [height]) [default=%(default)s]")
 	group_dot.add_argument('--fontsize', metavar='NUM', type=float, default=10, help="font size of chromosome labels [default=%(default)s]")
-	group_dot.add_argument('--dotsize', metavar='NUM', type=float, default=0.8, dest='point_size', help="dot size [default=%(default)s]")
+	group_dot.add_argument('--dotsize', metavar='NUM', type=float, default=1, dest='point_size', help="dot size [default=%(default)s]")
 
 
 	group_orth = parser.add_argument_group('Orthology Index filter/color', 'filtering or coloring blocks by Orthology Index (prior to Ks color)')
@@ -274,23 +275,24 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	ymin, ymax = 0, ylim
 	xmin, xmax = 0, xlim
 	if same_sp:
-		plt.plot((xmin, xmax), (ymin, ymax), ls='--', color="grey")
+		plt.plot((xmin, xmax), (ymin, ymax), ls='--', color="grey", linewidth=0.8)
 	tot_lenx, tot_leny = xlim, ylim
 	# chromosome label
 	for xlabel, xposition, xline in zip(xlabels, xpositions, xelines):
 		x = xline
-		plt.vlines(x, ymin, ymax, color="black", linewidth=0.4)
+		plt.vlines(x, ymin, ymax, color="black", linewidth=1)
 		x, y = xposition, -tot_leny/150
 		plt.text(x, y, xlabel, horizontalalignment='center',verticalalignment='top',fontsize=xcsize) #, rotation=30)
+	print(xclines, yclines)
 	if xclines:
 		for xline in xclines:
-			plt.vlines(xline, ymin, ymax, color="grey", linewidth=0.5, ls='--')
+			plt.vlines(xline, ymin, ymax, color="grey", linewidth=1, ls='--')
 	if yclines:
 		for yline in yclines:
-			plt.hlines(yline, xmin, xmax, color="grey", linewidth=0.5, ls='--')
+			plt.hlines(yline, xmin, xmax, color="grey", linewidth=1, ls='--')
 	for ylabel, yposition, yline in zip(ylabels, ypositions, yelines):
 		y = yline
-		plt.hlines(y, xmin, xmax, color="black", linewidth=0.4)
+		plt.hlines(y, xmin, xmax, color="black", linewidth=1)
 		x, y = -tot_lenx/150, yposition
 		plt.text(x, y, ylabel, horizontalalignment='right',verticalalignment='center',fontsize=ycsize) #rotation=30
 
@@ -665,7 +667,11 @@ def hierarchy(X):
 def calculate_distance(xks, min_ks=0, max_ks=3, **kargs):
 	distance = 1.0
 	n = 0
+#	print(xks[:10])
 	for ks in xks:
+#		print(min_ks, ks, max_ks)
+		try: ks = np.median(ks)
+		except TypeError: continue
 		if not min_ks < ks < max_ks:
 			continue
 		distance = distance * ks
