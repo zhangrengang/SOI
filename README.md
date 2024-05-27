@@ -458,6 +458,7 @@ Dc1,Dc2,Dc3,Dc4,Dc5,Dc6,Dc7,Dc8,Dc9
 ```
 
 In summary, users may be not needed to preprare additional files for this tool. And other popular format can be supported upon request.
+But it is **important** to label GENE ID with SPECIES ID (e.g. `Angelica_sinensis|AS01G00001`) (see details in [evolution_example](https://github.com/zhangrengang/evolution_example/)).
 
 ### Output formats ###
 

@@ -32,7 +32,10 @@ def args_filter(parser):
 	parser.add_argument('-n', '-min_n',  type=int, default=0,
 					dest='min_n',  metavar='INT',
 					help="Minimum gene number in a block [default=%(default)s]")
-
+	parser.add_argument('-stat', default=None,
+                    dest='out_stats', type=str, 
+                    help="Output stats by species pairs. [default=%(default)s]")
+	
 def func_filter(**kargs):
 	from .mcscan import identify_orthologous_blocks
 	identify_orthologous_blocks(**kargs)

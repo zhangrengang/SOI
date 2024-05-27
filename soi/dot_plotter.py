@@ -258,33 +258,6 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	ymin, ymax = 0, ylim
 	xmin, xmax = 0, xlim
 
-	# bars
-	xlabelpad, ylabelpad = 10, 8
-	if xbars:
-		y = ylim
-		width = ylim/50.0
-		ylim += width
-		has_lab = AK(xbars).plot_dotplot(xy=y, align='edge', d_offset=xoffset, axis='x', width=width, label=xbarlab, 
-			gene_axis=gene_axis, gff=gff, fontsize=xcsize)
-		if has_lab:
-			xlabelpad += xcsize
-	if ybars:
-		x = xlim
-		width = xlim/50.0
-		xlim += width
-		has_lab = AK(ybars).plot_dotplot(xy=x, align='edge', d_offset=yoffset, axis='y', width=width, label=ybarlab,
-			gene_axis=gene_axis, gff=gff, fontsize=ycsize)
-		if has_lab:
-			ylabelpad += ycsize * 0.8
-
-	# species label
-	if xlabel:
-		ax.set_xlabel(xlabel, ha='center', fontsize=xsize, labelpad=xlabelpad)
-		ax.xaxis.set_label_position('top')
-	if ylabel:
-		ax.set_ylabel(ylabel, rotation='vertical', ha='center', fontsize=ysize, labelpad=ylabelpad)
-		ax.yaxis.set_label_position('right')
-	#print kXs, kYs, Ks
 	if ks is not None:
 		try:
 			min_ks = min([v for v in Ks if v >0])
@@ -303,11 +276,40 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		plt.scatter(kXs, kYs, marker=',', s=point_size, c = Ks, cmap = cmap, )
 	if same_sp:
 		plt.plot((xmin, xmax), (ymin, ymax), ls='--', color="grey", linewidth=0.8)
+
+	# bars
+	xlabelpad, ylabelpad = 10, 7.5
+	if xbars:
+		y = ylim
+		width = ylim/ 60
+		ylim += width	# increase limit
+		has_lab = AK(xbars).plot_dotplot(xy=y, align='edge', d_offset=xoffset, axis='x', width=width, label=xbarlab,
+			gene_axis=gene_axis, gff=gff, fontsize=xcsize)
+		if has_lab:
+			xlabelpad += xcsize
+	if ybars:
+		x = xlim
+		width = xlim/ 60
+		xlim += width
+		has_lab = AK(ybars).plot_dotplot(xy=x, align='edge', d_offset=yoffset, axis='y', width=width, label=ybarlab,
+			gene_axis=gene_axis, gff=gff, fontsize=ycsize)
+		if has_lab:
+			ylabelpad += ycsize * 0.75
+
+	# species label
+	chr_color, arm_color = "dimgrey", "grey"
+	if xlabel:
+		ax.set_xlabel(xlabel, ha='center', fontsize=xsize, labelpad=xlabelpad)
+		ax.xaxis.set_label_position('top')
+	if ylabel:
+		ax.set_ylabel(ylabel, rotation='vertical', ha='center', fontsize=ysize, labelpad=ylabelpad)
+		ax.yaxis.set_label_position('right')
+
 	tot_lenx, tot_leny = xlim, ylim
 	# chromosome label
 	for xlabel, xposition, xline in zip(xlabels, xpositions, xelines):
 		x = xline
-		plt.vlines(x, ymin, ymax, color="black", linewidth=1)
+		plt.vlines(x, ymin, ymax, color=chr_color, linewidth=1)
 		x, y = xposition, -tot_leny/150.0
 		plt.text(x, y, xlabel, horizontalalignment='center',verticalalignment='top',fontsize=xcsize) #, rotation=30)
 	for x in [xmin, xmax]:
@@ -315,13 +317,13 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 #	print(xclines, yclines)
 	if xclines:
 		for xline in xclines:
-			plt.vlines(xline, ymin, ymax, color="grey", linewidth=1, ls='--')
+			plt.vlines(xline, ymin, ymax, color=arm_color, linewidth=1, ls='--')
 	if yclines:
 		for yline in yclines:
-			plt.hlines(yline, xmin, xmax, color="grey", linewidth=1, ls='--')
+			plt.hlines(yline, xmin, xmax, color=arm_color, linewidth=1, ls='--')
 	for ylabel, yposition, yline in zip(ylabels, ypositions, yelines):
 		y = yline
-		plt.hlines(y, xmin, xmax, color="black", linewidth=1)
+		plt.hlines(y, xmin, xmax, color=chr_color, linewidth=1)
 		x, y = -tot_lenx/150.0, yposition
 		plt.text(x, y, ylabel, horizontalalignment='right',verticalalignment='center',fontsize=ycsize) #rotation=30
 	for y in [ymin, ymax]:
@@ -399,7 +401,7 @@ def plot_label(ax, label, **kargs):
 	xmin, xmax = ax.get_xlim()
 	ymin, ymax = ax.get_ylim()
 	xoffset = (xmax-xmin) / 60
-	yoffset = (ymax-ymin) / 120
+	yoffset = (ymax-ymin) / 110
 	x = xmin - xoffset
 	y = ymax + yoffset
 	ax.text(x, y, label, 
@@ -467,7 +469,7 @@ def add_offset(positions, d_left):
 	lines = []
 	for id, pos in positions:
 		if id not in d_left:
-			logger.warn('{ID: not in the offset}'.format(id))
+			logger.warn('ID: {} not in the offset'.format(id))
 			continue
 		lines += [d_left[id] + pos]
 	return lines
