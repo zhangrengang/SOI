@@ -202,7 +202,7 @@ class OrthoMCLGroupRecord(GroupRecord): # 解析每行
 			self.ogid = ogid
 		self.species = self.get_species()
 		if sps is not None:
-			self.genes = list(self.get_group())
+			self.genes = list(self.get_group(sps=sps))
 			self.species = self.get_species()
 		self.nsp = nsp if nsp else len(self.species)
 	def __len__(self):

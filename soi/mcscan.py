@@ -2509,7 +2509,7 @@ def orthomcl_stats(source='orthomcl', **kargs):
 
 class ToAstral(ColinearGroups):
 	def __init__(self, input=None, pep=None, spsd=None, cds=None, tmpdir='tmp', root=None, both=True, suffix=None, 
-			ncpu=50, max_taxa_missing=0.5, max_mean_copies=10, max_copies=5, singlecopy=False,  
+			ncpu=50, max_taxa_missing=0.5, max_mean_copies=10, max_copies=5, singlecopy=False, onlyaln=False,
 			source=None, orthtype='orthologues', fast=True, concat=False, clean=False, overwrite=False, 
 			trimal_opts='-automated1', iqtree_opts=''):
 		self.input = input
@@ -2528,16 +2528,17 @@ class ToAstral(ColinearGroups):
 		self.singlecopy = singlecopy
 		self.concat = concat
 		self.fast = fast
-		self.sp_dict = parse_spsd(spsd, skip=True)
+		self.sp_dict = parse_spsd(spsd, skip=False)
 		self.suffix = input if suffix is None else suffix 
 		self.orthtype = orthtype
 		self.source = source
 		self.trimal_opts = trimal_opts
 		self.iqtree_opts = iqtree_opts
 		self.clean = clean
+		self.onlyaln = onlyaln
 		self.overwrite = overwrite
 	def lazy_get_groups(self, orthtype='Orthogroups'):
-		species = parse_species(self.spsd)
+		species = parse_species(self.spsd) #subset
 		if os.path.isdir(self.input): # orthofinder
 			source = 'orthofinder' + '-' + orthtype.lower()
 			result = OrthoFinder(self.input)
@@ -2671,7 +2672,7 @@ class ToAstral(ColinearGroups):
 					rc = d_cds[gene]
 					rc.id = format_id_for_iqtree(gene)
 					SeqIO.write(rc, f_cds, 'fasta')
-				if sp in set(self.root):
+				if self.root and sp in set(self.root):
 					d_root[sp] = rc.id
 			f_pep.close()
 			f_cds.close()
@@ -2706,7 +2707,7 @@ class ToAstral(ColinearGroups):
 				cdsTreefiles += [cdsTreefile]
 				cdsAlnfiles += [cdsTrim]
 				pep = True if self.both else False
-			if pep:
+			if pep and not self.onlyaln:
 				iqtree_opts = iqtree_opts0 + ' -mset JTT ' if self.fast else iqtree_opts0
 				cmd = trimal_template.format(pepAln, pepTrim)
 				cmds += [cmd]
@@ -2737,9 +2738,10 @@ class ToAstral(ColinearGroups):
 		# cat genetrees
 		pepGenetrees = '{}.pep.mm{}.genetrees'.format(self.suffix, self.max_taxa_missing)
 		cdsGenetrees = '{}.cds.mm{}.genetrees'.format(self.suffix, self.max_taxa_missing)
-		for treefiles, genetrees in zip([pepTreefiles, cdsTreefiles], [pepGenetrees, cdsGenetrees]):
-			logger.info('combining {} gene trees into `{}`'.format(len(treefiles), genetrees))
-			self.cat_genetrees(treefiles, genetrees, idmap=d_idmap, plain=False, format_confidence='%d')
+		if not self.onlyaln:
+			for treefiles, genetrees in zip([pepTreefiles, cdsTreefiles], [pepGenetrees, cdsGenetrees]):
+				logger.info('combining {} gene trees into `{}`'.format(len(treefiles), genetrees))
+				self.cat_genetrees(treefiles, genetrees, idmap=d_idmap, plain=False, format_confidence='%d')
 
 		# concat alignments
 		cdsCatAln = '{}.cds.mm{}.concat.aln'.format(self.suffix, self.max_taxa_missing)

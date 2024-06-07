@@ -140,6 +140,10 @@ def args_phylo(parser):
                     help="To allow maximum ratio of missing species. [default=%(default)s]")
 	args_phylo_common(parser)
 
+	parser.add_argument('-only_aln', default=None,
+                    dest='onlyaln', action='store_true',
+                    help="Only aligning sequences, to skip trimal and iqtree. [default=%(default)s]")
+
 	parser.add_argument('-concat', default=None,
 					dest='concat', action='store_true',
 					help="To concatenate alignments for tools such as IQTREE (valid when `-singlecopy` is true). [default=%(default)s]")
@@ -151,7 +155,7 @@ def args_phylo(parser):
                     dest='iqtree_opts',  metavar='STR',
                     help="IQ-TREE options. [default='%(default)s']")
 
-	parser.add_argument('-p', '-ncpu', type=float, default=20,
+	parser.add_argument('-p', '-ncpu', type=int, default=20,
 					dest='ncpu', metavar='INT',
 					help="Number of processors. [default=%(default)s]")
 	parser.add_argument('-tmp', '-tmpdir', type=str, default=default_tmpdir,

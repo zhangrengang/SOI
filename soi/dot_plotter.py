@@ -284,15 +284,16 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		width = ylim/ 60
 		ylim += width	# increase limit
 		has_lab = AK(xbars).plot_dotplot(xy=y, align='edge', d_offset=xoffset, axis='x', width=width, label=xbarlab,
-			gene_axis=gene_axis, gff=gff, fontsize=xcsize)
+			gene_axis=gene_axis, gff=gff, fontsize=xcsize-1)
 		if has_lab:
 			xlabelpad += xcsize
 	if ybars:
 		x = xlim
 		width = xlim/ 60
 		xlim += width
+		#print(yoffset)
 		has_lab = AK(ybars).plot_dotplot(xy=x, align='edge', d_offset=yoffset, axis='y', width=width, label=ybarlab,
-			gene_axis=gene_axis, gff=gff, fontsize=ycsize)
+			gene_axis=gene_axis, gff=gff, fontsize=ycsize-1)
 		if has_lab:
 			ylabelpad += ycsize * 0.75
 
@@ -313,7 +314,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		x, y = xposition, -tot_leny/150.0
 		plt.text(x, y, xlabel, horizontalalignment='center',verticalalignment='top',fontsize=xcsize) #, rotation=30)
 	for x in [xmin, xmax]:
-		plt.vlines(x, ymin, ymax, color="black", linewidth=1)
+		plt.vlines(x, ymin, ymax, color=chr_color, linewidth=1)
 #	print(xclines, yclines)
 	if xclines:
 		for xline in xclines:
@@ -327,7 +328,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		x, y = -tot_lenx/150.0, yposition
 		plt.text(x, y, ylabel, horizontalalignment='right',verticalalignment='center',fontsize=ycsize) #rotation=30
 	for y in [ymin, ymax]:
-		plt.hlines(y, xmin, xmax, color="black", linewidth=1)
+		plt.hlines(y, xmin, xmax, color=chr_color, linewidth=1)
 
 	plt.xlim(xmin,xlim)
 	plt.ylim(ymin,ylim)

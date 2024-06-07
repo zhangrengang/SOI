@@ -148,7 +148,7 @@ class AK:
 				y = xy + width*1.05
 				plt.text(x, y, lab, horizontalalignment='center',verticalalignment='bottom',fontsize=fontsize)
 			elif axis == 'y':
-				x = xy + width*1.05
+				x = xy + width*1.07
 				y = offset + len(sgement)/2
 				plt.text(x, y, lab, horizontalalignment='left',verticalalignment='center',fontsize=fontsize, rotation=90)
 		return has_lab
