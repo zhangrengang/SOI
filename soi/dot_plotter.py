@@ -570,7 +570,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 			chr1, chr2 = rc.chr2, rc.chr1
 			genes1, genes2 = rc.genes2, rc.genes1
 			start1, start2 = rc.start2, rc.start1
-		if min_same_block is not None and chr1==chr2 and min_same_block > rc.N:
+		if not homology and min_same_block is not None and chr1==chr2 and min_same_block > rc.N:
 			continue
 		# filter by Ks
 		if lower_ks is not None and rc.median_ks < lower_ks:

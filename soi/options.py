@@ -94,6 +94,10 @@ def args_phylo_common(parser):
 	parser.add_argument('-ss', '-spsd', type=str, default=None,
 					dest='spsd',  metavar='FILE',
 					help="To limit a specific copy number for each species (format: 'TAXON<tab>NUMBER'). [default=%(default)s]")
+	parser.add_argument('-fmt', type=str, default='orthomcl',
+                    dest='source', choices=['orthomcl', 'orthofinder', 'mcscanx'],
+                    help="Format of `-orthogroup` input. [default=%(default)s]")
+
 def args_stats(parser):
 	parser.add_argument('-og', '-orthogroup', required=True,  type=str,
 					dest='input',  metavar='FILE',
@@ -124,9 +128,6 @@ def args_phylo(parser):
 	parser.add_argument('-both', default=None,
 					dest='both', action='store_true',
 					help="To use both CDS and PEP to build gene trees. [default: only CDS when `-cds` is true]")
-	parser.add_argument('-fmt', type=str, default='orthomcl',
-					dest='source', choices=['orthomcl', 'orthofinder', 'mcscanx'],
-					help="Format of `-orthogroup` input. [default=%(default)s]")
 
 	parser.add_argument('-root', '-outgroup', type=str, metavar='TAXON',
 					dest='root', nargs='*', default=None,

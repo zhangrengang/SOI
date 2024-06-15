@@ -396,7 +396,7 @@ class Collinearity():
 			if lines:
 				self.parse_lines(lines)
 				yield self
-		else:
+		else: # homology
 			for line in open(self.collinearity):
 				line = lazy_decode(line)
 				self.parse_homology_line(line)
@@ -468,6 +468,7 @@ class Collinearity():
 		gene1, gene2 = temp[:2]
 		genes1 = [gene1]
 		genes2 = [gene2]
+		self.N = 1
 		self.parse_species(gene1, gene2)
 		self.parse_genes(genes1,genes2)
 	def get_species(self):
@@ -2595,7 +2596,9 @@ class ToAstral(ColinearGroups):
 			bin = int(val) // step * step
 			try: d_bin[bin] += 1
 			except KeyError: d_bin[bin] = 1
-		f = open(self.suffix + '.taxa_occupancy', 'w')
+		to_file = self.suffix + '.taxa_occupancy'
+		logger.info('outputing global taxa occupancy to `{}`'.format(to_file))
+		f = open(to_file, 'w')
 		line = ['taxa_occupancy', 'gene_count']
 		f.write('\t'.join(map(str, line)) + '\n')
 		for bin, count in sorted(d_bin.items()):
@@ -2605,13 +2608,18 @@ class ToAstral(ColinearGroups):
 
 		# gene occupancy
 		self.suffix = '{}.mm{}'.format(self.suffix, self.max_taxa_missing)
-		f = open(self.suffix + '.gene_occupancy', 'w')
-		line = ['species', 'gene_count', 'gene_occupancy', 'median_copy', 'mean_copy']
+		go_file = self.suffix + '.gene_occupancy'
+		logger.info('outputing gene occupancy to `{}`'.format(go_file))
+		f = open(go_file, 'w')
+		tiles = [5,25,75,90, 95]
+		line = ['species', 'gene_count', 'gene_occupancy%', 'median_copy', 'mean_copy', 
+			] + ['tile{}'.format(tile) for tile in tiles]
 		f.write('\t'.join(map(str, line)) + '\n')
 		for sp in sorted(self.species):
 			xg = d_gene[sp]
 			xng = len(xg)
-			line = [sp, xng, 1e2*xng/ng, np.median(xg), np.mean(xg)]
+			line = [sp, xng, round(1e2*xng/ng,2), np.median(xg), round(np.mean(xg), 2),
+					] + [ np.percentile(xg, tile) for tile in tiles]
 			f.write('\t'.join(map(str, line)) + '\n')
 		f.close()
 		
