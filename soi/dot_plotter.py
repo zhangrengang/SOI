@@ -4,6 +4,7 @@ import argparse,sys, os
 import re
 import networkx as nx
 import numpy as np
+import matplotlib.pyplot as plt
 from .mcscan import Collinearity, Gff, XCollinearity
 #from .OrthoFinder import OrthoFinder
 from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
@@ -23,6 +24,7 @@ def dotplot_args(parser):
 	parser.add_argument('--number-plots', action='store_true', default=False, help="number subplots with (a-d). [default=%(default)s]")
 	parser.add_argument('--min-block', metavar='INT', type=int, default=None, help="min gene number in a block. [default=%(default)s]")
 	parser.add_argument('--min-same-block', metavar='INT', type=int, default=25, help="min gene number in a block on the same chromosome. [default=%(default)s]")
+	parser.add_argument('--min-dist', dest='tandem_dist', metavar='INT', type=int, default=None, help="remove tandem with distance shorter than this value. [default=%(default)s]")
 #	parser.add_argument('--plot-dot', action='store_true', default=None, help="also plot dot without Ks. [default=%(default)s]")
 #	parser.add_argument('--hide-blocks', type=str, default=None, help="blocks to hide, one block id per line. default=%(default)s")
 #	parser.add_argument('--matrix', type=str, default=None, help="output chrom matrix file")
@@ -72,6 +74,10 @@ def dotplot_args(parser):
 	group_ploidy = parser.add_argument_group('ploidy plot', 'options to plot relative ploidy (synteny depth)')
 	group_ploidy.add_argument('--plot-ploidy', action='store_true', default=False, help="plot relative ploidy. [default=%(default)s]")
 	add_ploidy_opts(group_ploidy)
+
+	group_bin = parser.add_argument_group('plot Ks by bins', 'options to plot binned Ks')
+	group_bin.add_argument('--plot-bin', action='store_true', default=False, help="plot binned Ks. [default=%(default)s]")
+
 def reset_args(args):
 	args.matrix = None
 	args.hide_blocks = None
@@ -139,8 +145,9 @@ def main(args):
 		hide_blocks = args.hide_blocks, use_median=args.use_median, 
 		lower_ks=args.lower_ks, upper_ks=args.upper_ks,
 		cluster=args.cluster, diagonal=args.diagonal, gene_axis=args.gene_axis,
-		matrix=args.matrix, min_same_block=args.min_same_block, **ks_args)
-		
+		matrix=args.matrix, min_same_block=args.min_same_block, 
+		min_block=args.min_block, tandem_dist=args.tandem_dist, **ks_args)
+#	logger.info('{} blocks to plot'.format(len(blocks)))	
 	xpositions = [(lines1[i] + lines1[i+1]) / 2 for i in range(len(lines1)-1)]
 	ypositions = [(lines2[i] + lines2[i+1]) / 2 for i in range(len(lines2)-1)]
 	blocks = sorted(blocks, key=lambda x: abs(x[-1][0] - x[0][0]))	# sort by block length
@@ -185,7 +192,7 @@ def _remove_prefix(labels):
 	return [label[2:] for label in labels]
 def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=None, clip_ks=None, min_block=None, ks_step=0.02,
 			xlabels=None, ylabels=None, xpositions=None, ypositions=None, xelines=None, yelines=None, xlim=None, ylim=None,
-			figsize=18, fontsize=10, point_size=0.8, xclines=None, yclines=None,
+			figsize=18, fontsize=10, point_size=0.8, xclines=None, yclines=None, plot_bin=None,
 			xoffset=None, yoffset=None, xbars=None, ybars=None, gff=None, gene_axis=None, xbarlab=True, ybarlab=True, 
 			hist_ylim=None, xlabel=None, ylabel=None, remove_prefix=True, number_plots=True, same_sp=False,
 			ploidy=False, ploidy_data=None, ortholog_graph=None, of_color=False, homology=False, **kargs
@@ -205,7 +212,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 #		cmap = create_ks_map(ks_cmap, max_ks)
 #	else:
 #		cmap = cm.jet
-	x = figsize[0]
+	figwidth = x = figsize[0]
 	if ks is not None:
 		if ks_hist is not None:
 			_y = x * 1.2
@@ -226,11 +233,12 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			ax = plt.subplot2grid((21,20),(0,0), rowspan=20, colspan=20)
 		else:
 			ax = plt.subplot2grid((5,5),(0,0), rowspan=5, colspan=5)
+	# ax1
 	allKs = []
 	kXs, kYs, Ks = [], [], []
 	for block in blocks:
-		if min_block is not None and len(block) < min_block:
-			continue
+		#if min_block is not None and len(block) < min_block:
+		#	continue
 		Xs, Ys, = [], [],
 		#print(block)
 		for pos1, pos2, myks in block:
@@ -270,14 +278,14 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		else:
 			cmap = cm.jet
 	if not ks is None:
-		kXs += [None, None]
+		kXs += [None, None]	# points not plot
 		kYs += [None, None]
 		Ks += [0, max_ks]	# unify the scale
 		plt.scatter(kXs, kYs, marker=',', s=point_size, c = Ks, cmap = cmap, )
 	if same_sp:
 		plt.plot((xmin, xmax), (ymin, ymax), ls='--', color="grey", linewidth=0.8)
 
-	# bars
+	# color bars
 	xlabelpad, ylabelpad = 10, 7.5
 	if xbars:
 		y = ylim
@@ -308,11 +316,11 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 
 	tot_lenx, tot_leny = xlim, ylim
 	# chromosome label
-	for xlabel, xposition, xline in zip(xlabels, xpositions, xelines):
+	for _xlabel, xposition, xline in zip(xlabels, xpositions, xelines):
 		x = xline
 		plt.vlines(x, ymin, ymax, color=chr_color, linewidth=1)
 		x, y = xposition, -tot_leny/150.0
-		plt.text(x, y, xlabel, horizontalalignment='center',verticalalignment='top',fontsize=xcsize) #, rotation=30)
+		plt.text(x, y, _xlabel, horizontalalignment='center',verticalalignment='top',fontsize=xcsize) #, rotation=30)
 	for x in [xmin, xmax]:
 		plt.vlines(x, ymin, ymax, color=chr_color, linewidth=1)
 #	print(xclines, yclines)
@@ -322,11 +330,11 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	if yclines:
 		for yline in yclines:
 			plt.hlines(yline, xmin, xmax, color=arm_color, linewidth=1, ls='--')
-	for ylabel, yposition, yline in zip(ylabels, ypositions, yelines):
+	for _ylabel, yposition, yline in zip(ylabels, ypositions, yelines):
 		y = yline
 		plt.hlines(y, xmin, xmax, color=chr_color, linewidth=1)
 		x, y = -tot_lenx/150.0, yposition
-		plt.text(x, y, ylabel, horizontalalignment='right',verticalalignment='center',fontsize=ycsize) #rotation=30
+		plt.text(x, y, _ylabel, horizontalalignment='right',verticalalignment='center',fontsize=ycsize) #rotation=30
 	for y in [ymin, ymax]:
 		plt.hlines(y, xmin, xmax, color=chr_color, linewidth=1)
 
@@ -344,12 +352,13 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		label = '(a)'
 		plot_label(ax, label, fontsize=lsize)
 
-	label = 'OrthoIndex' if of_color else 'Ks'
+	tlabel = 'OrthoIndex' if of_color else 'Ks'
 	if not ks is None and ks_hist is None and False:	# color map only
 		ax = plt.subplot2grid((21,20),(20,0), colspan=5)
 		plt.axis('off')
 		cbar = plt.colorbar(ax=ax, orientation='horizontal', location='bottom', label=label, shrink=1, fraction=0.5)
 		# cbar.ax.set_xlabel('Ks', fontsize=14)
+
 
 	# ax2
 	if ks_hist:
@@ -358,11 +367,11 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		else:
 			ax = plt.subplot2grid((6,5),(5,0), colspan=5)
 		bins = int(max_ks/ks_step)
-		xlabel = label #'OrthoIndex' if of_color else 'Ks'
+		_xlabel = tlabel #'OrthoIndex' if of_color else 'Ks'
 		#print min(allKs), max(allKs)
 #		ylabel = ' of syntenic gene pairs' if homology else ' of syntenic gene pairs'
-		ylabel = ' of gene pairs'
-		_histgram(ax, allKs, cmap=cmap, xlim = max_ks, ylim=hist_ylim, bins=bins, normed=False, xlabel=xlabel, ylabel=ylabel, fontsize=xcsize)
+		_ylabel = ' of gene pairs'
+		_histgram(ax, allKs, cmap=cmap, xlim = max_ks, ylim=hist_ylim, bins=bins, normed=False, xlabel=_xlabel, ylabel=_ylabel, fontsize=xcsize)
 		label = '(b)'
 		if number_plots:
 			plot_label(ax, label, fontsize=lsize)
@@ -377,9 +386,9 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			ax = plt.subplot2grid((6,5),(5,0), colspan=2)
 			label = '(b)'
 		titles = [None]
-		xlabel = 'Relative y ploidy per x'
-		ylabel = 'Number of {}-gene windows'.format(kargs['window_size'])
-		plot_fold(ax, titles, coord_path1, coord_graph1, coord_graph2, ortholog_graph, xlabel=xlabel, ylabel=ylabel, **kargs)
+		_xlabel = 'Relative y ploidy per x'
+		_ylabel = 'Number of {}-gene windows'.format(kargs['window_size'])
+		plot_fold(ax, titles, coord_path1, coord_graph1, coord_graph2, ortholog_graph, xlabel=_xlabel, ylabel=_ylabel, **kargs)
 		if number_plots:
 			plot_label(ax, label, fontsize=lsize)
 		# bar2
@@ -390,14 +399,42 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			ax = plt.subplot2grid((6,5),(5,3), colspan=2)
 			label = '(c)'
 		titles = [None]
-		xlabel = 'Relative x ploidy per y'
-		plot_fold(ax, titles, coord_path2, coord_graph2, coord_graph1, ortholog_graph, xlabel=xlabel, ylabel=None, **kargs)
+		_xlabel = 'Relative x ploidy per y'
+		plot_fold(ax, titles, coord_path2, coord_graph2, coord_graph1, ortholog_graph, xlabel=_xlabel, ylabel=None, **kargs)
 		if number_plots:
 			plot_label(ax, label, fontsize=lsize)
 	plt.subplots_adjust(hspace=0.3)
 	for outplot in outplots:
 		plt.savefig(outplot, bbox_inches='tight')
-	
+	# x ~ Ks
+	if plot_bin:
+		outfig = os.path.splitext(outplots[0])[0] + '.bin.png'
+		ymax = min(max_ks, np.percentile(Ks, 95) *1.2)
+		_kargs = dict(point_size=point_size, cmap=cmap, chr_color=chr_color, arm_color=arm_color,
+				ymax=ymax, figwidth=figwidth, outfig=outfig, ylab=tlabel, alpha=0.3, 
+				csize=xcsize, size=xsize, wsize=kargs['window_size'])
+		plot_collapse(kXs, kYs, Ks, xlabels, ylabels, xpositions, ypositions,
+		    xelines, yelines, xclines, yclines, xlabel, ylabel, **_kargs)
+
+def plot_collapse(kXs, kYs, Ks, xlabels, ylabels, xpositions, ypositions, 
+		xelines, yelines, xclines, yclines, xlabel, ylabel, 
+		figwidth, outfig, **kargs):
+	from .depth_bins_plot import bin_plot
+	height = figwidth/4
+	plt.figure(figsize=(figwidth, height))
+	# x
+	ax = plt.subplot(2, 1, 1)
+	bin_plot(Xs=[kXs], Ys=[Ks], labels=xlabels, label_x=xpositions, vlines=xelines, vvlines=xclines,
+		title=xlabel, ax=ax, **kargs) 
+	# y
+	ax = plt.subplot(2, 1, 2)
+	bin_plot(Xs=[kYs], Ys=[Ks], labels=ylabels, label_x=ypositions, vlines=yelines, vvlines=yclines,
+		title=ylabel, ax=ax, **kargs)
+
+	plt.subplots_adjust(hspace=0.6)
+	plt.savefig(outfig, bbox_inches='tight')
+
+
 def plot_label(ax, label, **kargs):
 	xmin, xmax = ax.get_xlim()
 	ymin, ymax = ax.get_ylim()
@@ -544,7 +581,7 @@ def parse_gff(gff, chrs1, chrs2):
 def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology, 
 		hide_blocks=None, use_median=False, lower_ks=None, upper_ks=None,
 		cluster=False, diagonal=False, gene_axis=False, source=None, 
-		ofdir=None, of_ratio=0, of_color=False, 
+		ofdir=None, of_ratio=0, of_color=False, tandem_dist=None, min_block=None,
 		matrix=None, min_same_block=None, **ks_args):
 	blocks = XCollinearity(collinearity, orthologs=ofdir, gff=gff, kaks=kaks, homology=homology, source=source, **ks_args)
 #	if ofdir:
@@ -556,8 +593,11 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 	d_blocks = {}
 	d_blocks2 = {}
 	ortholog_graph = nx.Graph()
-	
+	i,j = 0,0
+	m,n = 0,0
 	for rc in blocks: #.parse():
+		i += 1
+		m += rc.N
 		if not ((rc.chr1 in chrs1s and rc.chr2 in chrs2s) or ( rc.chr1 in chrs2s and rc.chr2 in chrs1s)):
 			continue
 		if hide_blocks is not None and rc.Alignment in hide_blocks:
@@ -570,9 +610,17 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 			chr1, chr2 = rc.chr2, rc.chr1
 			genes1, genes2 = rc.genes2, rc.genes1
 			start1, start2 = rc.start2, rc.start1
+		# discard some genes on the same chrom
 		if not homology and min_same_block is not None and chr1==chr2 and min_same_block > rc.N:
 			continue
+		# discard short blocks
+		if min_block is not None and rc.N < min_block:
+			continue
+		# discard tandem blocks
+		if tandem_dist is not None and rc.is_tandem(max_dist=tandem_dist):
+			continue
 		# filter by Ks
+		# discard median_ks < lower_ks or median_ks > upper_ks
 		if lower_ks is not None and rc.median_ks < lower_ks:
 			continue
 		if upper_ks is not None and rc.median_ks > upper_ks:
@@ -599,6 +647,9 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 			value = [rc.score, start1, start2, rc.median_ks]
 			try: d_blocks2[(chr1, chr2)] += [value]
 			except KeyError: d_blocks2[(chr1, chr2)] = [value]
+		j += 1
+		n += rc.N
+	logger.info('retained: {}/{} blocks, {}/{} genes'.format(j, i, n,m))
 	
 	if diagonal:
 		chrs1, chrs2 = diagonal_chroms(d_blocks2, chrs1, chrs2)

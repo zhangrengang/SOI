@@ -135,6 +135,7 @@ class AK:
 	def plot_dotplot(self, ax=None, d_offset={}, gff=None, align='center', xy=1,  axis='x', width=0.5, label=True, gene_axis=False, fontsize=10):
 		bar = plt.bar if axis =='y' else plt.barh
 		has_lab = False
+		texts = []
 		for sgement in self.lazy_lines(gene_axis, gff=gff):
 			offset = d_offset[sgement.chrom] + sgement.start
 			lab = sgement.label if label else None
@@ -146,12 +147,19 @@ class AK:
 			if axis == 'x':
 				x = offset + len(sgement)/2
 				y = xy + width*1.05
-				plt.text(x, y, lab, horizontalalignment='center',verticalalignment='bottom',fontsize=fontsize)
+				text = plt.text(x, y, lab, horizontalalignment='center',verticalalignment='bottom',fontsize=fontsize)
 			elif axis == 'y':
 				x = xy + width*1.07
 				y = offset + len(sgement)/2
-				plt.text(x, y, lab, horizontalalignment='left',verticalalignment='center',fontsize=fontsize, rotation=90)
+				text = plt.text(x, y, lab, horizontalalignment='left',verticalalignment='center',fontsize=fontsize, rotation=90)
+			texts += [text]
+#		if texts:
+#			_adjust_text(texts)
 		return has_lab
+def _adjust_text(*args):
+	from adjustText import adjust_text
+	adjust_text(*args)
+
 class Chromosome:
 	def __init__(self, segments):
 		self.segments = segments

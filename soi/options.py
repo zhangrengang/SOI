@@ -26,12 +26,15 @@ def args_filter(parser):
 	parser.add_argument('-c', '-cutoff',  type=float, default=0.6,
 					dest='min_ratio',  metavar='FLOAT',
 					help="Cutoff (lower limit) of Orthology Index [default=%(default)s]")
-	parser.add_argument('-upper',  type=float, default=1,
+	parser.add_argument('-u', '-upper',  type=float, default=1,
 					dest='max_ratio',  metavar='FLOAT',
 					help="Upper limit of Orthology Index [default=%(default)s]")
 	parser.add_argument('-n', '-min_n',  type=int, default=0,
 					dest='min_n',  metavar='INT',
 					help="Minimum gene number in a block [default=%(default)s]")
+	parser.add_argument('-d', '-min_dist',  type=int, default=None,
+                    dest='min_dist',  metavar='INT',
+                    help="Minimum distance to remove a tandem repeated block [default=%(default)s]")
 	parser.add_argument('-stat', default=None,
                     dest='out_stats', type=str, 
                     help="Output stats by species pairs. [default=%(default)s]")

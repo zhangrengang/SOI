@@ -265,7 +265,7 @@ class XOrthology:
 #					print(rc, file=sys.stderr)
 					yield rc
 def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.stdout, 
-		gff=None, kaks=None, source=None, min_n=0, #paralog=False, both=True 
+		gff=None, kaks=None, source=None, min_n=0, min_dist=None, #paralog=False, both=True 
 		min_ratio=0.5, max_ratio=1, species=None, homo_class=None, out_stats=None, test_diff=False):
 	if species is not None:
 		species = parse_species(species)
@@ -280,6 +280,7 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 	total_oi = 0
 	d_sp_count = OrderedDict()
 	logger.info('filtering collinearity...')
+	rn, rd, ro = 0,0,0
 	for rc in XCollinearity(collinearities, orthologs=orthologs, 
 				gff=gff, kaks=kaks, source=source, sps=species, homo_class=homo_class):
 		pre_nb += 1
@@ -290,8 +291,13 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 		d_sp_count[sp_pair].pre_nb += 1
 		d_sp_count[sp_pair].pre_ng += rc.N
 		if rc.N < min_n:
+			rn += 1
+			continue
+		if min_dist is not None and rc.is_tandem(min_dist):
+			rd += 1
 			continue
 		if not (min_ratio < rc.oi <= max_ratio):
+			ro += 1
 			continue
 		post_nb += 1
 		post_ng += rc.N
@@ -551,7 +557,7 @@ class Collinearity():
 		self.species2 = gene2.split('|')[0]
 		self.species = SpeciesPair(self.species1, self.species2)
 	def is_tandem(self, max_dist=10):
-		if self.species1 != self.species2:
+		if self.species1 != self.species2 or self.chr1 != self.chr2:
 			return False
 		dist = max(self.istart1, self.istart2) - min(self.iend1, self.iend2)
 		if dist < max_dist:
