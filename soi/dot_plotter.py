@@ -5,6 +5,13 @@ import re
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.use("Agg")
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
+mpl.rcParams['font.family'] = 'sans-serif'
+mpl.rcParams['font.sans-serif'] = 'Arial'
+
 from .mcscan import Collinearity, Gff, XCollinearity
 #from .OrthoFinder import OrthoFinder
 from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars

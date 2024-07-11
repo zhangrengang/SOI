@@ -156,6 +156,17 @@ class AK:
 #		if texts:
 #			_adjust_text(texts)
 		return has_lab
+	def to_jcvi(self, gene_axis=False, gff=None, outpre='jcvi'):
+		f1 = open(outpre+'.bed', 'w')
+		f2 = open(outpre+'.idmap', 'w')
+		for seg in self.lazy_lines(gene_axis, gff=gff):
+			line = [seg.chrom, seg.start, seg.end, seg.id]
+			print('\t'.join(map(str,line)), file=f1)
+			line = [seg.id, seg.id, seg.color]
+			print('\t'.join(map(str,line)), file=f2)
+		f1.close()
+		f2.close()
+
 def _adjust_text(*args):
 	from adjustText import adjust_text
 	adjust_text(*args)
@@ -194,6 +205,9 @@ class Segment:
 		except IndexError: self.label = None
 	def __len__(self):
 		return self.end - self.start + 1
+	@property
+	def id(self):
+		return '{}:{}-{}|{}'.format(self.chrom, self.start, self.end, self.subgenome)
 	def write(self, fout):
 		print('\t'.join(map(str, (self.chrom, self.start, self.end, self.color, self.subgenome))), file=fout)
 def stats_besthits(alignment, pol_indice, dip_indice, labels, blasts):
@@ -813,6 +827,10 @@ def main():
 	elif subcmd == 'plot_ak':
 		akfile = sys.argv[2]
 		AK(akfile).plot(**kargs)
+	elif subcmd == 'anc2jcvi':
+		akfile = sys.argv[2]
+		gff= sys.argv[3]
+		AK(akfile).to_jcvi(gff=gff, **kargs)
 	else:
 		raise ValueError('Unknown sub command: {}'.format(subcmd))
 if __name__ == '__main__':

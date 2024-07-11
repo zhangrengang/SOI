@@ -32,7 +32,8 @@ class Gene():
 		self.end = end
 		self.strand = strand
 		self.coord = (chr, start, end)
-		self.species, self.raw_gene = id.split('|', 1)
+		try: self.species, self.raw_gene = id.split('|', 1)
+		except ValueError: pass
 	def __str__(self):
 		return self.id
 	def __hash__(self):
@@ -436,13 +437,16 @@ class Collinearity():
 #					print >> sys.stderr, line.strip().split('\t')
 					gene1, idx1, gene2, idx2, strand = line.strip().split()
 					
-				else:
+				else: # mcscan
 					pattern = r'.*?\d+.*?\d+:\s+(\S+)\s+(\S+)\s+\d+'
 					#print line
 					try: gene1, gene2 = re.compile(pattern).match(line).groups()
 					except AttributeError:
 						print('unparsed LINE: {}'.format(line), file=sys.stderr)
 						continue
+					tmp = line.strip().split()
+					if len(tmp) > 5:
+						self.ks = float(tmp[-1])
 				genes1.append(gene1)
 				genes2.append(gene2)
 		if self.source == 'jcvi':
@@ -988,7 +992,8 @@ class GffLine:
 			chr, gene, start, end, strand
 		self.Gene = g
 		self.id = gene
-		self.species, self.raw_gene = gene.split('|', 1)
+		try: self.species, self.raw_gene = gene.split('|', 1)
+		except ValueError: pass
 	def __hash__(self):
 		return hash(self.id)
 	def __str__(self):
