@@ -35,7 +35,7 @@ class Gene():
 		try: self.species, self.raw_gene = id.split('|', 1)
 		except ValueError: 
 			logger.warn('Species id not found in `{}`, ignoring'.fomart(id))
-			self.species = self.raw_gene = id
+			self.species, self.raw_gene = None, id
 	def __str__(self):
 		return self.id
 	def __hash__(self):
@@ -579,6 +579,8 @@ class Collinearity():
 		for line in open(self.gff):
 			line = lazy_decode(line)
 			temp = line.rstrip().split('\t')
+			if not temp or line.startswit('#'):
+				continue
 			chr, gene, start, end = temp[:4]
 			if gene in genes:	# remove repeat
 				continue
