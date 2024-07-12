@@ -33,7 +33,9 @@ class Gene():
 		self.strand = strand
 		self.coord = (chr, start, end)
 		try: self.species, self.raw_gene = id.split('|', 1)
-		except ValueError: pass
+		except ValueError: 
+			logger.warn('Species id not found in `{}`, ignoring'.fomart(id))
+			self.species = self.raw_gene = id
 	def __str__(self):
 		return self.id
 	def __hash__(self):
