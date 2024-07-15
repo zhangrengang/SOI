@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
-mpl.rcParams['ps.fonttype'] = 42
-mpl.rcParams['font.family'] = 'sans-serif'
-mpl.rcParams['font.sans-serif'] = 'Arial'
-
+#mpl.rcParams['ps.fonttype'] = 42
+#mpl.rcParams['font.family'] = 'sans-serif'
+#mpl.rcParams['font.sans-serif'] = 'Arial'
+import logging
 from .mcscan import Collinearity, Gff, XCollinearity
 #from .OrthoFinder import OrthoFinder
 from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
@@ -415,6 +415,9 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		if number_plots:
 			plot_label(ax, label, fontsize=lsize)
 	plt.subplots_adjust(hspace=0.3)
+
+	logger.info('Output figures: {}'.format(outplots))
+	logging.disable()
 	for outplot in outplots:
 		plt.savefig(outplot, bbox_inches='tight')
 	# x ~ Ks
@@ -674,6 +677,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 	d_offset2, lines2 = _offset(chrs2, d_length)
 
 	xblocks = []
+	ksx = []
 	for chr_pair, tblocks in list(d_blocks.items()):
 		chr1, chr2 = chr_pair
 		for (genes1, genes2, ksS) in tblocks:
@@ -691,9 +695,16 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 					pos1 = (gene1.start + gene1.end) / 2 + d_offset1[chr1]
 					pos2 = (gene2.start + gene2.end) / 2 + d_offset2[chr2]
 				points += [(pos1, pos2, ks)]
+				ksx += [ks]
 			if not points:
 				continue
 			xblocks += [points]
+#	print(xblocks)
+	if len(xblocks) == 0:
+		logger.warn('No genes are retained or can be found in `Gff`. Check your files')
+	ksx = set(ksx)
+	if len(ksx) == 1:
+		logger.warn('All Ks have the same value: {}'.format(ksx))
 	if matrix is not None:
 		fout = open(matrix, 'w')
 		d_matrix = to_matrix(d_blocks)
