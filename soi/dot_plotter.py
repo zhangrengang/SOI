@@ -194,9 +194,13 @@ def main(args):
 			xoffset=d_offset1, yoffset=d_offset2, gff=gff, 
 			ploidy=args.plot_ploidy, ploidy_data = ploidy_data, ortholog_graph=ortholog_graph, **args.__dict__
 			)
-
+def is_mcscan_style(labels):
+	matches = [re.compile(r'[A-Za-z]{2}\d+').match(lab) for lab in labels]
+	return all(matches)
 def _remove_prefix(labels):
-	return [label[2:] for label in labels]
+	if is_mcscan_style(labels):
+		return [label[2:] for label in labels]
+	return labels
 def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=None, clip_ks=None, min_block=None, ks_step=0.02,
 			xlabels=None, ylabels=None, xpositions=None, ypositions=None, xelines=None, yelines=None, xlim=None, ylim=None,
 			figsize=18, fontsize=10, point_size=0.8, xclines=None, yclines=None, plot_bin=None,

@@ -453,8 +453,8 @@ The ctl format for MCscanX (dot_plotter) is supported:
 ```
 1500
 1500
-As1,As2,As3,As4,As5,As6,As7,As8,As9,As10,As11
-Dc1,Dc2,Dc3,Dc4,Dc5,Dc6,Dc7,Dc8,Dc9
+As1,As2,As3,As4,As5,As6,As7,As8,As9,As10,As11	// y 
+Dc1,Dc2,Dc3,Dc4,Dc5,Dc6,Dc7,Dc8,Dc9				// x
 ```
 
 In summary, users may be not needed to preprare additional files for this tool. And other popular format can be supported upon request.

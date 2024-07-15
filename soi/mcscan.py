@@ -579,7 +579,7 @@ class Collinearity():
 		for line in open(self.gff):
 			line = lazy_decode(line)
 			temp = line.rstrip().split('\t')
-			if not temp or line.startswit('#'):
+			if not temp or line.startswith('#'):
 				continue
 			chr, gene, start, end = temp[:4]
 			if gene in genes:	# remove repeat
