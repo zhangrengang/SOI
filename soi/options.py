@@ -32,6 +32,9 @@ def args_filter(parser):
 	parser.add_argument('-n', '-min_n',  type=int, default=0,
 					dest='min_n',  metavar='INT',
 					help="Minimum gene number in a block [default=%(default)s]")
+	parser.add_argument('-g', '-gff', type=str,  
+                    dest='gff',  metavar='FILE',
+                    help="Gff file. [required for `-d`]")
 	parser.add_argument('-d', '-min_dist',  type=int, default=None,
                     dest='min_dist',  metavar='INT',
                     help="Minimum distance to remove a tandem repeated block [default=%(default)s]")

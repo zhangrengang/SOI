@@ -195,7 +195,7 @@ def main(args):
 			ploidy=args.plot_ploidy, ploidy_data = ploidy_data, ortholog_graph=ortholog_graph, **args.__dict__
 			)
 def is_mcscan_style(labels):
-	matches = [re.compile(r'[A-Za-z]{2}\d+').match(lab) for lab in labels]
+	matches = [re.compile(r'[A-Za-z]{2}\d{1,5}[A-Za-z]*$').match(lab) for lab in labels]
 	return all(matches)
 def _remove_prefix(labels):
 	if is_mcscan_style(labels):
@@ -701,10 +701,10 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 			xblocks += [points]
 #	print(xblocks)
 	if len(xblocks) == 0:
-		logger.warn('No genes are retained or can be found in `Gff`. Check your files')
+		logger.warn('No genes are retained or can be found in `Gff`. Check your files.')
 	ksx = set(ksx)
 	if len(ksx) == 1:
-		logger.warn('All Ks have the same value: {}'.format(ksx))
+		logger.warn('All Ks have the same value: {}. Ks color map will be disabled'.format(ksx))
 	if matrix is not None:
 		fout = open(matrix, 'w')
 		d_matrix = to_matrix(d_blocks)
