@@ -14,7 +14,7 @@
    * [Phylogenomics pipeline](#Phylogenomics-pipeline)
    * [Input formats](#input-formats)
    * [Output formats](#output-formats)
-
+   * [Citation](#citation)
 ## Quick start ##
 ```
 git clone https://github.com/zhangrengang/orthoindex.git
@@ -473,3 +473,6 @@ SOG3001: Angelica_sinensis|AS08G03434 Angelica_sinensis|AS08G03435 Apium_graveol
 SOG3002: Angelica_sinensis|AS10G01791 Apium_graveolens|Ag1G00857 Apium_graveolens|Ag6G02641 Aralia_elata|AE12G02379 Centella_asiatica|evm.TU.Scaffold_7.2680 Coriandrum_sativum|Cs06G01941 Coriandrum_sativum|Cs06G01943 Coriandrum_sativum|Cs09G00381 Daucus_carota|DCAR_001660 Daucus_carota|DCAR_029095 Panax_ginseng|GWHGBEIL023683.1 Panax_ginseng|GWHGBEIL043112.1 Panax_notoginseng|PN013453
 ...
 ```
+
+## Citation ##
+Zhang RG, Shang HY, Zhou MJ et. al. Robust identification of orthologous synteny with the Orthology Index and its applications in reconstructing the evolutionary history of plant genomes. bioRxiv, 2024 [http://doi.org/10.1101/2024.08.22.609065]

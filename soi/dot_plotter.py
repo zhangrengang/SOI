@@ -317,7 +317,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			ylabelpad += ycsize * 0.75
 
 	# species label
-	chr_color, arm_color = "dimgrey", "grey"
+	chr_color, arm_color = "dimgrey", 'silver' #c0c0c0, "grey":808080
 	if xlabel:
 		ax.set_xlabel(xlabel, ha='center', fontsize=xsize, labelpad=xlabelpad)
 		ax.xaxis.set_label_position('top')
