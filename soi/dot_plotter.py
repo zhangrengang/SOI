@@ -657,7 +657,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 #			pairs = { tuple(sorted(x)) for x in rc.pairs}
 #			intersect = pairs & ortholog_pairs
 			ratio = rc.oi #1.0*len(intersect) / len(pairs)
-			if not ratio >= of_ratio:
+			if not ratio > of_ratio:
 				continue
 			if of_color:
 				ks = [ratio] * len(genes1)
