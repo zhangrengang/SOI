@@ -627,7 +627,63 @@ def retrieve_allele(ResultsDir, collinearity, gff, fout=sys.stdout, min_block=10
 	print('\t'.join(line), file=fout)
 	for line in sorted(lines):
 		print('\t'.join(map(str, line)), file=fout)
-
+class SonicParanoid:
+	def __init__(self, ResultsDir):
+		self.ResultsDir = ResultsDir
+		self.Orthogroups = '{}/ortholog_groups/ortholog_groups.tsv'.format(ResultsDir)
+		self.Orthologues = glob.glob('{}/species_to_species_orthologs/*/*'.format(ResultsDir))
+	def get_homologs(self, sps=None, sp1=None, sp2=None, **kargs):
+		'''获取成对的orthologs'''
+		if sp1 is not None or sp2 is not None:
+			sps = {sp1, sp2}
+		if sps is not None:
+			orthoFiles = []
+			for sp1, sp2 in itertools.permutations(sps, 2):
+				orthoFiles += ['{}/species_to_species_orthologs/{}/{}-{}'.format(self.ResultsDir, sp1, sp1, sp2)]
+		else:
+			orthoFiles = self.Orthologues
+		ortho_pairs = set([])
+		idx = 0
+		for orthoFile in orthoFiles:
+			idx += 1
+			for line in SonicParanoidOrthologs(orthoFile):
+				Genes_1 = line.OrthoA
+				Genes_2 = line.OrthoB
+				for g1, g2 in itertools.product(Genes_1, Genes_2):
+					if (g2, g1) in ortho_pairs:
+						continue
+					ortho_pairs.add( (g1, g2) ) #orthologs
+				for Genes in [Genes_1, Genes_2]:
+					if len(Genes) < 2:
+						continue
+					for g1, g2 in itertools.combinations(Genes, 2):
+						if (g2, g1) in ortho_pairs:
+							continue
+						ortho_pairs.add( (g1, g2) ) # inparalogs
+		return ortho_pairs
+def test_sonicparanoid(ResultsDir=sys.argv[2]):
+	for g1, g2 in SonicParanoid(ResultsDir).get_homologs():
+		print(g1, g2)
+class SonicParanoidOrthologs:
+	def __init__(self, orthologs):
+		self.orthologs = orthologs
+	def __iter__(self):
+		return self._parse()
+	def _parse(self):
+		i = 0
+		for line in open(self.orthologs):
+			i += 1
+			if i == 1:
+				continue
+			yield SonicParanoidOrthologsLine(line)
+class SonicParanoidOrthologsLine:
+	def __init__(self, line):
+		Size, Relations, OrthoA, OrthoB = line.strip().split('\t')
+		self.OrthoA = self.parse_ortho(OrthoA)
+		self.OrthoB = self.parse_ortho(OrthoB)
+	def parse_ortho(self, Ortho):
+		return [val for i, val in enumerate(Ortho.split()) if i %2 ==0]
+			
 class OrthoFinder:
 	def __init__(self, ResultsDir):
 		self.ResultsDir = ResultsDir
@@ -2301,6 +2357,8 @@ def main():
 		try: species = sys.argv[3]
 		except IndexError: species=None
 		OrthoFinder(OFdir).to_wgdi(parse_species(species), **kargs)
+	elif subcommand == 'test_spd':
+		test_sonicparanoid()
 	else:
 		raise ValueError('Unknown command: {}'.format(subcommand))
 

@@ -244,7 +244,8 @@ def combine_tabs_2xls(table_files, xls_file = None, sheets = None):
 				j += 1
 			i += 1
 	wb.save(xls_file)
-
+def get_suffix(infile):
+	return os.path.splitext(infile)[-1]
 def open_file(infile, mode='r'):
 	suffix = os.path.splitext(infile)[-1]
 	if suffix == '.gz':

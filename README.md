@@ -65,10 +65,12 @@ soi dotplot -s Populus_trichocarpa-Salix_dunnii.collinearity.gz \
 
 # filter orthologous synteny
 soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o OrthoFinder/OrthoFinder/Results_*/ \
-        -c 0.6 > Populus_trichocarpa-Salix_dunnii.collinearity.ortho
+        -c 0.6 > Populus_trichocarpa-Salix_dunnii.collinearity.ortho.test
 # or (alter input format)
 soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o Populus_trichocarpa-Salix_dunnii.orthologs.gz \
-        -c 0.6 > Populus_trichocarpa-Salix_dunnii.collinearity.ortho
+        -c 0.6 > Populus_trichocarpa-Salix_dunnii.collinearity.ortho.test
+# compare with the expected output: no output via `diff`
+diff Populus_trichocarpa-Salix_dunnii.collinearity.ortho Populus_trichocarpa-Salix_dunnii.collinearity.ortho.test
 
 ```
 ### Example output dot plots ###

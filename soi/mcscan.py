@@ -10,7 +10,7 @@ import itertools
 from Bio import SeqIO, Phylo
 from lazy_property import LazyWritableProperty as lazyproperty
 
-from .OrthoFinder import catAln, format_id_for_iqtree, OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder, parse_species, exists_and_size_gt_zero
+from .OrthoFinder import catAln, format_id_for_iqtree, OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder,SonicParanoid, parse_species, exists_and_size_gt_zero
 from .small_tools import mkdirs, flatten, test_s, test_f, parse_kargs, rmdirs, lazy_decode
 from .RunCmdsMP import run_cmd, run_job, logger
 from .small_tools import open_file as open
@@ -50,7 +50,7 @@ class Gene():
 		return int(re.compile(r'[^\d\s]+(\d+)').match(self.chr).groups()[0])
 
 class KaKs():
-	def __init__(self, info, fdtv=False, yn00=False, wgdi=False, method='NG86', **kargs):
+	def __init__(self, info, kaks=False, fdtv=False, yn00=False, wgdi=False, method='NG86', **kargs):
 		self.info = info
 		if yn00:
 			self.parse_yn00(method=method)
@@ -58,8 +58,11 @@ class KaKs():
 			self.parse_wgdi(method=method)
 		elif fdtv:
 			self.parse_4dtv()
-		else:
+		elif kaks:
 			self.parse_ks()
+		else:
+			print('unrecognized Ks format')
+		#print(vars())
 		self.parse_pair()	
 	def parse_4dtv(self):
 		(Sequence, fD_Sites, Identical_Sites, TS_Sites, TV_Sites, fDS, fDTS, fDTV, Corrected_4DTV) = self.info
@@ -125,13 +128,16 @@ class KaKsParser:
 	def __iter__(self):
 		return self._parse()
 	def _parse(self):
+		self.kargs['wgdi'] = True
 		for line in open(self.kaks):
 			line = lazy_decode(line)
 			temp = line.rstrip().split()
 #			print >> sys.stderr, temp
 			#print(temp)
 			if temp[0] in {'Sequence', 'id1'}:
-				if temp[1] == 'dS-YN00':
+				if temp[1] == 'Method':
+					self.kargs['kaks'] = True
+				elif temp[1] == 'dS-YN00':
 					self.kargs['yn00'] = True
 				elif temp[2] == 'ka_NG86':
 					self.kargs['wgdi'] = True
@@ -222,8 +228,9 @@ class XCollinearity:
 	def _parse(self):
 		if self.orthologs is not None:
 			ortholog_pairs = set(XOrthology(self.orthologs, **self.kargs))
+			#logger.info(list(ortholog_pairs)[:10])
 			logger.info('\t{} homologous pairs'.format(len(ortholog_pairs)))
-		logger.info('parsing {} collinearity files: {}...'.format(
+		logger.info('parsing {} collinearity files: {} ...'.format(
 			len(self.collinearities), self.collinearities[:3]))
 		nblock, ngene = 0, 0
 		for collinearity in self.collinearities:
@@ -244,7 +251,40 @@ class XCollinearity:
 					rc.ton = len(ortholog_pairs)	# all syntenic orthologs
 					rc.ortholog_pairs = ortholog_pairs
 				yield rc
+		#logger.info(list(pairs)[:10])
 		logger.info('\t{} collinearity blocks, {} collinearity genes'.format(nblock, ngene))
+class Xpairs:
+	def __init__(self, ortholog):
+		self.ortholog = ortholog
+	def __iter__(self):
+		return self._parse()
+	def _parse(self):
+		if os.path.isdir(self.ortholog): # orthofinder
+			for pair in OrthoFinder(self.ortholog).get_homologs(**self.kargs):
+				yield Pair(*pair)
+		else: # collinearity & homolog pairs
+			for rc in Collinearity(self.ortholog):
+				for pair in rc.pairs:
+					yield Pair(*pair)
+
+def evaluate_orthology(ref, qry):
+	ref_pairs = set(Xpairs(ref))
+	AP = len(ref_pairs)
+	logger.info('{} pairs in {}'.format(AP, ref))
+	qry_pairs = set(Xpairs(qry))
+	AD = len(qry_pairs)
+	logger.info('{} pairs in {}'.format(AD, qry))
+	TP = len(qry_pairs & ref_pairs)
+	FP = AD - TP
+	FN = AP - TP
+	precision = 1.0 * TP/ (TP+FP)
+	recall = 1.0 * TP/ (TP+FN)
+	f1_score = 2* precision * recall / (precision + recall)
+	logger.info('TP: {}; FP: {}; FN: {}'.format(TP, FP, FN))
+	logger.info('Precision: {}; Recall: {}; F1 Score: {}'.format(precision, recall, f1_score))
+	line = [qry, precision, recall, f1_score]
+	print('\t'.join(map(str, line)))
+
 class XOrthology:
 	def __init__(self, orthologs, **kargs):
 		self.orthologs = self._parse_list(orthologs)
@@ -259,9 +299,10 @@ class XOrthology:
 			return _orthologs
 	def _parse(self):
 		for ortholog in self.orthologs:
-			logger.info('parsing {}...'.format(ortholog))
+			logger.info('parsing {} ...'.format(ortholog))
 			if os.path.isdir(ortholog):	# orthofinder
-				for pair in OrthoFinder(ortholog).get_homologs(**self.kargs):
+				parser = SonicParanoid if os.path.isdir(ortholog+'/species_to_species_orthologs') else OrthoFinder
+				for pair in parser(ortholog).get_homologs(**self.kargs):
 					yield Pair(*pair)
 			else:	# orthomcl or similar format
 				for rc in Pairs(ortholog, parser=Pair):
@@ -326,7 +367,8 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 		pre_nb, pre_ng, post_nb, 1.0*post_nb/pre_nb, post_ng, 1.0*post_ng/pre_ng))
 	logger.info('Orthology: Pre-filter: {} pairs; Post-filter: {} ({:.1%}) pairs.'.format(
 		rc.ton, post_no, 1.0*post_no/rc.ton))
-	logger.info('Post-filter mean OrthoIndex: {:.2f}'.format(total_oi/post_ng))
+	if post_ng > 0:
+		logger.info('Post-filter mean OrthoIndex: {:.2f}'.format(total_oi/post_ng))
 	if homo_class is not None:
 		out_class.close()
 	if out_stats is  None:
@@ -374,6 +416,11 @@ class Collinearity():
 			f.write(self.header)
 		f.write(self.block)
 	def parse(self):
+		start = lazy_decode(open(self.collinearity).read(1))
+		if start != '#' and not self.homology:
+			self.homology = True
+		#logger.info(lazy_decode(open(self.collinearity).read(10)))
+		#logger.info('self.homology: {}'.format( self.homology))
 		if not self.homology:
 			lines = []
 			head = []
@@ -1056,6 +1103,8 @@ class CommonPair(object):
 	def __str__(self):
 		return '{}-{}'.format(*self.pair)
 	def __format__(self):
+		return str(self)
+	def __repr__(self):
 		return str(self)
 	@property
 	def key(self):
@@ -3038,6 +3087,9 @@ def main():
 	elif subcmd == 'get_ks':
 		ksfile = sys.argv[2]
 		get_ks(ksfile, pairfile=sys.stdin, outks=sys.stdout, outpair=sys.stderr, **kargs)
+	elif subcmd == 'eval_ortho':
+		ref, qry = sys.argv[2:4]
+		evaluate_orthology(ref, qry)
 	else:
 		raise ValueError('Unknown sub command: {}'.format(subcmd))
 if __name__ == '__main__':

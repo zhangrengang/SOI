@@ -53,7 +53,7 @@ def dotplot_args(parser):
 
 	group_dot.add_argument('--xlabel', type=str, default=None, help="x label for dot plot. [default=%(default)s]")
 	group_dot.add_argument('--ylabel', type=str, default=None, help="y label for dot plot. [default=%(default)s]")
-	group_dot.add_argument('--figsize', metavar='NUM', type=float, nargs='+', default=[18], help="figure size (width [height]) [default=%(default)s]")
+	group_dot.add_argument('--figsize', metavar='NUM', type=float, nargs='+', default=[16], help="figure size (width [height]) [default=%(default)s]")
 	group_dot.add_argument('--fontsize', metavar='NUM', type=float, default=10, help="font size of chromosome labels [default=%(default)s]")
 	group_dot.add_argument('--dotsize', metavar='NUM', type=float, default=1, dest='point_size', help="dot size [default=%(default)s]")
 
@@ -73,6 +73,7 @@ def dotplot_args(parser):
 	group_ks.add_argument('--method', metavar='STR', type=str, default='NG86', help='Ks calculation method [default=%(default)s]')
 	group_ks.add_argument('--lower-ks', metavar='Ks', type=float, default=None, help="lower limit of median Ks. [default=%(default)s]")
 	group_ks.add_argument('--upper-ks', metavar='Ks', type=float, default=None, help="upper limit of median Ks. [default=%(default)s]")
+	group_ks.add_argument('--output-hist', action='store_true', default=False, help="output the data for histogram plot. [default=%(default)s]")
 #	group_ks.add_argument('--clip-ks', action='store_true', default=None, help="clip ks > max-ks. [default=%(default)s]")
 #	group_ks.add_argument('--hist-ylim', type=float, default=None, help="max y axis of Ks histgram. [default=%(default)s]")
 #	group_ks.add_argument('--yn00', action='store_true', default=False, help='turn to YN00[default=%(default)s]')
@@ -203,7 +204,7 @@ def _remove_prefix(labels):
 	return labels
 def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=None, clip_ks=None, min_block=None, ks_step=0.02,
 			xlabels=None, ylabels=None, xpositions=None, ypositions=None, xelines=None, yelines=None, xlim=None, ylim=None,
-			figsize=18, fontsize=10, point_size=0.8, xclines=None, yclines=None, plot_bin=None,
+			figsize=18, fontsize=10, point_size=0.8, xclines=None, yclines=None, plot_bin=None, output_hist=False,
 			xoffset=None, yoffset=None, xbars=None, ybars=None, gff=None, gene_axis=None, xbarlab=True, ybarlab=True, 
 			hist_ylim=None, xlabel=None, ylabel=None, remove_prefix=True, number_plots=True, same_sp=False,
 			ploidy=False, ploidy_data=None, ortholog_graph=None, of_color=False, homology=False, **kargs
@@ -377,12 +378,16 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			ax = plt.subplot2grid((6,5),(5,0), colspan=3)
 		else:
 			ax = plt.subplot2grid((6,5),(5,0), colspan=5)
-		bins = int(max_ks/ks_step)
+		bins = int((min(max_ks, max(allKs)) - max(0, min(allKs)))/ks_step)
 		_xlabel = tlabel #'OrthoIndex' if of_color else 'Ks'
 		#print min(allKs), max(allKs)
 #		ylabel = ' of syntenic gene pairs' if homology else ' of syntenic gene pairs'
 		_ylabel = ' of gene pairs'
-		_histgram(ax, allKs, cmap=cmap, xlim = max_ks, ylim=hist_ylim, bins=bins, normed=False, xlabel=_xlabel, ylabel=_ylabel, fontsize=xcsize)
+		if output_hist:
+			output_hist = os.path.splitext(outplots[0])[0] + '.histo'
+			logger.info('Output histogram data: {}'.format(output_hist))
+		_histgram(ax, allKs, cmap=cmap, xlim = max_ks, ylim=hist_ylim, bins=bins, normed=False, xlabel=_xlabel, 
+			ylabel=_ylabel, output_hist=output_hist,  fontsize=xcsize)
 		label = '(b)'
 		if number_plots:
 			plot_label(ax, label, fontsize=lsize)
@@ -466,7 +471,7 @@ def plot_fold(ax, titles, ref_coord_paths, ref_coord_graph, qry_coord_graph, rq_
 	data = [np.array(sorted(d_fold.items()))]
 	#print >>sys.stderr, kargs
 	plot_bars(data, titles, ax=ax, ncol=1, nrow=1, **kargs)
-def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False, xlabel='Ks', ylabel=' of syntenic gene pairs', fontsize=10):
+def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False, xlabel='Ks', ylabel=' of syntenic gene pairs', fontsize=None, output_hist=False):
 	import matplotlib.pyplot as plt
 	import matplotlib.cm as cm
 	import matplotlib
@@ -487,6 +492,10 @@ def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False
 		if X <= xlim:
 			Xs.append((bins[i] + bins[i+1])/2)
 			Ys.append(n[i])
+	if output_hist:
+		with open(output_hist, 'w') as f:
+			for dat in [Xs, Ys]:
+				print('\t'.join(map(str, dat)), file=f)
 	if ylim is None:
 		ylim = 1.2*max(Ys[:-1])
 	line = ax.plot(Xs, Ys, ls='--', c='grey')
@@ -498,7 +507,8 @@ def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False
 	ax.set_xlim(0, xlim)
 	ax.set_ylim(0, ylim)
 	ax.set_xlabel(xlabel, fontsize=fontsize*1.1)	# Ks/OrthoIndex; fontsize
-	ax.set_ylabel(ylabel, fontsize=fontsize*0.8)
+#	ax.set_ylabel(ylabel, fontsize=fontsize*0.8)
+	ax.set_ylabel(ylabel)
 	ax.minorticks_on()
 	cbar = plt.colorbar(ax=ax)
 	return xlim, ylim
