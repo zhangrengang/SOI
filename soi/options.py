@@ -216,7 +216,7 @@ def main():
 	key = sys.argv[1]
 	func = FUNC[key]
 	func(**args.__dict__)
-	print()
+	logger.info('Completed')
 	
 if __name__ == '__main__':
 	main()
