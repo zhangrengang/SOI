@@ -661,7 +661,7 @@ class SonicParanoid:
 							continue
 						ortho_pairs.add( (g1, g2) ) # inparalogs
 		return ortho_pairs
-def test_sonicparanoid(ResultsDir=sys.argv[2]):
+def test_sonicparanoid(ResultsDir):
 	for g1, g2 in SonicParanoid(ResultsDir).get_homologs():
 		print(g1, g2)
 class SonicParanoidOrthologs:
