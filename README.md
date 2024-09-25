@@ -395,7 +395,8 @@ Tetracendron_sinense|Tesin01G0062600    Trochodendron_aralioides|evm.TU.group9.7
 ```
 
 #### Orthology format ####
-The outputs from [OrthoFinder2](https://github.com/davidemms/OrthoFinder) and OrthoMCL are supported:
+The outputs from [OrthoFinder2](https://github.com/davidemms/OrthoFinder), OrthoMCL, 
+[Broccoli](https://github.com/rderelle/Broccoli), [SonicParanoid2](https://gitlab.com/salvo981/sonicparanoid2) are supported:
 ```
 # OrthoFinder2 output directory like:
 OrthoFinder/OrthoFinder/Results_Jun25/
@@ -409,7 +410,7 @@ Tetracendron_sinense|Tesin01G0060800    Trochodendron_aralioides|evm.TU.group9.7
 ```
 
 #### Gene coordinate format ####
-The gff/bed format for JCVI, MCscanX and WGDI are also supported:
+The gff/bed format for JCVI, MCscanX and WGDI are supported:
 ```
 # gff for WGDI:
 Dc1     Daucus_carota|DCAR_000504       20809   26333   +       1       Daucus_carota|DCAR_000504
