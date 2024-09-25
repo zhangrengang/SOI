@@ -2226,7 +2226,7 @@ class ColinearGroups:
 				continue
 			xxchroms += [chroms]
 			i += 1
-			prefix = '-'.join(chroms) + '_' + str(len(alnfiles))
+			prefix = 'chr_' + '-'.join(chroms) + '_' + str(len(alnfiles))
 			
 			cmds = self.concat_tree(alnfiles, prefix, idmap=self.d_chroms, astral=True)
 		#	d_gene_count3[concat_alnfile] = len(alnfiles)

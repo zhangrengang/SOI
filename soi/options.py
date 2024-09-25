@@ -216,7 +216,8 @@ def main():
 	key = sys.argv[1]
 	func = FUNC[key]
 	func(**args.__dict__)
-		
+	print()
+	
 if __name__ == '__main__':
 	main()
 
