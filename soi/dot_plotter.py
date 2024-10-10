@@ -378,7 +378,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			ax = plt.subplot2grid((6,5),(5,0), colspan=3)
 		else:
 			ax = plt.subplot2grid((6,5),(5,0), colspan=5)
-		bins = int((min(max_ks, max(allKs)) - max(0, min(allKs)))/ks_step)
+		bins = int(max_ks/ks_step) #int((min(max_ks, max(allKs)) - max(0, min(allKs)))/ks_step)
 		_xlabel = tlabel #'OrthoIndex' if of_color else 'Ks'
 		#print min(allKs), max(allKs)
 #		ylabel = ' of syntenic gene pairs' if homology else ' of syntenic gene pairs'
@@ -485,7 +485,10 @@ def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False
 	else:
 		ylabel = 'Number' + ylabel
 #	print allKs
+	allKs += [0, xlim]
 	n,bins,patches = ax.hist(allKs, bins=bins, density=normed, facecolor='white', alpha=0)
+	n[0] -= 1
+	n[-1] -= 1
 	Xs, Ys = [], []
 	for i in range(len(bins)-1):
 		X = (bins[i] + bins[i+1])/2

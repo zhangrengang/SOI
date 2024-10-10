@@ -41,7 +41,10 @@ def args_filter(parser):
 	parser.add_argument('-stat', default=None,
                     dest='out_stats', type=str, 
                     help="Output stats by species pairs. [default=%(default)s]")
-	
+	parser.add_argument('-oo', default=False, 
+                    dest='output_orthology', action='store_true',
+                    help="Output retained orthology instead of synteny. [default=%(default)s]")
+
 def func_filter(**kargs):
 	from .mcscan import identify_orthologous_blocks
 	identify_orthologous_blocks(**kargs)

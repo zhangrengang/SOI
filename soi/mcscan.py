@@ -239,14 +239,15 @@ class XCollinearity:
 				nblock += 1
 				ngene += rc.N
 				if self.orthologs is not None:
-					pairs = {Pair(*x) for x in rc.pairs}
-					intersect = pairs & ortholog_pairs
-					ratio = 1.0*len(intersect) / len(pairs)
+					rc.syn_pairs = [Pair(*x) for x in rc.pairs]
+					syn_pairs = set(rc.syn_pairs)
+					intersect = syn_pairs & ortholog_pairs
+					ratio = 1.0*len(intersect) / len(rc.syn_pairs) #OI
 					rc.on = len(intersect) # syntenic orthologs
 					rc.oi = ratio
 					if self.homo_class is not None:
 						rc.intersect = intersect
-						rc.substract = pairs - ortholog_pairs
+						rc.substract = syn_pairs - ortholog_pairs
 				if self.orthologs is not None:
 					rc.ton = len(ortholog_pairs)	# all syntenic orthologs
 					rc.ortholog_pairs = ortholog_pairs
@@ -310,7 +311,8 @@ class XOrthology:
 					yield rc
 def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.stdout, 
 		gff=None, kaks=None, source=None, min_n=0, min_dist=None, #paralog=False, both=True 
-		min_ratio=0.5, max_ratio=1, species=None, homo_class=None, out_stats=None, test_diff=False):
+		min_ratio=0.5, max_ratio=1, species=None, homo_class=None, out_stats=None, test_diff=False, 
+		output_orthology=False):
 	if species is not None:
 		species = parse_species(species)
 	if homo_class is not None:
@@ -319,45 +321,57 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 		out_stats = open(out_stats, 'w')
 	if test_diff:
 		d_ks = {}
-	pre_nb, pre_ng, post_nb, post_ng = 0, 0,0,0
-	post_no = 0
-	total_oi = 0
+	pre_nb, pre_ng, post_nb, post_ng = 0, 0,0,0 # b: blocks, g: gene pairs
+	post_nso = 0
+	total_oi, pre_total_oi = 0, 0
 	d_sp_count = OrderedDict()
 	logger.info('filtering collinearity...')
 	rn, rd, ro = 0,0,0
+	removed_pairs = []
 	for rc in XCollinearity(collinearities, orthologs=orthologs, 
 				gff=gff, kaks=kaks, source=source, sps=species, homo_class=homo_class):
 		pre_nb += 1
 		pre_ng += rc.N
 		sp_pair = rc.species
+#		if pre_nb % 10000 == 0:
+#$			logger.info('{} blocks processed'.format(pre_nb))
 		if sp_pair not in d_sp_count:
 			d_sp_count[sp_pair]= Count()
 		d_sp_count[sp_pair].pre_nb += 1
 		d_sp_count[sp_pair].pre_ng += rc.N
+		pre_total_oi += rc.oi * rc.N
+		remove = False
 		if rc.N < min_n:
 			rn += 1
-			continue
-		if min_dist is not None and rc.is_tandem(min_dist):
+			remove = True
+		elif min_dist is not None and rc.is_tandem(min_dist):
 			rd += 1
-			continue
-		if not (min_ratio < rc.oi <= max_ratio):
+			remove = True
+		elif not (min_ratio < rc.oi <= max_ratio):
 			ro += 1
+			remove = True
+		if remove:
+			removed_pairs += rc.syn_pairs
 			continue
-		post_nb += 1
-		post_ng += rc.N
-		post_no += rc.on # syntenic orthologs
+		post_nb += 1	# syntenic blocks
+		post_ng += rc.N	# syntenic genes
+		post_nso += rc.on # syntenic orthologs
 		total_oi += rc.oi * rc.N
 		d_sp_count[sp_pair].post_nb += 1
 		d_sp_count[sp_pair].post_ng += rc.N
-		d_sp_count[sp_pair].post_no += rc.on
-
-		rc.write(fout)
+		d_sp_count[sp_pair].post_nso += rc.on
+		if not output_orthology:
+			rc.write(fout)
 		if homo_class:
-			substract = pairs - ortholog_pairs
 			for pairs, cls in zip((rc.intersect, rc.substract), ('ortholog', 'non-ortholog')):
 				for pair in pairs:
 					line = list(pair) + [cls]
 					print('\t'.join(line), file=out_class)
+	removed_pairs = set(removed_pairs)
+	if output_orthology:	# remove paralogs from pre-inferred orthologs
+		for pair in rc.ortholog_pairs - removed_pairs:
+			pair.write(fout)
+	post_nao = len(rc.ortholog_pairs - removed_pairs)
 	for pair in rc.ortholog_pairs:
 		sp_pair = pair.species
 		if sp_pair not in d_sp_count:
@@ -365,10 +379,11 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 		d_sp_count[sp_pair].pre_no += 1				
 	logger.info('Synteny: Pre-filter: {} blocks, {} pairs; Post-filter: {} ({:.1%}) blocks, {} ({:.1%}) pairs.'.format(
 		pre_nb, pre_ng, post_nb, 1.0*post_nb/pre_nb, post_ng, 1.0*post_ng/pre_ng))
-	logger.info('Orthology: Pre-filter: {} pairs; Post-filter: {} ({:.1%}) pairs.'.format(
-		rc.ton, post_no, 1.0*post_no/rc.ton))
+	logger.info('Orthology: Pre-filter: {} pairs; Post-filter: {} ({:.1%}) syntenic pairs; {} pairs within removed blocks.'.format(
+		rc.ton, post_nso, 1.0*post_nso/rc.ton, rc.ton-post_nao))
 	if post_ng > 0:
-		logger.info('Post-filter mean OrthoIndex: {:.2f}'.format(total_oi/post_ng))
+		logger.info('OrthoIndex: Pre-filter: {:.3f}; Post-filter: {:.3f}; {:.3f} for removed blocks.'.format(
+			pre_total_oi/pre_ng, total_oi/post_ng, (pre_total_oi-total_oi)/(pre_ng-post_ng)))
 	if homo_class is not None:
 		out_class.close()
 	if out_stats is  None:
@@ -379,14 +394,14 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 		'Pre-filter number of syntenic gene pairs', 'Post-filter number of syntenic gene pairs',]
 	print('\t'.join(line), file=out_stats)
 	for sp_pair, self in d_sp_count.items():
-		line = [sp_pair[0], sp_pair[1], self.pre_no, self.post_no, self.pre_nb, self.post_nb, self.pre_ng, self.post_ng]
+		line = [sp_pair[0], sp_pair[1], self.pre_no, self.post_nso, self.pre_nb, self.post_nb, self.pre_ng, self.post_ng]
 		print('\t'.join(map(str, line)), file=out_stats)
 	out_stats.close()
 
 class Count:
 	def __init__(self):
 		self.pre_nb, self.pre_ng, self.post_nb, self.post_ng = 0,0,0,0
-		self.pre_no, self.post_no = 0,0
+		self.pre_no, self.post_nso = 0,0
 class Collinearity():
 	'''
 	blocks = Collinearity(blockfile)
@@ -1096,6 +1111,7 @@ def split_pair(line, sep=None, parser=None):
 class CommonPair(object):
 	def __init__(self, *pair):
 		self.pair = pair[:2]
+#		self.key = tuple(sorted(self.pair))
 	def __iter__(self):
 		return iter(self.pair)
 	def __getitem__(self, index):
@@ -1106,7 +1122,7 @@ class CommonPair(object):
 		return str(self)
 	def __repr__(self):
 		return str(self)
-	@property
+	@lazyproperty
 	def key(self):
 		return tuple(sorted(self.pair))
 	def __eq__(self, other):
@@ -1128,13 +1144,13 @@ class Pair(CommonPair): # gene pair
 	def __init__(self, *pair):
 		super(Pair, self).__init__(*pair)
 		self.gene1, self.gene2 = self.pair
-	@property
+	@lazyproperty
 	def species1(self):
 		return self.gene1.split('|')[0]
-	@property
+	@lazyproperty
 	def species2(self):
 		return self.gene2.split('|')[0]
-	@property
+	@lazyproperty
 	def species(self):
 		return SpeciesPair(self.species1, self.species2)
 		
