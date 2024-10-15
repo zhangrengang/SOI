@@ -62,6 +62,7 @@ def dotplot_args(parser):
 	group_orth.add_argument('--ofdir', metavar='FOLDER/FILE', type=str, nargs='+', default=None, help="OrthoFinder output folder/ OrthoMCL output pair file. [default=%(default)s]")
 	group_orth.add_argument('--of-ratio', metavar='FLOAT', type=float, default=0, help="Orthology Index cutoff [default=%(default)s]")
 	group_orth.add_argument('--of-color', action='store_true', default=None, help="coloring dots by Orthology Index [default=%(default)s]")
+#	group_orth.add_argument('--use-frac',  action='store_true', default=False, help="use fractionation rate [default=%(default)s]")
 
 	group_ks = parser.add_argument_group('Ks plot', 'options to histogram plot with Ks')
 	group_ks.add_argument('--kaks', metavar='FILE', type=str, default=None, help="kaks output from KaKs_Calculator/WGDI. [default=%(default)s]")
@@ -148,7 +149,7 @@ def main(args):
 	same_sp = True if chrs1 == chrs2 else False
 	blocks, lines1, lines2, ortholog_graph,chrs1, chrs2, d_offset1, d_offset2 = parse_collinearity(
 		collinearity, gff, chrs1, chrs2, kaks, args.homology, 
-		source = args.source, 
+		source = args.source, use_frac=args.use_frac,
 		ofdir=args.ofdir, of_ratio=args.of_ratio, of_color=args.of_color,
 		hide_blocks = args.hide_blocks, use_median=args.use_median, 
 		lower_ks=args.lower_ks, upper_ks=args.upper_ks,
@@ -607,7 +608,7 @@ def parse_gff(gff, chrs1, chrs2):
 
 def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology, 
 		hide_blocks=None, use_median=False, lower_ks=None, upper_ks=None,
-		cluster=False, diagonal=False, gene_axis=False, source=None, 
+		cluster=False, diagonal=False, gene_axis=False, source=None, use_frac=False, 
 		ofdir=None, of_ratio=0, of_color=False, tandem_dist=None, min_block=None,
 		matrix=None, min_same_block=None, **ks_args):
 	blocks = XCollinearity(collinearity, orthologs=ofdir, gff=gff, kaks=kaks, homology=homology, source=source, **ks_args)
@@ -660,6 +661,8 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 #			pairs = { tuple(sorted(x)) for x in rc.pairs}
 #			intersect = pairs & ortholog_pairs
 			ratio = rc.oi #1.0*len(intersect) / len(pairs)
+			if use_frac:
+				ratio = rc.fractionation_rate(both=True)
 			if not ratio > of_ratio:
 				continue
 			if of_color:

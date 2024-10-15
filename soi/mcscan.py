@@ -611,6 +611,19 @@ class Collinearity():
 		except KeyError:
 			self.start2, self.end2, self.length2 = None, None, None
 			self.istart2, self.iend2 = None, None
+	def fractionation_rate(self, ref=None, both=False):
+		sp1, sp2 = self.species1, self.species2
+		is1, ie1 = self.istart1, self.iend1
+		is2, ie2 = self.istart2, self.iend2
+		if ref is not None:
+			if ref not in {sp1, sp2}:
+				return None
+			elif ref == sp2:
+				is1, ie1, is2, ie2 = is2, ie2, is1, ie1
+		l1, l2 = ie1 - is1 + 1, ie2-is2+1
+		if both:
+			return 2.0*self.N / (l1+l2)
+		return 1.0*rc.N / l1
 	@property
 	def good_ks(self):
 		return [ks for ks in self.ks if ks is not None]

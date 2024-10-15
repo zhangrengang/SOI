@@ -24,6 +24,7 @@ setup(
     entry_points={
         'console_scripts': ['soi = soi.options:main',
 							'soi-syn = soi.mcscan:main',
+							'soi-orth = soi.OrthoFinder:main',
         ],
     },
 )
