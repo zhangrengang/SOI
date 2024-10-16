@@ -1851,7 +1851,7 @@ def get_paralogs(OFdir, outHomo, min_support=0.5):
 				print('\t'.join(line), file=outHomo)
 def gene_format_p(gene):
 	sp, g = gene.split('|')
-	sp = sp[:len(sp)/2]
+	sp = sp[:int(len(sp)/2)]
 	g = sp + '|' + g
 	return (sp, g)
 def gene_format_common(gene):

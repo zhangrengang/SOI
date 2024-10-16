@@ -623,7 +623,7 @@ class Collinearity():
 		l1, l2 = ie1 - is1 + 1, ie2-is2+1
 		if both:
 			return 2.0*self.N / (l1+l2)
-		return 1.0*rc.N / l1
+		return 1.0*self.N / l1
 	@property
 	def good_ks(self):
 		return [ks for ks in self.ks if ks is not None]
