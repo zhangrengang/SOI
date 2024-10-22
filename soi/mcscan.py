@@ -339,7 +339,8 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 			d_sp_count[sp_pair]= Count()
 		d_sp_count[sp_pair].pre_nb += 1
 		d_sp_count[sp_pair].pre_ng += rc.N
-		pre_total_oi += rc.oi * rc.N
+		ois = rc.oi * rc.N
+		pre_total_oi += ois
 		remove = False
 		if rc.N < min_n:
 			rn += 1
@@ -351,15 +352,17 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 			ro += 1
 			remove = True
 		if remove:
+			d_sp_count[sp_pair].removed_oi += ois
 			removed_pairs += rc.syn_pairs
 			continue
 		post_nb += 1	# syntenic blocks
 		post_ng += rc.N	# syntenic genes
 		post_nso += rc.on # syntenic orthologs
-		total_oi += rc.oi * rc.N
+		total_oi += ois
 		d_sp_count[sp_pair].post_nb += 1
 		d_sp_count[sp_pair].post_ng += rc.N
 		d_sp_count[sp_pair].post_nso += rc.on
+		d_sp_count[sp_pair].retained_oi += ois
 		if not output_orthology:
 			rc.write(fout)
 		if homo_class:
@@ -381,9 +384,9 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 		pre_nb, pre_ng, post_nb, 1.0*post_nb/pre_nb, post_ng, 1.0*post_ng/pre_ng))
 	logger.info('Orthology: Pre-filter: {} pairs; Post-filter: {} ({:.1%}) syntenic pairs; {} pairs within removed blocks.'.format(
 		rc.ton, post_nso, 1.0*post_nso/rc.ton, rc.ton-post_nao))
-	if post_ng > 0:
-		logger.info('OrthoIndex: Pre-filter: {:.3f}; Post-filter: {:.3f}; {:.3f} for removed blocks.'.format(
-			pre_total_oi/pre_ng, total_oi/post_ng, (pre_total_oi-total_oi)/(pre_ng-post_ng)))
+#	if post_ng > 0:
+	logger.info('OrthoIndex: Pre-filter: {:.3f}; Post-filter: {:.3f}; {:.3f} for removed blocks.'.format(
+			pre_total_oi/pre_ng, divide(total_oi, post_ng), divide((pre_total_oi-total_oi), (pre_ng-post_ng))))
 	if homo_class is not None:
 		out_class.close()
 	if out_stats is  None:
@@ -391,17 +394,23 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 	logger.info('Output stats..')
 	line = ['Species1', 'Species2', 'Pre-filter number of orthologous gene pairs', 'Post-filter number of orthologous gene pairs',
 		'Pre-filter number of syntenic blocks', 'Post-filter number of syntenic blocks', 
-		'Pre-filter number of syntenic gene pairs', 'Post-filter number of syntenic gene pairs',]
+		'Pre-filter number of syntenic gene pairs', 'Post-filter number of syntenic gene pairs',
+		'Mean OI of removed gene pairs', 'Mean OI of retained gene pairs']
 	print('\t'.join(line), file=out_stats)
 	for sp_pair, self in d_sp_count.items():
 		line = [sp_pair[0], sp_pair[1], self.pre_no, self.post_nso, self.pre_nb, self.post_nb, self.pre_ng, self.post_ng]
+		line += [divide(self.removed_oi, (self.pre_ng-self.post_ng)), divide(self.retained_oi, self.post_ng)]
 		print('\t'.join(map(str, line)), file=out_stats)
 	out_stats.close()
 
+def divide(x, y):
+	try: return x/y
+	except ZeroDivisionError: return 0
 class Count:
 	def __init__(self):
 		self.pre_nb, self.pre_ng, self.post_nb, self.post_ng = 0,0,0,0
 		self.pre_no, self.post_nso = 0,0
+		self.retained_oi, self.removed_oi = 0,0
 class Collinearity():
 	'''
 	blocks = Collinearity(blockfile)

@@ -217,7 +217,7 @@ def run_tasks(cmd_list, tc_tasks=None, mode='grid', grid_opts='', cpu=1, mem='1g
 	# if completed?
 	return len(uncmp)
 def avail_cpu(cpu):
-	cpu_count = multiprocessing.cpu_count()
+	cpu_count = len(os.sched_getaffinity(0)) #multiprocessing.cpu_count()
 	return max(1, int(1.0*cpu_count/cpu))
 	
 d_mem = {'':1e1, 'k':1e3, 'm':1e6, 'g':1e9, 't':1e12}
@@ -356,7 +356,7 @@ imap: True for imap'''
 def pool_run(cmd_list, processors=8, log=True, logger=None, **kargs):
 	try: processors = int(processors)
 	except (TypeError,ValueError):
-		processors = multiprocessing.cpu_count()
+		processors = len(os.sched_getaffinity(0)) #multiprocessing.cpu_count()
 	iterable = ((cmd, log, logger) for cmd in cmd_list)
 	return [ returned for returned in pool_func(_run_cmd, iterable, processors=processors, **kargs) ]
 

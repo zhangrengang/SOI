@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import collections
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.gridspec import GridSpec
@@ -11,31 +12,39 @@ from lazy_property import LazyWritableProperty as lazyproperty
 from .mcscan import Collinearity, Gff, XCollinearity
 from .colors import Colors
 
-def eval(collinearities, gff, ref, pre=None):
+def eval(collinearities, orthologs, gff, ref, pre=None):
 	d_rcs = {}
-	for rc in XCollinearity(collinearities, gff=gff):
+	d_refgenes = {}
+	for rc in XCollinearity(collinearities, orthologs=orthologs, gff=gff):
 		rc.fr = rc.fractionation_rate(ref=ref)
 		if rc.fr is None:
 			continue
 		sp1, sp2 = rc.species1, rc.species2
+		genes1, genes2 = rc.genes
 		if sp1 == sp2:
 			continue
 		if sp2 == ref:
 			sp1, sp2 = sp2, sp1
+			genes1, genes2 = genes2, genes1
 		xrc = SynRec(rc)
 		try: d_rcs[sp2] += [xrc]
 		except KeyError: d_rcs[sp2] = [xrc]
-	
+		try: d_refgenes[sp2] += genes1
+		except KeyError: d_refgenes[sp2] = genes1
+
 	for sp, rcs in d_rcs.items():
-		d_rcs[sp] = SynRecs(rcs)
+		rcs = SynRecs(rcs)
+		counts = collections.Counter(d_refgenes[sp])
+		rcs.refcounts = np.array(sorted(collections.Counter(counts.values()).items()))
+		d_rcs[sp] = rcs
 	outfig = 'test.png'
 	plot_eval(d_rcs, outfig)
 def main():
-	collinearities, gff, ref = sys.argv[1:4]
-	eval(collinearities, gff, ref)
+	collinearities, orthologs, gff, ref = sys.argv[1:5]
+	eval(collinearities, orthologs, gff, ref)
 def plot_eval(d_rcs, outfig, legend_fontsize=9):
-	fig = plt.figure(figsize=(10,10))
-	gs = GridSpec(3, 7)
+	fig = plt.figure(figsize=(10,12))
+	gs = GridSpec(4, 7)
 	
 	ax0 = fig.add_subplot(gs[:, 6]) # legend
 	ax1 = fig.add_subplot(gs[0, 0:3]) # accumulation N
@@ -44,6 +53,8 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9):
 	ax4 = fig.add_subplot(gs[0, 3:6]) # dots
 	ax5 = fig.add_subplot(gs[1, 3:6]) # dots of 50
 	ax6 = fig.add_subplot(gs[2, 3:6]) # bar
+	ax7 = fig.add_subplot(gs[3, 0:3])
+	ax8 = fig.add_subplot(gs[3, 3:6])
 
 	n = len(d_rcs)
 	colors = Colors(n).colors
@@ -51,9 +62,11 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9):
 		_sp = convert_sp(sp)
 		i50, sn50, fn50 = rcs.xn50
 		fm, sm = np.median(rcs.extended_frs), np.median(rcs.extended_ns)
+		om = np.median(rcs.extended_ois)
 		ns = rcs.ns
-		nb = len(ns)
-		kargs = dict(color=colors[i], alpha=0.9, label=_sp)
+		nb = len(ns) # np.sum(rcs.refcounts[:, 1]) #len(ns)
+		bm = sum(rcs.refcounts[:, 1]) # sum(rcs.ns)
+		kargs = dict(color=colors[i], alpha=1, label=_sp)
 		ax0.plot(-2, -2, linestyle='-', marker='o',  **kargs)
 #		ax0.barh(0, 0, height=0, left=0, align='center', label=_sp)
 
@@ -62,15 +75,20 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9):
 		ax2.plot(range(1, nb+1), ns, drawstyle="steps-post", **kargs)
 #		ax2.scatter(i50, sn50, label=_sp)
 		
-		ax3.scatter(len(rcs.ns), sum(rcs.ns), **kargs)
-		ax4.hist(rcs.extended_frs, bins=40, histtype='step', **kargs)
+		ax3.scatter(len(rcs.ns), bm, **kargs)
+#		ax4.hist(rcs.extended_frs, bins=40, histtype='step', **kargs)
+		hist_plot(rcs.extended_frs, ax4, bins=40, **kargs)
 #		ax4.scatter(rcs.frs, rcs.ns,  alpha=0.6, label=_sp)
 #		ax5.scatter(fn50, sn50, alpha=0.8, label=_sp)
-		ax5.scatter(fm, sn50, **kargs)
+		ax5.scatter(fm, sm, **kargs)
 
-#       ax5.hist(rcs.extended_ns, bins=30, histtype='step', label=_sp)
+#	   ax5.hist(rcs.extended_ns, bins=30, histtype='step', label=_sp)
 #		ax5.scatter(np.mean(rcs.extended_frs), np.mean(rcs.extended_ns), label=_sp)
-		ax6.scatter(fm, sm, **kargs)
+		ax6.scatter(fm, om, **kargs)
+#		ax7.hist(rcs.extended_ois, bins=40, histtype='step', **kargs)
+		hist_plot(rcs.extended_ois, ax7, bins=40, **kargs)
+
+		ax8.plot(rcs.refcounts[:, 0], rcs.refcounts[:, 1], **kargs)
 #		print(sn50, sm)
 #	set_legends([ax1, ax2, ax3,ax4,ax5,ax6], fontsize=legend_fontsize)
 #	ax0.legend(loc='upper left',fancybox=False, frameon=False, ncols=ncols)
@@ -80,7 +98,7 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9):
 		[ax3, 'Total number of blocks', 'Total number of genes'],
 		[ax4, 'Fractionation rate', 'Number of genes'],
 		[ax5, 'Fractionation rate', 'Block size'],
-		[ax6, 'Fractionation rate', 'Block size'],
+		[ax6, 'Fractionation rate', 'Orthology index'],
 		):
 		set_labels(ax, xlab, ylab)
 	
@@ -100,6 +118,17 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9):
 
 	plt.subplots_adjust(hspace=0.25, wspace=1.8)
 	plt.savefig(outfig, bbox_inches='tight')
+
+def hist_plot(data, ax, bins=10, alpha=1, **kargs):
+	n,bins,patches = ax.hist(data, bins=bins, alpha=0, **kargs)
+	Xs, Ys = [], []
+	for i in range(len(bins)-1):
+		X = (bins[i] + bins[i+1])/2
+		Xs.append((bins[i] + bins[i+1])/2)
+		Ys.append(n[i])
+
+	ax.plot(Xs, Ys, alpha=alpha, **kargs)
+	
 def set_labels(ax, xlab, ylab, **kargs):
 	ax.set_xlabel(xlab, **kargs)
 	ax.set_ylabel(ylab, **kargs)
@@ -113,6 +142,7 @@ class SynRec:
 	def __init__(self, rc):
 		self.N = rc.N
 		self.fr = rc.fr
+		self.oi = rc.oi
 class SynRecs:
 	def __init__(self, rcs):
 		self.rcs = rcs
@@ -120,7 +150,7 @@ class SynRecs:
 	def matrix(self):
 		data = []
 		for rc in self.rcs:
-			data += [[rc.N, rc.fr]]
+			data += [[rc.N, rc.fr, rc.oi]]
 		return np.array(sorted(data, key=lambda x:-x[0]))
 	@lazyproperty
 	def ns(self):
@@ -128,6 +158,9 @@ class SynRecs:
 	@lazyproperty
 	def frs(self):
 		return self.matrix[:, 1]
+	@lazyproperty
+	def ois(self):
+		return self.matrix[:, 2]
 	def get_nx0(self, cutoff=50):
 		self.size = sum(self.ns)
 		accum = 0
@@ -143,7 +176,7 @@ class SynRecs:
 	@lazyproperty
 	def extended_frs(self):
 		frs = []
-		for n, fr in self.matrix:
+		for n, fr, oi in self.matrix:
 			frs += [fr]* int(n)
 		return frs
 	@lazyproperty
@@ -152,4 +185,10 @@ class SynRecs:
 		for n in self.ns:
 			nrs += [n] * int(n)
 		return nrs
+	@lazyproperty
+	def extended_ois(self):
+		ois = []
+		for n, fr, oi in self.matrix:
+			ois += [oi]* int(n)
+		return ois
 

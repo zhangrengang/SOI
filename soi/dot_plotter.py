@@ -149,7 +149,7 @@ def main(args):
 	same_sp = True if chrs1 == chrs2 else False
 	blocks, lines1, lines2, ortholog_graph,chrs1, chrs2, d_offset1, d_offset2 = parse_collinearity(
 		collinearity, gff, chrs1, chrs2, kaks, args.homology, 
-		source = args.source, use_frac=args.use_frac,
+		source = args.source, #use_frac=args.use_frac,
 		ofdir=args.ofdir, of_ratio=args.of_ratio, of_color=args.of_color,
 		hide_blocks = args.hide_blocks, use_median=args.use_median, 
 		lower_ks=args.lower_ks, upper_ks=args.upper_ks,
