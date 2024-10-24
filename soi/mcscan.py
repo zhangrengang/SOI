@@ -1127,7 +1127,7 @@ def slim_tandem(tandem, pairs, outPairs):
 		pair.write(outPairs)
 	
 def split_pair(line, sep=None, parser=None):
-	pair = tuple(line.rstrip().split(sep, 1))
+	pair = tuple(line.rstrip().split(sep)) # 1
 	return parser(*pair)
 	
 class CommonPair(object):
@@ -1186,6 +1186,8 @@ class Pairs(object):
 	def _parse(self):
 		for line in open(self.pairs):
 			line = lazy_decode(line)
+			if line.startswith('#'): # comments
+				continue
 			yield split_pair(line, self.sep, self.parser)
 	def graph(self):
 		G = nx.Graph()

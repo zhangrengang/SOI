@@ -396,6 +396,7 @@ Tetracendron_sinense|Tesin01G0062600    Trochodendron_aralioides|evm.TU.group9.7
 
 #### Orthology format ####
 The outputs from [OrthoFinder2](https://github.com/davidemms/OrthoFinder), OrthoMCL, 
+[Proteinortho6](https://gitlab.com/paulklemm_PHD/proteinortho), 
 [Broccoli](https://github.com/rderelle/Broccoli), [SonicParanoid2](https://gitlab.com/salvo981/sonicparanoid2) are supported:
 ```
 # OrthoFinder2 output directory like:

@@ -106,7 +106,7 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9):
 	ncols = n // 30 + 1
 	ax0.set_xlim(0,1)
 	ax0.set_ylim(0,1)
-	ax0.legend(loc=(-1.5, 0),fancybox=False, frameon=False, ncols=ncols)
+	ax0.legend(loc=(-1.5, 0),fancybox=False, frameon=False, ncols=ncols)	#
 	ax0.xaxis.set_tick_params(length=0)
 	ax0.spines['right'].set_color('none')
 	ax0.spines['top'].set_color('none')

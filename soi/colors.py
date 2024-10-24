@@ -2,6 +2,7 @@
 #from reportlab.lib import colors
 import numpy as np
 from matplotlib import cm
+from matplotlib import colors
 import matplotlib
 
 COLORS_HEX = ['#f9c00c', '#00b9f1', '#7200da', '#f9320c', '#00b8a9', "#F4A460", '#009999', '#00C02E',
@@ -20,8 +21,9 @@ class HexColors:
 		self.colors_hex = colors_hex
 	@property
 	def colors_rgb(self):
-		colors_lst = [colors.HexColor(v) for v in self.colors_hex]
-		return [','.join(map(str, v.bitmap_rgb())) for v in colors_lst]
+#		colors_lst = [colors.HexColor(v) for v in self.colors_hex]
+#		return [','.join(map(str, v.bitmap_rgb())) for v in colors_lst]
+		return [hex2rgb(v) for v in self.colors_hex]
 	@property 
 	def colors_r(self):
 		return 'c({})'.format(','.join(map(repr, self.colors_hex)))
@@ -29,6 +31,11 @@ class HexColors:
 		return str(self.colors_hex)
 	def __repr__(self):
 		return str(self.colors_hex)
+
+def hex2rgb(Hex):
+	rgb = colors.to_rgb(Hex)
+	rgb255 = ','.join(map(str, [int(v*255) for v in rgb]))
+	return rgb255
 
 class Colors:
 	def __init__(self, n):
@@ -48,9 +55,10 @@ class Colors:
 		colors_hex = [matplotlib.colors.to_hex(c) for c in self.colors]
 		return colors_hex
 	def to_rgb(self):
-		colors_hex = self.to_hex()
-		colors_lst = [colors.HexColor(v) for v in colors_hex]
-		colors_rgb = [','.join(map(str, v.bitmap_rgb())) for v in colors_lst]
+#		colors_hex = self.to_hex()
+#		colors_lst = [colors.HexColor(v) for v in colors_hex]
+#		colors_rgb = [','.join(map(str, v.bitmap_rgb())) for v in colors_lst]
+		colors_rgb = [hex2rgb(v) for v in self.colors]
 		return colors_rgb
 
 
