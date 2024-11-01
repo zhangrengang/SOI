@@ -395,9 +395,12 @@ Tetracendron_sinense|Tesin01G0062600    Trochodendron_aralioides|evm.TU.group9.7
 ```
 
 #### Orthology format ####
-The outputs from [OrthoFinder2](https://github.com/davidemms/OrthoFinder), OrthoMCL, 
+The outputs from [OrthoFinder2](https://github.com/davidemms/OrthoFinder), 
+[OrthoMCL](https://docs.google.com/document/d/1RB-SqCjBmcpNq-YbOYdFxotHGuU7RK_wqxqDAMjyP_w/pub), 
 [Proteinortho6](https://gitlab.com/paulklemm_PHD/proteinortho), 
-[Broccoli](https://github.com/rderelle/Broccoli), [SonicParanoid2](https://gitlab.com/salvo981/sonicparanoid2) are supported:
+[Broccoli](https://github.com/rderelle/Broccoli), 
+[InParanoid](https://bitbucket.org/sonnhammergroup/inparanoid/src/master/),
+[SonicParanoid2](https://gitlab.com/salvo981/sonicparanoid2) are supported:
 ```
 # OrthoFinder2 output directory like:
 OrthoFinder/OrthoFinder/Results_Jun25/
@@ -407,6 +410,20 @@ Tetracendron_sinense|Tesin01G0059600    Trochodendron_aralioides|evm.TU.group9.7
 Tetracendron_sinense|Tesin01G0060100    Trochodendron_aralioides|evm.TU.group9.725      
 Tetracendron_sinense|Tesin01G0060800    Trochodendron_aralioides|evm.TU.group9.710
 ...
+
+# SonicParanoid2 output directory via `-o sonicparanoid_output --project-id my_run`:
+sonicparanoid_output/runs/my_run/
+
+# InParanoid output directory via `-out-dir ip-output -out-table`:
+ip-output/
+# or InParanoid output ortholog file via `-out-dir ip-output -out-allPairs`:
+ip-output/allPairs
+
+# Proteinortho6 output ortholog file:
+*.proteinortho-graph
+
+# Broccoli output ortholog file:
+dir_step4/orthologous_pairs.txt
 
 ```
 

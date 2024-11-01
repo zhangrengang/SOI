@@ -627,11 +627,24 @@ def retrieve_allele(ResultsDir, collinearity, gff, fout=sys.stdout, min_block=10
 	print('\t'.join(line), file=fout)
 	for line in sorted(lines):
 		print('\t'.join(map(str, line)), file=fout)
+
+def lazy_orthologs(ortholog):
+	if os.path.isdir(ortholog+'/species_to_species_orthologs'):
+		parser = SonicParanoid(ortholog)
+	elif glob.glob('{}/table.*-*'.format(ortholog)):
+		parser = SonicParanoid(ortholog, inparanoid=True)
+	else:
+		parser = OrthoFinder(ortholog)
+	return parser
 class SonicParanoid:
-	def __init__(self, ResultsDir):
+	def __init__(self, ResultsDir, inparanoid=False):
 		self.ResultsDir = ResultsDir
-		self.Orthogroups = '{}/ortholog_groups/ortholog_groups.tsv'.format(ResultsDir)
-		self.Orthologues = glob.glob('{}/species_to_species_orthologs/*/*'.format(ResultsDir))
+		self.inparanoid = inparanoid
+		if inparanoid:
+			self.Orthologues = glob.glob('{}/table.*-*'.format(ResultsDir))
+		else:
+			self.Orthogroups = '{}/ortholog_groups/ortholog_groups.tsv'.format(ResultsDir)
+			self.Orthologues = glob.glob('{}/species_to_species_orthologs/*/*'.format(ResultsDir))
 	def get_homologs(self, sps=None, sp1=None, sp2=None, **kargs):
 		'''获取成对的orthologs'''
 		if sp1 is not None or sp2 is not None:
@@ -639,7 +652,11 @@ class SonicParanoid:
 		if sps is not None:
 			orthoFiles = []
 			for sp1, sp2 in itertools.permutations(sps, 2):
-				orthoFiles += ['{}/species_to_species_orthologs/{}/{}-{}'.format(self.ResultsDir, sp1, sp1, sp2)]
+				if self.inparanoid:
+					orthoFile = '{}/table.{}-{}'.format(self.ResultsDir, sp1, sp2)
+				else:
+					orthoFile = '{}/species_to_species_orthologs/{}/{}-{}'.format(self.ResultsDir, sp1, sp1, sp2)
+				orthoFiles += [orthoFile]
 		else:
 			orthoFiles = self.Orthologues
 		ortho_pairs = set([])

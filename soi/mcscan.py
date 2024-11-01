@@ -10,7 +10,8 @@ import itertools
 from Bio import SeqIO, Phylo
 from lazy_property import LazyWritableProperty as lazyproperty
 
-from .OrthoFinder import catAln, format_id_for_iqtree, OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder,SonicParanoid, parse_species, exists_and_size_gt_zero
+from .OrthoFinder import catAln, format_id_for_iqtree, lazy_orthologs, \
+	OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder,SonicParanoid, parse_species, exists_and_size_gt_zero
 from .small_tools import mkdirs, flatten, test_s, test_f, parse_kargs, rmdirs, lazy_decode
 from .RunCmdsMP import run_cmd, run_job, logger
 from .small_tools import open_file as open
@@ -270,14 +271,14 @@ class Xpairs:
 
 def evaluate_orthology(ref, qry):
 	ref_pairs = set(Xpairs(ref))
-	AP = len(ref_pairs)
+	AP = len(ref_pairs)	# all positive
 	logger.info('{} pairs in {}'.format(AP, ref))
 	qry_pairs = set(Xpairs(qry))
-	AD = len(qry_pairs)
+	AD = len(qry_pairs)	# all detected
 	logger.info('{} pairs in {}'.format(AD, qry))
-	TP = len(qry_pairs & ref_pairs)
-	FP = AD - TP
-	FN = AP - TP
+	TP = len(qry_pairs & ref_pairs)	# true positive
+	FP = AD - TP	# false positive
+	FN = AP - TP	# false negative
 	precision = 1.0 * TP/ (TP+FP)
 	recall = 1.0 * TP/ (TP+FN)
 	f1_score = 2* precision * recall / (precision + recall)
@@ -302,13 +303,17 @@ class XOrthology:
 		for ortholog in self.orthologs:
 			logger.info('parsing {} ...'.format(ortholog))
 			if os.path.isdir(ortholog):	# orthofinder
-				parser = SonicParanoid if os.path.isdir(ortholog+'/species_to_species_orthologs') else OrthoFinder
-				for pair in parser(ortholog).get_homologs(**self.kargs):
+				parser = lazy_orthologs(ortholog) #SonicParanoid if os.path.isdir(ortholog+'/species_to_species_orthologs') else OrthoFinder
+				for pair in parser.get_homologs(**self.kargs):
 					yield Pair(*pair)
 			else:	# orthomcl or similar format
 				for rc in Pairs(ortholog, parser=Pair):
 #					print(rc, file=sys.stderr)
 					yield rc
+def get_homologs(orthologs, outHomo):
+	for pair in XOrthology(orthologs):
+		pair.write(outHomo)
+
 def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.stdout, 
 		gff=None, kaks=None, source=None, min_n=0, min_dist=None, #paralog=False, both=True 
 		min_ratio=0.5, max_ratio=1, species=None, homo_class=None, out_stats=None, test_diff=False, 
@@ -395,11 +400,16 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 	line = ['Species1', 'Species2', 'Pre-filter number of orthologous gene pairs', 'Post-filter number of orthologous gene pairs',
 		'Pre-filter number of syntenic blocks', 'Post-filter number of syntenic blocks', 
 		'Pre-filter number of syntenic gene pairs', 'Post-filter number of syntenic gene pairs',
-		'Mean OI of removed gene pairs', 'Mean OI of retained gene pairs']
+		'Mean OI of removed gene pairs', 'Mean OI of retained gene pairs',
+		'Estimated precision', 'Estimated recall']
 	print('\t'.join(line), file=out_stats)
 	for sp_pair, self in d_sp_count.items():
 		line = [sp_pair[0], sp_pair[1], self.pre_no, self.post_nso, self.pre_nb, self.post_nb, self.pre_ng, self.post_ng]
 		line += [divide(self.removed_oi, (self.pre_ng-self.post_ng)), divide(self.retained_oi, self.post_ng)]
+		tp, fp, tn, fn = self.retained_oi, self.removed_oi, self.pre_ng-self.post_ng, self.post_ng - self.retained_oi
+		recall = tp/(tp+fn)
+		precision = tp/(tp+fp)
+		line += [precision, recall]
 		print('\t'.join(map(str, line)), file=out_stats)
 	out_stats.close()
 
@@ -1128,6 +1138,8 @@ def slim_tandem(tandem, pairs, outPairs):
 	
 def split_pair(line, sep=None, parser=None):
 	pair = tuple(line.rstrip().split(sep)) # 1
+	if not pair:
+		return
 	return parser(*pair)
 	
 class CommonPair(object):
@@ -1188,7 +1200,10 @@ class Pairs(object):
 			line = lazy_decode(line)
 			if line.startswith('#'): # comments
 				continue
-			yield split_pair(line, self.sep, self.parser)
+			pair = split_pair(line, self.sep, self.parser)
+			if pair is None:
+				continue
+			yield pair
 	def graph(self):
 		G = nx.Graph()
 		for pair in self:
@@ -3130,6 +3145,11 @@ def main():
 	elif subcmd == 'eval_ortho':
 		ref, qry = sys.argv[2:4]
 		evaluate_orthology(ref, qry)
+	elif subcmd == 'homologs': # orthologs + paralogs
+		OFdir=sys.argv[2]
+		outHomo = sys.stdout
+		get_homologs(OFdir, outHomo)
+
 	else:
 		raise ValueError('Unknown sub command: {}'.format(subcmd))
 if __name__ == '__main__':
