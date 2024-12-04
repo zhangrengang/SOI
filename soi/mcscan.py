@@ -35,7 +35,7 @@ class Gene():
 		self.coord = (chr, start, end)
 		try: self.species, self.raw_gene = id.split('|', 1)
 		except ValueError: 
-			logger.warn('Species id not found in `{}`, ignoring'.fomart(id))
+#			logger.warn('Species id not found in `{}`, ignoring'.format(id))
 			self.species, self.raw_gene = None, id
 	def __str__(self):
 		return self.id
@@ -1091,7 +1091,7 @@ class GffLine:
 		self.Gene = g
 		self.id = gene
 		try: self.species, self.raw_gene = gene.split('|', 1)
-		except ValueError: pass
+		except ValueError: self.species, self.raw_gene = None, gene
 	def __hash__(self):
 		return hash(self.id)
 	def __str__(self):
@@ -2942,7 +2942,10 @@ def test():
 def list_blocks(collinearity, outTsv, gff=None, kaks=None):
 	'''以共线性块为单位，输出信息'''
 	line = ["Alignment", "species1", "species2", "chr1", "chr2", "start1", "end1", "length1", "start2", "end2", "length2", "strand", "N_gene", "mean_Ks", 'median_Ks', 'score', 'e_value']
-	line = ["id", "species1", "species2", "chr1", "chr2", "start1", "end1", "length1", "start2", "end2", "length2", "strand", "length", "ks_average", 'ks_median', 'score', 'e_value']
+	line = ["id", "species1", "species2", "chr1", "chr2", "strand", 
+				"start1", "end1", "istart1", "iend1", 
+				"start2", "end2", "istart2", "iend2",
+				"length1", "length2", "N_gene", "ks_average", 'ks_median', 'score', 'e_value']
 	print('\t'.join(line), file=outTsv)
 	for rc in Collinearity(collinearity,gff=gff,kaks=kaks):
 		sp1, sp2 = rc.species
@@ -2950,9 +2953,14 @@ def list_blocks(collinearity, outTsv, gff=None, kaks=None):
 		Alignment, score, e_value, N, strand = rc.Alignment, rc.score, rc.e_value, rc.N, rc.strand
 		start1, end1, length1 = rc.start1, rc.end1, rc.length1
 		start2, end2, length2 = rc.start2, rc.end2, rc.length2
+		istart1, iend1 = rc.istart1, rc.iend1
+		istart2, iend2 = rc.istart2, rc.iend2
 		mean_ks = rc.mean_ks
 		median_ks = rc.median_ks
-		line = [Alignment, sp1, sp2, chr1, chr2, start1, end1, length1, start2, end2, length2, strand, N, mean_ks, median_ks, score, e_value]
+		line = [Alignment, sp1, sp2, chr1, chr2, strand, 
+					start1, end1, istart1, iend1, 
+					start2, end2, istart2, iend2, 
+					length1, length2, N, mean_ks, median_ks, score, e_value]
 		line = list(map(str, line))
 		print('\t'.join(line), file=outTsv)
 def gene_class(collinearity, inTsv, outTsv, byAlignment=True):

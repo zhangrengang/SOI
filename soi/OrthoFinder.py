@@ -1142,7 +1142,8 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 				Genes_1 = list(map(gene_format_o, Genes_1))
 				Genes_2 = list(map(gene_format_o, Genes_2))
 				for (sp1, g1), (sp2, g2) in itertools.product(Genes_1, Genes_2):
-					assert sp1 != sp2
+					if sp1 is not None and sp2 is not None:
+						assert sp1 != sp2
 					if (g2, g1) in ortho_pairs:
 						continue
 					ortho_pairs.add( (g1, g2) )	#orthologs
@@ -1150,7 +1151,8 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 					if len(Genes) < 2:
 						continue
 					for (sp1, g1), (sp2, g2) in itertools.combinations(Genes, 2):
-						assert sp1 == sp2
+						if sp1 is not None and sp2 is not None:
+							assert sp1 == sp2
 						if sps is not None and sp1 not in sps:
 							continue
 						if (g2, g1) in ortho_pairs:
@@ -1840,7 +1842,8 @@ def get_oglogs(OFdir, outHomo):
 		line = [g1, g2]
 		print('\t'.join(line), file=outHomo)
 def gene_format_o(gene):
-	sp, g = gene.split('|')
+	try: sp, g = gene.split('|', 1)
+	except ValueError: sp, g = None, gene
 	return (sp, gene)
 def get_paralogs(OFdir, outHomo, min_support=0.5):
 	result = OrthoFinder(OFdir)
@@ -1867,13 +1870,13 @@ def get_paralogs(OFdir, outHomo, min_support=0.5):
 				line = [g1, g2, info]
 				print('\t'.join(line), file=outHomo)
 def gene_format_p(gene):
-	sp, g = gene.split('|')
+	sp, g = gene.split('|', 1)
 	sp = sp[:int(len(sp)/2)]
 	g = sp + '|' + g
 	return (sp, g)
 def gene_format_common(gene):
 	if not '|' in gene:
-		sp, g = gene, gene
+		sp, g = None, gene
 		return (sp, g)
 	sp, g = gene.split('|')
 	sp1 = sp[:len(sp)/2]

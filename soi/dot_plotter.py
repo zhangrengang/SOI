@@ -75,6 +75,7 @@ def dotplot_args(parser):
 	group_ks.add_argument('--lower-ks', metavar='Ks', type=float, default=None, help="lower limit of median Ks. [default=%(default)s]")
 	group_ks.add_argument('--upper-ks', metavar='Ks', type=float, default=None, help="upper limit of median Ks. [default=%(default)s]")
 	group_ks.add_argument('--output-hist', action='store_true', default=False, help="output the data for histogram plot. [default=%(default)s]")
+	group_ks.add_argument('--cbar', action='store_true', default=False, help="plot color bar when no histogram plot. [default=%(default)s]")
 #	group_ks.add_argument('--clip-ks', action='store_true', default=None, help="clip ks > max-ks. [default=%(default)s]")
 #	group_ks.add_argument('--hist-ylim', type=float, default=None, help="max y axis of Ks histgram. [default=%(default)s]")
 #	group_ks.add_argument('--yn00', action='store_true', default=False, help='turn to YN00[default=%(default)s]')
@@ -178,7 +179,7 @@ def main(args):
 		plot_blocks(blocks, outplots, ks = None, max_ks=None, ks_hist=None,
 			xlabels=chrs1, ylabels=chrs2,
 			xpositions=xpositions, ypositions=ypositions,
-			xlines=lines1, ylines=lines2,
+			xelines=lines1, yelines=lines2,
 			xlim=max(lines1), ylim=max(lines2))
 	ploidy_data = coord_path1, coord_path2, coord_graph1, coord_graph2 = parse_gff(gff, chrs1, chrs2)
 	outplots = [prefix + '.' + fmt for fmt in args.format]
@@ -190,7 +191,7 @@ def main(args):
 			xlabels=chrs1, ylabels=chrs2, same_sp=same_sp,
 			#hist_ylim=args.hist_ylim,
 			xpositions=xpositions, ypositions=ypositions,
-			xelines=lines1, yelines=lines2,
+			xelines=lines1, yelines=lines2,	# chromosome ends
 			xclines=xclines, yclines=yclines, # such as centromere
 			xlim=max(lines1), ylim=max(lines2),
 			xoffset=d_offset1, yoffset=d_offset2, gff=gff, 
@@ -207,7 +208,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			xlabels=None, ylabels=None, xpositions=None, ypositions=None, xelines=None, yelines=None, xlim=None, ylim=None,
 			figsize=18, fontsize=10, point_size=0.8, xclines=None, yclines=None, plot_bin=None, output_hist=False,
 			xoffset=None, yoffset=None, xbars=None, ybars=None, gff=None, gene_axis=None, xbarlab=True, ybarlab=True, 
-			hist_ylim=None, xlabel=None, ylabel=None, remove_prefix=True, number_plots=True, same_sp=False,
+			hist_ylim=None, xlabel=None, ylabel=None, remove_prefix=True, number_plots=True, same_sp=False, cbar=False,
 			ploidy=False, ploidy_data=None, ortholog_graph=None, of_color=False, homology=False, **kargs
 			):
 	import matplotlib
@@ -366,11 +367,11 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		plot_label(ax, label, fontsize=lsize)
 
 	tlabel = 'OrthoIndex' if of_color else 'Ks'
-	if not ks is None and ks_hist is None and False:	# color map only
+	if not ks is None and ks_hist is None and cbar:	# color map only
 		ax = plt.subplot2grid((21,20),(20,0), colspan=5)
 		plt.axis('off')
-		cbar = plt.colorbar(ax=ax, orientation='horizontal', location='bottom', label=label, shrink=1, fraction=0.5)
-		# cbar.ax.set_xlabel('Ks', fontsize=14)
+		cbar = plt.colorbar(ax=ax, orientation='horizontal', location='bottom', label=tlabel, shrink=1, fraction=0.5)
+		#cbar.ax.set_xlabel(tlabel, fontsize=14)
 
 
 	# ax2

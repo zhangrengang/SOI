@@ -3,7 +3,7 @@
 Before run the pipeline:
 1. install the lasest verion of [SOI](https://github.com/zhangrengang/orthoindex#installation) by `python3 setup.py install`, 
 and have a check: `which soi-syn`;
-2. completed the [example pipeline](https://github.com/zhangrengang/evolution_example) to get the orthologous synteny file `collinearity.ortho`;
+2. complete the [example pipeline](https://github.com/zhangrengang/evolution_example) to get the orthologous synteny file `collinearity.ortho`;
 3. prepare file `species.config` to set the expected subgenome numbers for the targeted species (TAB seperated):
 ```
 Vitis_vinifera  1

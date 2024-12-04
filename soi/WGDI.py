@@ -137,6 +137,9 @@ class AK:
 		has_lab = False
 		texts = []
 		for sgement in self.lazy_lines(gene_axis, gff=gff):
+		#	print(sgement, d_offset)
+			if sgement.chrom not in d_offset:
+				continue
 			offset = d_offset[sgement.chrom] + sgement.start
 			lab = sgement.label if label else None
 		#	print(xy, len(sgement), width, offset, sgement.color, align, lab, gene_axis, self.is_order(), sgement.start, sgement.end)
@@ -205,9 +208,11 @@ class Segment:
 		except IndexError: self.label = None
 	def __len__(self):
 		return self.end - self.start + 1
-	@property
+	@lazyproperty
 	def id(self):
 		return '{}:{}-{}|{}'.format(self.chrom, self.start, self.end, self.subgenome)
+	def __repr__(self):
+		return self.id
 	def write(self, fout):
 		print('\t'.join(map(str, (self.chrom, self.start, self.end, self.color, self.subgenome))), file=fout)
 def stats_besthits(alignment, pol_indice, dip_indice, labels, blasts):
