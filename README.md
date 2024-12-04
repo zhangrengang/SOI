@@ -73,6 +73,10 @@ soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o Populus_tricho
 diff Populus_trichocarpa-Salix_dunnii.collinearity.ortho Populus_trichocarpa-Salix_dunnii.collinearity.ortho.test
 
 ```
+**Note**: If you want to run the [full phylogenomic pipeline of SOI](https://github.com/zhangrengang/evolution_example/), 
+GENE ID is needed to label with SPECIES ID (e.g. `Angelica_sinensis|AS01G00001`) for compatibility.
+See [details how to prepare the data](https://github.com/zhangrengang/evolution_example/?tab=readme-ov-file#prepare-data).
+
 ### Example output dot plots ###
 ![dotplots](example_data/mege_4dot.png)
 Figure. The Orthology Index in identifying orthologous synteny: a typical case. 
