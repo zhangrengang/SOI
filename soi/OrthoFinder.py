@@ -1758,7 +1758,7 @@ def species_specific_genes(OFdir, sp, outTsv, ex_sps=[]):
 	print('\t'.join(['gene', 'group']), file=outTsv)
 	d_genes = result.get_species_specific2(sp, ex_sps)
 	for gene, group in sorted(d_genes.items()):
-		print('\t'.join([gene.split('|')[1], str(group)]), file=outTsv)
+		print('\t'.join([gene.split('|', 1)[1], str(group)]), file=outTsv)
 	
 def bootstrap_species_tree(OFdir, outdir, bootstrap=1000, iqtree_options='-mset JTT'):
 	'''重新用iqtree建树'''
@@ -1878,7 +1878,7 @@ def gene_format_common(gene):
 	if not '|' in gene:
 		sp, g = None, gene
 		return (sp, g)
-	sp, g = gene.split('|')
+	sp, g = gene.split('|', 1)
 	sp1 = sp[:len(sp)/2]
 	sp2 = sp[len(sp)/2+1:]
 	if sp1 == sp2:
@@ -2123,7 +2123,7 @@ def og2gene(OFdir, oglist, outsv, species=None):
 		if not og in oglist:
 			continue
 		for gene in group.get_group(sps=species):
-			gene = gene.split('|')[-1]
+			gene = gene.split('|', 1)[-1]
 			line = [gene, og] #+ group.raw_genes
 			print('\t'.join(line), file=outsv)
 def classify_genes(OFdir, outsv=sys.stdout, species=None):
@@ -2135,7 +2135,7 @@ def add_og(OFdir, richfile, outrichfile):
 	for group in OrthoFinder(OFdir).orthogroups:
 		og = group.ogid
 		for gene in group.get_group():
-			gene = gene.split('|')[-1]
+			gene = gene.split('|', 1)[-1]
 			d_genes[gene] = og
 
 	for i, line in enumerate(open(richfile)):

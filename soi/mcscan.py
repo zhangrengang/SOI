@@ -576,7 +576,7 @@ class Collinearity():
 	def gene_genes(self):
 		return [list(map(self.gene2geneid, genes)) for genes in self.genes]
 	def gene2geneid(self, gene):
-		return gene.split('|')[1]
+		return gene.split('|', 1)[1]
 	def parse_genes(self, genes1,genes2):
 		self.pairs = list(zip(genes1,genes2))
 		self.ks = []
@@ -768,7 +768,7 @@ def anchors2bed(collinearity, gff, chrmap, left_anchors, right_anchors, outbed=s
 		g2_range = '{}-{}'.format(left_g2.raw_gene, right_g2.raw_gene)
 		g1_range = '{}-{}'.format(left_g1.raw_gene, right_g1.raw_gene)
 		id = '{}:{}:{}'.format(sp2, g2_range, g1_range)
-		line = [chr2.split('|')[-1], g2_start-1, g2_end, id, sp2, ]
+		line = [chr2.split('|', 1)[-1], g2_start-1, g2_end, id, sp2, ]
 		line = list(map(str, line))
 		print('\t'.join(line), file=outbed)
 		left_gs.add(left_g1)
@@ -778,7 +778,7 @@ def anchors2bed(collinearity, gff, chrmap, left_anchors, right_anchors, outbed=s
 	left_g1, left_g2 = min(left_gs, key=lambda x:x.start), max(right_gs, key=lambda x:x.end)
 	g1_chr, g1_start, g1_end = left_g1.chr, left_g1.start, right_g1.end
 	id = '{}:{}'.format(anchor_sp, g1_range)
-	line = [anchor_chr.split('|')[-1], g1_start-1, g1_end, id, anchor_sp, ]
+	line = [anchor_chr.split('|', 1)[-1], g1_start-1, g1_end, id, anchor_sp, ]
 	line = list(map(str, line))
 	print('\t'.join(line), file=outbed)
 	
