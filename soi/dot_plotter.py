@@ -200,9 +200,27 @@ def main(args):
 def is_mcscan_style(labels):
 	matches = [re.compile(r'[A-Za-z]{2}\d{1,5}[A-Za-z]*$').match(lab) for lab in labels]
 	return all(matches)
+def match_paptern(lab, pattern):
+#	logger.info([lab, pattern])
+	match = re.compile(pattern).match(lab)
+	if match:
+		logger.info(match.groups())
+		return match.groups()[0]
+	else:
+		return
+def is_same_prefix(labels):
+	matches = [match_paptern(lab, r'(\D+)') for lab in labels]
+	matches = list(set(matches))
+	if len(matches) == 1 and matches[0] is not None:
+		return len(matches[0])
+	else:
+		return False
 def _remove_prefix(labels):
-	if is_mcscan_style(labels):
-		return [label[2:] for label in labels]
+	same_prefix = is_same_prefix(labels)
+#	logger.info(same_prefix)
+#	if is_mcscan_style(labels):
+	if same_prefix:
+		return [label[same_prefix:] for label in labels]
 	return labels
 def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=None, clip_ks=None, min_block=None, ks_step=0.02,
 			xlabels=None, ylabels=None, xpositions=None, ypositions=None, xelines=None, yelines=None, xlim=None, ylim=None,
@@ -690,6 +708,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 	d_length = rc.chr_length
 	if gene_axis:
 		d_length = rc.chr_ngenes
+	#logger.info(d_length)
 	d_offset1, lines1 = _offset(chrs1, d_length)
 	d_offset2, lines2 = _offset(chrs2, d_length)
 
