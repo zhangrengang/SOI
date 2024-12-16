@@ -204,7 +204,6 @@ def match_paptern(lab, pattern):
 #	logger.info([lab, pattern])
 	match = re.compile(pattern).match(lab)
 	if match:
-		logger.info(match.groups())
 		return match.groups()[0]
 	else:
 		return
