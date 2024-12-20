@@ -214,8 +214,12 @@ def is_same_prefix(labels):
 		return len(matches[0])
 	else:
 		return False
+def is_same_prefix2(labels):
+	for i, strs in enumerate(zip(*labels)):
+		if len(set(strs)) > 1:
+			return i
 def _remove_prefix(labels):
-	same_prefix = is_same_prefix(labels)
+	same_prefix = is_same_prefix2(labels)
 #	logger.info(same_prefix)
 #	if is_mcscan_style(labels):
 	if same_prefix:

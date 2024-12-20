@@ -2002,7 +2002,7 @@ class ColinearGroups:
 			treefile = rooted_treefile = iqtreefile
 			treefiles += [treefile]
 			if not os.path.exists(iqtreefile):
-				cmd = 'mafft --auto {} > {} 2> /dev/null'.format(outSeq, alnSeq)
+				cmd = 'mafft --auto --quiet {} > {}'.format(outSeq, alnSeq)
 				cmds += [cmd]
 				cmd = 'trimal -automated1 -in {} -out {} &> /dev/null'.format(alnSeq, alnTrim)
 				cmds += [cmd]
@@ -2099,7 +2099,7 @@ class ColinearGroups:
 			iqtreefiles += [iqtreefile]
 			d_alnfiles[alnTrim] = chroms
 			if not os.path.exists(iqtreefile):
-				cmd = '. ~/.bashrc; mafft --auto {} > {} 2> /dev/null'.format(outSeq, alnSeq)
+				cmd = '. ~/.bashrc; mafft --quiet --auto {} > {}'.format(outSeq, alnSeq)
 				cmds += [cmd]
 				cmd = 'trimal -automated1 -in {} -out {} &> /dev/null'.format(alnSeq, alnTrim)
 				cmds += [cmd]
@@ -2230,7 +2230,7 @@ class ColinearGroups:
 			alnTrim = alnSeq + '.trimal'
 			d_alnfiles[alnTrim] = chroms
 			if True: #not os.path.exists(alnTrim):
-				cmd = '. ~/.bashrc; mafft --auto {} > {} 2> /dev/null'.format(outSeq, alnSeq)
+				cmd = '. ~/.bashrc; mafft --quiet --auto {} > {}'.format(outSeq, alnSeq)
 				cmds += [cmd]
 				cmd = 'trimal -automated1 -in {} -out {} &> /dev/null'.format(alnSeq, alnTrim)
 				cmds += [cmd]
@@ -2744,7 +2744,7 @@ class ToAstral(ColinearGroups):
 		
 	def run(self):
 		#logger.info('VARS: {}'.format(self.__dict__))
-		mafft_template = '. ~/.bashrc; mafft --auto {} > {} 2> /dev/null'
+		mafft_template = '. ~/.bashrc; mafft --quiet --auto {} > {}'
 		pal2nal_template = 'pal2nal.pl -output fasta {} {} > {}'
 		trimal_template = 'trimal %s -in {} -out {} > /dev/null' % (self.trimal_opts, )
 		iqtree_template = 'iqtree2 -redo -s {} %s -nt 1 {} > /dev/null' % (self.iqtree_opts, )
