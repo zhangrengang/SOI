@@ -38,7 +38,7 @@ jobs:
     - run: conda env list
     - run: conda --version
 #    - run: export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH
-    - run: source ${{ github.workspace }}/miniconda/etc/profile.d/conda.sh
+    - run: source /usr/share//miniconda/etc/profile.d/conda.sh
     - run: ls -al /usr/share/miniconda/envs/OrthoIndex/bin
     - run: which python   
     - run: conda activate OrthoIndex
