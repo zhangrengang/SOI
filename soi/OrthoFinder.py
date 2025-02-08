@@ -14,7 +14,7 @@ from lazy_property import LazyWritableProperty as lazyproperty
 from .RunCmdsMP import run_cmd, run_job, logger
 
 def catAln(inALNs, outALN, allow_missing=True, idmap=None):
-	'''首尾相连alignments'''
+	'''concatenate alignments'''
 	if len(inALNs) == 0:
 		raise ValueError('Zero inputs')
 	if allow_missing:

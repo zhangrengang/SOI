@@ -60,21 +60,20 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9):
 	colors = Colors(n).colors
 	for i, (sp, rcs) in enumerate(sorted(d_rcs.items())):
 		_sp = convert_sp(sp)
-		i50, sn50, fn50 = rcs.xn50
-		fm, sm = np.median(rcs.extended_frs), np.median(rcs.extended_ns)
-		om = np.median(rcs.extended_ois)
-		ns = rcs.ns
-		nb = len(ns) # np.sum(rcs.refcounts[:, 1]) #len(ns)
-		bm = sum(rcs.refcounts[:, 1]) # sum(rcs.ns)
+		i50, sn50, fn50 = rcs.xn50	# index 50, block size 50, frac rate 50
+		fm, sm = np.median(rcs.extended_frs), np.median(rcs.extended_ns)	
+			# frac rate 50, block size 50
+		om = np.median(rcs.extended_ois)	#  OI 50
+		ns = rcs.ns	# block sizes: Ns
+		nb = len(ns) # block number
+		bm = sum(rcs.refcounts[:, 1]) # gene number of all blocks
 		kargs = dict(color=colors[i], alpha=1, label=_sp)
 		ax0.plot(-2, -2, linestyle='-', marker='o',  **kargs)
 #		ax0.barh(0, 0, height=0, left=0, align='center', label=_sp)
 
 		ax1.plot(range(1, nb+1), np.cumsum(ns), drawstyle="steps-post",  **kargs)
-	
 		ax2.plot(range(1, nb+1), ns, drawstyle="steps-post", **kargs)
 #		ax2.scatter(i50, sn50, label=_sp)
-		
 		ax3.scatter(len(rcs.ns), bm, **kargs)
 #		ax4.hist(rcs.extended_frs, bins=40, histtype='step', **kargs)
 		hist_plot(rcs.extended_frs, ax4, bins=40, **kargs)
@@ -82,28 +81,35 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9):
 #		ax5.scatter(fn50, sn50, alpha=0.8, label=_sp)
 		ax5.scatter(fm, sm, **kargs)
 
-#	   ax5.hist(rcs.extended_ns, bins=30, histtype='step', label=_sp)
+#		ax5.hist(rcs.extended_ns, bins=30, histtype='step', label=_sp)
 #		ax5.scatter(np.mean(rcs.extended_frs), np.mean(rcs.extended_ns), label=_sp)
 		ax6.scatter(fm, om, **kargs)
 #		ax7.hist(rcs.extended_ois, bins=40, histtype='step', **kargs)
 		hist_plot(rcs.extended_ois, ax7, bins=40, **kargs)
-
 		ax8.plot(rcs.refcounts[:, 0], rcs.refcounts[:, 1], **kargs)
 #		print(sn50, sm)
-#	set_legends([ax1, ax2, ax3,ax4,ax5,ax6], fontsize=legend_fontsize)
-#	ax0.legend(loc='upper left',fancybox=False, frameon=False, ncols=ncols)
+		line = [sp, nb, bm, int(min(ns)), int(max(ns)), int(np.median(ns)), 
+				round(np.mean(ns),1), sm, round(fm,2), round(om,2)]
+		print(line)
+	# ax
+	# 1	4
+	# 2	5
+	# 3	6
+	# 7	8
 	for ax, xlab, ylab in (
 		[ax1, '# of blocks', 'Cumulative number of genes'],
-		[ax2, '# of blocks', 'Number of genes'],
+		[ax2, '# of blocks', 'Block size'],
 		[ax3, 'Total number of blocks', 'Total number of genes'],
 		[ax4, 'Fractionation rate', 'Number of genes'],
-		[ax5, 'Fractionation rate', 'Block size'],
-		[ax6, 'Fractionation rate', 'Orthology index'],
+		[ax5, 'Fractionation rate 50', 'Block size 50'],
+		[ax6, 'Fractionation rate 50', 'Orthology index 50'],
+		[ax7, 'Orthology index', 'Number of genes'],
+		[ax8, 'Copy number', 'Number of genes'],
 		):
 		set_labels(ax, xlab, ylab)
 	
 	#legend
-	ncols = n // 30 + 1
+	ncols = n // 40 + 1
 	ax0.set_xlim(0,1)
 	ax0.set_ylim(0,1)
 	ax0.legend(loc=(-1.5, 0),fancybox=False, frameon=False, ncols=ncols)	#
@@ -116,7 +122,7 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9):
 	ax0.yaxis.set_ticks([])
 #	ax0.set_title('Species', loc='left')
 
-	plt.subplots_adjust(hspace=0.25, wspace=1.8)
+	plt.subplots_adjust(hspace=0.3, wspace=1.8)
 	plt.savefig(outfig, bbox_inches='tight')
 
 def hist_plot(data, ax, bins=10, alpha=1, **kargs):

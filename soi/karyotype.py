@@ -6,7 +6,11 @@ from .mcscan import ColinearGroups, Gff, GffGraph, SyntenyGraph
 from .RunCmdsMP import logger
 
 def akr(collinearity, gff, anc, spsd, rounds=3):
-	synG = ColinearGroups(collinearity, spsd=spsd, nosamechr=True, noparalog=False).to_graph()
+	'''To refine ancestral karyotype: 
+1. to prune non-syntenic and tandemly repeated genes;
+2. to add genes that show synteny in other genomes. '''
+	synG = ColinearGroups(collinearity, 
+			spsd=spsd, nosamechr=True, noparalog=False).to_graph()
 	gffG = Gff(gff).to_graph()
 	# unify node object
 	synG = convert_synG(synG, gffG)
@@ -14,26 +18,22 @@ def akr(collinearity, gff, anc, spsd, rounds=3):
 	nonSynNodes = set(gffG)-set(synG)
 	gffG.remove_internals(nonSynNodes)
 	logger.info('{} non-syntenic nodes removed'.format(len(nonSynNodes)))
-	ancG = gffG.subgraph([node for node in gffG.nodes if node.species == anc])
+	ancG = gffG.subgraph(
+			[node for node in gffG.nodes if node.species == anc])
 	logger.info('{} anc nodes'.format(len(ancG)))
-
+	# remove tandem nodes
 	TANDEM = identify_tandem(synG)
 	gffG.remove_internals(TANDEM)
 	logger.info('{} tandem nodes removed'.format(len(TANDEM)))
 
 	gffG.index()
-
-#	with open('gff.{}.gfa'.format(2), 'w') as fout:
-#		gffG.to_gfa(fout)
 	ancG = gffG.subgraph([node for node in gffG.nodes if node.species == anc])
 	ancG = GffGraph(ancG)
 	logger.info('{} anc nodes'.format(len(ancG)))
 
 	for i in range(rounds):
 		logger.info('round {}'.format(i))
-#		logger.info(len(TANDEM))
 		d_ancs = process_synG(synG, ancG)
-#		logger.info(len(TANDEM))
 		logger.info(len(ancG))
 		# remove tandem
 		logger.info('{} tandems'.format(len(set(ancG.nodes) - set(d_ancs))))
@@ -42,19 +42,22 @@ def akr(collinearity, gff, anc, spsd, rounds=3):
 		logger.info((len(ancG), len(list(ancG.starts))))
 #		with open('sny.{}.gfa'.format('x'), 'w') as fout:
 #			ancG.to_gfa(fout)
+		# insert syntenic nodes
 		np, nn = insert_syn(ancG, gffG, d_ancs, synG, TANDEM=TANDEM)
 		logger.info('inserted {} paths, {} nodes'.format(np, nn))
 		logger.info((len(ancG), len(list(ancG.starts))))
-#		logger.info((list(synG.nodes())[:10], list(gffG.nodes())[:10]))
 
 		with open('sny.{}.gfa'.format(i), 'w') as fout:
 			ancG.to_gfa(fout)
+	# final remove non-syntenic nodes
 #	d_ancs = process_synG(synG, ancG, TANDEM=TANDEM)
 #	ancG.remove_internals(set(ancG.nodes) - set(d_ancs))
 	logger.info(len(ancG))
 	ancG.to_wgdi(anc+'.akr')
 	ancG.to_idmap()
+
 def insert_syn(ancG, gffG, d_ancs, synG, max_dist=5, TANDEM=set([])):
+	'''insert syngtenic nodes into ancG'''
 	starts = list(ancG.starts)
 	i,j = 0,0
 	insert_paths, insert_nodes = [], []
@@ -63,8 +66,10 @@ def insert_syn(ancG, gffG, d_ancs, synG, max_dist=5, TANDEM=set([])):
 		for i in range(len(chrom)-1):
 			start, end = chrom[i:i+2]
 			sgs, egs = d_ancs[start], d_ancs[end]
-			d_sgs = {sp: list(g) for sp, g in itertools.groupby(sgs, key=lambda x:x.species)}
-			d_egs = {sp: list(g) for sp, g in itertools.groupby(egs, key=lambda x:x.species)}
+			d_sgs = {sp: list(g) \
+					for sp, g in itertools.groupby(sgs, key=lambda x:x.species)}
+			d_egs = {sp: list(g) \
+					for sp, g in itertools.groupby(egs, key=lambda x:x.species)}
 			shared_species = set(d_sgs) & set(d_egs)
 			paths = []
 			for sp in shared_species:
@@ -73,7 +78,6 @@ def insert_syn(ancG, gffG, d_ancs, synG, max_dist=5, TANDEM=set([])):
 					if g1 in TANDEM or g2 in TANDEM or ({g1, g2} & {start, end}):
 						continue
 					if is_adj(g1, g2, max_dist, min_dist=2):
-						#print(g1, g2)
 						path = gffG.lazy_fetch_chrom(g1, g2)
 						path.species = sp
 						path.score = synG.score_path(path)
@@ -94,7 +98,9 @@ def insert_syn(ancG, gffG, d_ancs, synG, max_dist=5, TANDEM=set([])):
 		i += 1
 		j += len(path)
 	return i,j
+
 def convert_synG(synG, gffG):
+	'''copy node attributes from gffG to synG'''
 	newG = SyntenyGraph()
 	d_gffG = {n.id:n for n in gffG.nodes}
 	i,j = 0,0
@@ -110,11 +116,14 @@ def convert_synG(synG, gffG):
 	return newG
 
 def is_adj(g1, g2, max_dist=3, min_dist=0):
+	'''Is two genes adjacent'''
 	dist = abs(g1.index - g2.index)
-	if g1.species == g2.species and g1.chrom == g2.chrom and min_dist <= dist <= max_dist:
+	if g1.species == g2.species and g1.chrom == g2.chrom \
+			and min_dist <= dist <= max_dist:
 		return True
 	return False
 def identify_tandem(synG, max_dist=1):
+	'''identify tandem nodes'''
 	tandems = set([])
 	for cmpt in nx.connected_components(synG):
 		tanG = nx.Graph()
@@ -130,14 +139,14 @@ def identify_tandem(synG, max_dist=1):
 	return tandems
 
 def process_synG(synG, ancG, max_dist=1, min_sps=2):
-	d_ancs = {}
+	d_ancs = {} # core_node: syn_nodes
 	i,j,k,m,n = 0,0,0,0,0
 	for cmpt in nx.connected_components(synG):
 		n +=1
 		cmpt = sorted(cmpt)
 		ancNodes = [nd for nd in cmpt if nd in ancG]
 		sps = {nd.species for nd in cmpt}
-		if len(ancNodes) ==0 or len(sps) < min_sps:
+		if len(ancNodes) == 0 or len(sps) < min_sps:
 			i+=1
 			continue
 		elif len(ancNodes) == 1:	# only one core
@@ -154,24 +163,14 @@ def process_synG(synG, ancG, max_dist=1, min_sps=2):
 			if node in cores:
 				core = node
 			else:
-				dists = {core: nx.shortest_path_length(sg, node, core, weight='weight') for core in cores}
-				#print(dists)
+				dists = {core: nx.shortest_path_length(sg, node, core, weight='weight') \
+							for core in cores}
 				core = min(cores, key=lambda x: dists[x])
 			try: d_groups[core] += [node]
 			except KeyError: d_groups[core] = [node]
 		d_ancs.update(d_groups)	# >=1 groups
 	return d_ancs
 
-def test_single(synG, anc):
-	for cmpt in nx.connected_components(synG):
-		ancNodes = [nd for nd in cmpt if nd.species == anc]
-		if len(ancNodes) == 0:
-			print(cmpt)
-def print_edge(synG, node):
-	for xn in synG.nodes:
-		if xn.id == node:
-			break
-	print(node, synG[xn])
 def main():
 	collinearity, gff, anc, spsd = sys.argv[1:5]
 	akr(collinearity, gff, anc, spsd)

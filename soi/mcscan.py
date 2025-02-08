@@ -277,6 +277,7 @@ def evaluate_orthology(ref, qry):
 	AD = len(qry_pairs)	# all detected
 	logger.info('{} pairs in {}'.format(AD, qry))
 	TP = len(qry_pairs & ref_pairs)	# true positive
+	#print (list(qry_pairs - ref_pairs)[:20], file=sys.stderr)
 	FP = AD - TP	# false positive
 	FN = AP - TP	# false negative
 	precision = 1.0 * TP/ (TP+FP)
@@ -514,20 +515,19 @@ class Collinearity():
 				self.strand = {'plus': '+', 'minus': '-'}[self.orient]
 				self.id = self.Alignment
 			else:
+				tmp = line.strip().split()
 				if self.source == 'jcvi':
-					gene1, gene2, score = line.strip().split()
+					try: gene1, gene2, score = tmp
+					except ValueError: gene1, gene2 = tmp
 				elif self.source == 'wgdi':
-#					print >> sys.stderr, line.strip().split('\t')
-					gene1, idx1, gene2, idx2, strand = line.strip().split()
+					gene1, idx1, gene2, idx2, strand = tmp
 					
 				else: # mcscan
 					pattern = r'.*?\d+.*?\d+:\s+(\S+)\s+(\S+)\s+\d+'
-					#print line
 					try: gene1, gene2 = re.compile(pattern).match(line).groups()
 					except AttributeError:
 						print('unparsed LINE: {}'.format(line), file=sys.stderr)
 						continue
-					tmp = line.strip().split()
 					if len(tmp) > 5:
 						self.ks = float(tmp[-1])
 				genes1.append(gene1)
@@ -732,7 +732,14 @@ class Collinearity():
 			d[kaks.pair] = ks
 			d[tuple(reversed(kaks.pair))] = ks
 		return d
-
+def get_blocks(collinearity, block_ids, fout=sys.stdout):
+	block_ids = {line.strip().split()[0].split(',')[0] for line in open(block_ids)}
+	got_ids = set([])
+	for block in Collinearity(collinearity):
+		if block.Alignment in block_ids:
+			block.write(fout)
+			got_ids.add(block.Alignment)
+	logger.info('{} / {} blocks got'.format(len(got_ids), len(block_ids)))
 def anchors2bed(collinearity, gff, chrmap, left_anchors, right_anchors, outbed=sys.stdout):
 	left_anchors = left_anchors.split(',')	# ordered
 	right_anchors = right_anchors.split(',')
@@ -2776,7 +2783,7 @@ class ToAstral(ColinearGroups):
 				for g in genes:
 					iters += [(g, sp)]
 
-			if len(iters) < 4:
+			if len(iters) < 2:
 				continue
 			i += 1
 			#print [sp for (sp, genes) in got_sp]
@@ -3055,7 +3062,7 @@ def count_genes(collinearity, sp1, sp2):
 		except KeyError: d_count[chr2] = ngene
 	for chrom, ngene in sorted(d_count.items()):
 		print(chrom, ngene)
-def main():
+def main(): # test
 	import sys
 	subcmd = sys.argv[1]
 	kargs = parse_kargs(sys.argv)
@@ -3157,7 +3164,9 @@ def main():
 		OFdir=sys.argv[2]
 		outHomo = sys.stdout
 		get_homologs(OFdir, outHomo)
-
+	elif subcmd == 'get_blocks':
+		collinearity, block_ids = sys.argv[2:4]
+		get_blocks(collinearity, block_ids, fout=sys.stdout)
 	else:
 		raise ValueError('Unknown sub command: {}'.format(subcmd))
 if __name__ == '__main__':
