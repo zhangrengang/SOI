@@ -31,7 +31,7 @@ jobs:
     - run: conda env create -f OrthoIndex.yaml
 
 #    - name: activate
-#      run: conda init bash
+    - run: conda init bash
 #    - run: cat /home/runner/.bashrc
     - run: conda env list
 #    - run: export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH
