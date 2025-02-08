@@ -32,9 +32,11 @@ jobs:
 
 #    - name: activate
     - run: conda init bash
+    - run: conda init
     - run: . /home/runner/.bashrc
     - run: . ~/.bashrc
     - run: conda env list
+    - run: conda --version
 #    - run: export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH
 #    - run: . "/usr/share/miniconda/etc/profile.d/conda.sh"
     - run: ls -al /usr/share/miniconda/envs/OrthoIndex/bin
