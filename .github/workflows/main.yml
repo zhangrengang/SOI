@@ -33,12 +33,12 @@ jobs:
 #    - name: activate
     - run: conda init bash
     - run: conda init
-    - run: . /home/runner/.bashrc
-    - run: . ~/.bashrc
+    - run: source /home/runner/.bashrc
+    - run: source ~/.bashrc
     - run: conda env list
     - run: conda --version
 #    - run: export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH
-#    - run: . "/usr/share/miniconda/etc/profile.d/conda.sh"
+    - run: source ${{ github.workspace }}/miniconda/etc/profile.d/conda.sh
     - run: ls -al /usr/share/miniconda/envs/OrthoIndex/bin
     - run: which python   
     - run: conda activate OrthoIndex
