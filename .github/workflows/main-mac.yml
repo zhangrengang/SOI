@@ -41,10 +41,8 @@ jobs:
         conda env list
         export PATH=/Users/runner/miniconda3/envs/OrthoIndex/bin:$PATH
         which python
-        ls -al /Users/runner/miniconda3/envs/OrthoIndex/
-        ls -al /Users/runner/miniconda3/envs/OrthoIndex/bin
         conda init
-        cat ~/.bashrc
+        cat /Users/runner/.bash_profile
         echo "==="
         export PATH=/Users/runner/miniconda3/envs/OrthoIndex/bin:$PATH && python setup.py install
 

@@ -40,3 +40,4 @@ soi filter -s Populus_trichocarpa-Salix_dunnii.collinearity.gz -o Populus_tricho
 	-c 0.6 > Populus_trichocarpa-Salix_dunnii.collinearity.ortho.test
 # compare with the expected output
 diff Populus_trichocarpa-Salix_dunnii.collinearity.ortho Populus_trichocarpa-Salix_dunnii.collinearity.ortho.test
+
