@@ -10,6 +10,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: test
+        run: tree /Users/runner/work/_actions/
+
       - name: Set up Conda
         uses: s-weigand/setup-conda@main
         with:
