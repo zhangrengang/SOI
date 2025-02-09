@@ -3,7 +3,6 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - alsa-lib=1.2.3.2
   - aria2=1.36.0
   - aster=1.15
   - biopython=1.81
