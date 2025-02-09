@@ -33,24 +33,26 @@ jobs:
         which conda
         conda env list
         conda env create -f OrthoIndex.yaml
+
     - name: Install OrthoIndex
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       run: |
         which python
         conda env list
-        export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH
+        export PATH=/Users/runner/miniconda3/envs/OrthoIndex/bin:$PATH
         which python
+        ls -al /Users/runner/miniconda/envs/OrthoIndex/
         ls -al /Users/runner/miniconda/envs/OrthoIndex/bin
         conda init
         cat ~/.bashrc
         echo "==="
-        export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
-     #run: python setup.py install
+        export PATH=/Users/runner/miniconda3/envs/OrthoIndex/bin:$PATH && python setup.py install
+
     - name: Test SOI
       run: |
         which python
         ls -al
         pwd
-        cd example_data && export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH && bash example.sh
+        cd example_data && export PATH=/Users/runner/miniconda3/envs/OrthoIndex/bin:$PATH && bash example.sh
     #- run: cd example_data && bash example.sh
     
