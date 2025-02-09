@@ -60,7 +60,6 @@ dependencies:
   - libevent=2.1.10
   - libexpat=2.5.0
   - libffi=3.3
-  - libgfortran-ng=13.2.0
   - libgfortran5=13.2.0
   - libglib=2.68.4
   - libiconv=1.17
