@@ -34,11 +34,10 @@ jobs:
         which conda
         conda env list
     - name: Install OrthoIndex
-      run: which python
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       run: export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
-           #run: python setup.py install
-    
+     #run: python setup.py install
+    - run: which python
     - run: ls -al
     - run: pwd
     - run: cd example_data && export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH && bash example.sh
