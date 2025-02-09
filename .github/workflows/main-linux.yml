@@ -20,9 +20,9 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - uses: actions/checkout@v4
-    - name: Install dependencies
     # set up conda
-      uses: s-weigand/setup-conda@v1.0.5
+    - uses: s-weigand/setup-conda@v1.0.5
+    - name: Install dependencies
 #      with:
 #        conda-channels: bioconda
     # install dependencies

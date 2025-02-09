@@ -31,7 +31,7 @@ except (RuntimeError,ImportError,AttributeError,OSError) as e:
 	else:
 #		logger.warning('Grid computing is not available because DRMAA not installed: {}'.format(e))
 		pass
-	logger.info('No DRMAA (see https://github.com/pygridtools/drmaa-python), Switching to local mode.')
+#	logger.info('No DRMAA (see https://github.com/pygridtools/drmaa-python), Switching to local mode.')
 	GRID = False
 
 __version__ = '1.1'
