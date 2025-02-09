@@ -11,31 +11,32 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up Conda
-        uses: s-weigand/setup-conda@v1.0.5
+        uses: s-weigand/setup-conda@latest
         with:
-          activate-environment: myenv
           python-version: 3.9
+          update-conda: true
+          activate-conda: true
 
       - name: Display PATH
         run: echo $PATH
 
-      - name: Activate Conda Environment
+      - name: Manually activate Conda Environment
         shell: bash
         run: |
           source ${{ github.workspace }}/miniconda/etc/profile.d/conda.sh
-          conda activate myenv
+          conda activate
           which python
 
       - name: Install dependencies
         shell: bash
         run: |
           source ${{ github.workspace }}/miniconda/etc/profile.d/conda.sh
-          conda activate myenv
+          conda activate
           conda install -c conda-forge some-package
 
       - name: Run tests
         shell: bash
         run: |
           source ${{ github.workspace }}/miniconda/etc/profile.d/conda.sh
-          conda activate myenv
+          conda activate
           pytest
