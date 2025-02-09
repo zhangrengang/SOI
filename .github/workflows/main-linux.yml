@@ -16,31 +16,30 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-#    runs-on: macos-latest
-#    runs-on: macos-14
 #    runs-on: ubuntu-22.04
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+    - uses: actions/checkout@v4
     - name: Install dependencies
     # set up conda
       uses: s-weigand/setup-conda@v1.0.5
 #      with:
 #        conda-channels: bioconda
-    - uses: actions/checkout@v2
     # install dependencies
-    - run: conda env create -f OrthoIndex.yaml
+      run: conda env create -f OrthoIndex.yaml
 
-#    - name: activate
-    - run: conda init bash
-    - run: conda init
-    - run: source /home/runner/.bashrc
-    - run: cat  ~/.bashrc
-    - run: conda env list
-    - run: conda --version
+    - name: Activate
+      run: |
+        conda init bash
+        conda init
+        source /home/runner/.bashrc
+        cat  ~/.bashrc
+        conda env list
+        conda --version
 #    - run: export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH
-    - run: source /usr/share//miniconda/etc/profile.d/conda.sh
-    - run: ls -al /usr/share/miniconda/envs/OrthoIndex/bin
-    - run: which python   
+        source /usr/share//miniconda/etc/profile.d/conda.sh
+        ls -al /usr/share/miniconda/envs/OrthoIndex/bin
+        which python   
 #    - run: conda activate OrthoIndex
 #    - run: which python
       
@@ -49,10 +48,11 @@ jobs:
       run: export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
 #      run: python setup.py install
     
-#    - name: run test
+    - name: Test SOI
     # run test 
-    - run: ls -al
-    - run: pwd
-    - run: cd example_data && export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH && bash example.sh
+      run: |
+        ls -al
+        pwd
+        cd example_data && export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH && bash example.sh
 #    - run: cd example_data && bash example.sh
       
