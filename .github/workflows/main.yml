@@ -15,7 +15,7 @@ jobs:
 
       - name: Set up Conda
         uses: s-weigand/setup-conda@main
-        with:
+        #with:
         #  python-version: 3.9
         #  update-conda: true
         #  activate-conda: true
