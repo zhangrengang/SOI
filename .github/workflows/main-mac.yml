@@ -1,58 +1,52 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI-MacOS
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+on: [push]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
-#    runs-on: ubuntu-latest
     runs-on: macos-latest
-#    runs-on: macos-14
-#    runs-on: ubuntu-22.04
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-    - name: Install dependencies
-    # set up conda
-      uses: s-weigand/setup-conda@v1.0.5
-#      with:
-#        conda-channels: bioconda
-    - uses: actions/checkout@v2
-    # install dependencies
-    - run: conda env create -f OrthoIndex.yaml
+    strategy:
+      max-parallel: 5
 
-#    - name: activate
-    - run: conda init bash
-    - run: conda init
-    - run: source /home/runner/.bashrc
-    - run: cat  ~/.bashrc
-    - run: conda env list
-    - run: conda --version
-#    - run: export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH
-    - run: source /usr/share//miniconda/etc/profile.d/conda.sh
-    - run: ls -al /usr/share/miniconda/envs/OrthoIndex/bin
-    - run: which python   
-#    - run: conda activate OrthoIndex
-#    - run: which python
-      
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+    - name: Add conda to system path
+      run: |
+        # $CONDA is an environment variable pointing to the root of the miniconda directory
+        echo $CONDA
+        ls /Users/runner/hostedtoolcache/
+        echo $CONDA/bin >> $GITHUB_PATH
+        echo "\n"
+        find /Users/runner/work/_actions/
+    - name: Install Miniconda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: 'latest'
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: |
+        which conda
+        conda env list
+        conda env create -f OrthoIndex.yaml
     - name: Install OrthoIndex
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      run: export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
-#      run: python setup.py install
+      run: |
+        which python
+        conda env list
+        export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH
+        which python
+        export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
+     #run: python setup.py install
+    - name: Test SOI
+      run: |
+        which python
+        ls -al
+        pwd
+        cd example_data && export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH && bash example.sh
+    #- run: cd example_data && bash example.sh
     
-#    - name: run test
-    # run test 
-    - run: ls -al
-    - run: pwd
-    - run: cd example_data && export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH && bash example.sh
-#    - run: cd example_data && bash example.sh
-      
