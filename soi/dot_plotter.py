@@ -231,9 +231,7 @@ def main(args):
 	#plot all
 	plot_blocks(blocks, outplots, ks = ks, 
 			max_ks=args.max_ks, ks_hist=args.ks_hist, ks_cmap=args.ks_cmap, 
-			clip_ks=args.clip_ks, min_block=args.min_block, ks_step=args.ks_step,
 			xlabels=chrs1, ylabels=chrs2, same_sp=same_sp,
-			hist_ylim=args.hist_ylim,
 			xpositions=xpositions, ypositions=ypositions,
 			xelines=lines1, yelines=lines2,	# chromosome ends
 			xclines=xclines, yclines=yclines, # centromeres etc.
