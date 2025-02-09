@@ -230,7 +230,6 @@ def main(args):
 	ks = None if kaks is None and args.ofdir is None else True
 	#plot all
 	plot_blocks(blocks, outplots, ks = ks, 
-			max_ks=args.max_ks, ks_hist=args.ks_hist, ks_cmap=args.ks_cmap, 
 			xlabels=chrs1, ylabels=chrs2, same_sp=same_sp,
 			xpositions=xpositions, ypositions=ypositions,
 			xelines=lines1, yelines=lines2,	# chromosome ends

@@ -41,8 +41,8 @@ jobs:
         conda env list
         export PATH=/Users/runner/miniconda3/envs/OrthoIndex/bin:$PATH
         which python
-        ls -al /Users/runner/miniconda/envs/OrthoIndex/
-        ls -al /Users/runner/miniconda/envs/OrthoIndex/bin
+        ls -al /Users/runner/miniconda3/envs/OrthoIndex/
+        ls -al /Users/runner/miniconda3/envs/OrthoIndex/bin
         conda init
         cat ~/.bashrc
         echo "==="
