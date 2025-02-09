@@ -30,16 +30,18 @@ jobs:
 
     - name: Install dependencies
       run: |
-        conda env create -f OrthoIndex.yaml
         which conda
         conda env list
+        conda env create -f OrthoIndex.yaml
     - name: Install OrthoIndex
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       run: export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
      #run: python setup.py install
-    - run: which python
-    - run: ls -al
-    - run: pwd
-    - run: cd example_data && export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH && bash example.sh
+    - name: Test SOI
+      run: |
+        which python
+        ls -al
+        pwd
+        cd example_data && export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH && bash example.sh
     #- run: cd example_data && bash example.sh
     
