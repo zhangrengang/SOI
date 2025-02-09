@@ -40,6 +40,10 @@ jobs:
         conda env list
         export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH
         which python
+        ls -al /Users/runner/miniconda/envs/OrthoIndex/bin
+        conda init
+        cat ~/.bashrc
+        echo "==="
         export PATH=/Users/runner/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
      #run: python setup.py install
     - name: Test SOI
