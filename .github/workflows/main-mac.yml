@@ -34,7 +34,7 @@ jobs:
         conda env list
         conda env create -f OrthoIndex.yaml
 
-    - name: Install OrthoIndex
+    - name: Install SOI
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       run: |
         which python

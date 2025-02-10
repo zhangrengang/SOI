@@ -23,28 +23,30 @@ jobs:
     # set up conda
     - name: Setup conda
       uses: s-weigand/setup-conda@v1.0.5
+      with:
+#        miniconda-version: 'latest'
+        python-version: '3.10'
 
     - name: Install dependencies
     # install dependencies
       run: |
         conda env create -f OrthoIndex.yaml
 
-    - name: Activate
-      run: |
-        conda init bash
-        conda init
-        source /home/runner/.bashrc
-        cat  ~/.bashrc
-        conda env list
-        conda --version
-#    - run: export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH
-        source /usr/share//miniconda/etc/profile.d/conda.sh
-        ls -al /usr/share/miniconda/envs/OrthoIndex/bin
-        which python   
+#    - name: Activate
+#      run: |
+#        conda init bash
+#        conda init
+#        source /home/runner/.bashrc
+#        cat  ~/.bashrc
+#        conda env list
+#        conda --version
+#        source /usr/share//miniconda/etc/profile.d/conda.sh
+#        ls -al /usr/share/miniconda/envs/OrthoIndex/bin
+#        which python   
 #    - run: conda activate OrthoIndex
 #    - run: which python
       
-    - name: Install OrthoIndex
+    - name: Install SOI
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       run: |
         export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
