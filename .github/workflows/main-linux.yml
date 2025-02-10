@@ -26,7 +26,8 @@ jobs:
 
     - name: Install dependencies
     # install dependencies
-      run: conda env create -f OrthoIndex.yaml
+      run: |
+        conda env create -f OrthoIndex.yaml
 
     - name: Activate
       run: |
@@ -45,11 +46,11 @@ jobs:
       
     - name: Install OrthoIndex
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      run: export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
+      run: |
+        export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
 #      run: python setup.py install
     
     - name: Test SOI
-    # run test 
       run: |
         ls -al
         pwd
