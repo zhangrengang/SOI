@@ -2827,7 +2827,7 @@ class ToAstral(ColinearGroups):
 			cmds += [cmd]
 			iqtree_opts0 = '' #' -o {} '.format(root) if root else ''
 			pep = True
-			if self.cds:
+			if self.cds and not self.onlyaln:
 				iqtree_opts = iqtree_opts0 + ' -mset GTR ' if self.fast else iqtree_opts0 
 				cmd = pal2nal_template.format(pepAln, cdsSeq, cdsAln)
 				cmds += [cmd]
