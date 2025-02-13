@@ -2638,7 +2638,7 @@ class ToAstral(ColinearGroups):
 	def __init__(self, input=None, pep=None, spsd=None, cds=None, tmpdir='tmp', root=None, both=True, suffix=None, 
 			ncpu=50, max_taxa_missing=0.5, max_mean_copies=10, max_copies=5, singlecopy=False, onlyaln=False,
 			source=None, orthtype='orthologues', fast=True, concat=False, clean=False, overwrite=False, 
-			trimal_opts='-automated1', iqtree_opts=''):
+			aligner='muscle', trimal_opts='-automated1', iqtree_opts=''):
 		self.input = input
 		self.pep = pep
 		self.cds = cds
@@ -2659,6 +2659,7 @@ class ToAstral(ColinearGroups):
 		self.suffix = input if suffix is None else suffix 
 		self.orthtype = orthtype
 		self.source = source
+		self.aligner = aligner
 		self.trimal_opts = trimal_opts
 		self.iqtree_opts = iqtree_opts
 		self.clean = clean
@@ -2752,10 +2753,13 @@ class ToAstral(ColinearGroups):
 	def run(self):
 		#logger.info('VARS: {}'.format(self.__dict__))
 		mafft_template = '. ~/.bashrc; mafft --quiet --auto {} > {}'
+		muscle_template = '. ~/.bashrc; muscle -align {} -output {} -threads 1' #muscle5
 		pal2nal_template = 'pal2nal.pl -output fasta {} {} > {}'
 		trimal_template = 'trimal %s -in {} -out {} > /dev/null' % (self.trimal_opts, )
 		iqtree_template = 'iqtree2 -redo -s {} %s -nt 1 {} > /dev/null' % (self.iqtree_opts, )
 		reroot_template = 'mv {tree} {tree}.bk && nw_reroot -l {tree}.bk {root} | nw_order -c n - > {tree}'
+		aligner_template = {'mafft': mafft_template, 'muscle': muscle_template}
+		aligner_template = aligner_template[self.aligner]
 		mkdirs(self.tmpdir)
 		d_pep = seq2dict(self.pep)
 		d_cds = seq2dict(self.cds) if self.cds else {}
@@ -2823,7 +2827,7 @@ class ToAstral(ColinearGroups):
 			treefile = cdsTreefile if self.cds and not self.both else pepTreefile
 			cmd = '[ ! -s {} ]'.format(treefile) if not self.overwrite else '[ true ]'
 			cmds = [cmd]
-			cmd = mafft_template.format(pepSeq, pepAln)
+			cmd = aligner_template.format(pepSeq, pepAln)
 			cmds += [cmd]
 			iqtree_opts0 = '' #' -o {} '.format(root) if root else ''
 			pep = True
