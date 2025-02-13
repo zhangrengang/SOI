@@ -1,4 +1,3 @@
-
 '''
 2016-4-20	remove_short_seqs		ZRG	add
 2016-4-20	fq_switch		ZRG	add
@@ -142,7 +141,7 @@ def fq_switch(inFq):
 	if os.path.exists(inFq):
 		return inFq
 	elif os.path.exists(inFq+'.gz'):
-		return inFq+'.gz'
+		return inFq + '.gz'
 	else:
 		raise IOError('File %s is NOT exists' % inFq)
 
@@ -164,10 +163,10 @@ def rmdirs(*dirs):
 def cpdir(from_dir, to_dir):
 	shutil.copytree(from_dir, to_dir)
 
-def test_f(xfile):	#"test -f"
+def test_f(xfile):	#"test -f" in shell
 	return os.path.exists(xfile)
 
-def test_s(xfile):	#"test -s"
+def test_s(xfile):	#"test -s" in shell
 	return os.path.exists(xfile) and os.path.getsize(xfile)>0
 def test_r(xfile): # readable
 	try: 
@@ -176,6 +175,7 @@ def test_r(xfile): # readable
 		return True
 	except:
 		return False
+
 def is_complete_cds(Seq, translate_table=1):
 	'''A Bio.Seq object (CDS) is complete (both start and end codons present)?'''
 	try:
@@ -205,33 +205,26 @@ def is_gz(input_file):
 		return False
 
 def table2xls(table_file, xls_file = None):
-	# init
 	import xlwt
 	if not xls_file:
 		xls_file = table_file + '.xls'
-
 	wb = xlwt.Workbook()
 	ws1= wb.add_sheet('Sheet1')
-
 	i = 0
 	for line in open(table_file,'r'):
 		temp = line.rstrip().split('\t')
 		j = 0
 		for value in temp:
-			# try: value = value.strip().decode('gbk')
-			# except UnicodeDecodeError: value = 'NULL'
 			ws1.write(i,j,value)
 			j += 1
 		i += 1
 	wb.save(xls_file)
 
 def combine_tabs_2xls(table_files, xls_file = None, sheets = None):
-	# init
 	if not xls_file:
 		xls_file = table_file[0] + '.xls'
 	if not sheets:
 		sheets = table_file
-
 	wb = xlwt.Workbook()
 	for table_file, sheet in zip(table_files, sheets):
 		ws1= wb.add_sheet(sheet)
@@ -325,7 +318,6 @@ def backup_file(input_file):
 	shutil.move(input_file, input_file_bk)
 	return (input_file_bk, input_file)
 
-#@run_time
 def count_record(inFile, format):
 	if is_gz(inFile):
 		cat = 'zcat'

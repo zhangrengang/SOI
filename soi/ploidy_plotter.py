@@ -12,29 +12,45 @@ __version__ = '0.1'
 __LastModified__ = '20200616'
 __Example__ = None
 def add_ploidy_opts(parser):
-	parser.add_argument('--window_size', metavar='INT', type=int, default=50, help="window_size. [default=%(default)s]")
-	parser.add_argument('--window_step', metavar='INT', type=int, default=10, help="window_step. [default=%(default)s]")
-	parser.add_argument('--min_block', metavar='INT',type=int, default=10, help="min genes for a block. [default=%(default)s]")
-	parser.add_argument('--max_distance', metavar='INT', type=int, default=20, help="max distance. [default=%(default)s]")
-	parser.add_argument('--max_ploidy', metavar='INT', type=int, default=10, help="x limit. [default=%(default)s]")
-	parser.add_argument('--min_overlap', metavar='FLOAT', type=float, default=0.4, help="min overlap. [default=%(default)s]")
-	parser.add_argument('--color', metavar='COLOR', type=str, default=None, help="bar fill color. [default=%(default)s]")
-	parser.add_argument('--edgecolor', metavar='COLOR', type=str, default=None, help="bar edge color. [default=%(default)s]")
+	parser.add_argument('--window_size', metavar='INT', type=int, default=50, 
+		help="window_size. [default=%(default)s]")
+	parser.add_argument('--window_step', metavar='INT', type=int, default=10, 
+		help="window_step. [default=%(default)s]")
+	parser.add_argument('--min_block', metavar='INT',type=int, default=10, 
+		help="min genes for a block. [default=%(default)s]")
+	parser.add_argument('--max_distance', metavar='INT', type=int, default=20, 
+		help="max distance. [default=%(default)s]")
+	parser.add_argument('--max_ploidy', metavar='INT', type=int, default=10, 
+		help="x limit. [default=%(default)s]")
+	parser.add_argument('--min_overlap', metavar='FLOAT', type=float, default=0.4, 
+		help="min overlap. [default=%(default)s]")
+	parser.add_argument('--color', metavar='COLOR', type=str, default=None, 
+		help="bar fill color. [default=%(default)s]")
+	parser.add_argument('--edgecolor', metavar='COLOR', type=str, default=None, 
+		help="bar edge color. [default=%(default)s]")
 	
 def makeArgparse():
-	parser = argparse.ArgumentParser( \
-		formatter_class=argparse.RawDescriptionHelpFormatter,\
-		epilog="Version: {}\nLast Modification Date: {}".format(__version__,__LastModified__),\
-		version="Version: {}".format(__version__),\
+	parser = argparse.ArgumentParser(
+		formatter_class=argparse.RawDescriptionHelpFormatter,
+		epilog="Version: {}\nLast Modification Date: {}".format(__version__,__LastModified__),
+		version="Version: {}".format(__version__),
 		description="Example: {}".format(__Example__))
-	parser.add_argument('-s', '--collinearity', metavar='INPUT_BLOCK_FILE', type=str, required=True, help="the blocks (*.collinearity, output of MCSCANX)")
-	parser.add_argument('-g', '--gff', metavar='INPUT_GENE_GFF_FILE', type=str, required=True, help="the annotation gff file (one of MCSCANX input)")
-	parser.add_argument('-r', '--ref', metavar='reference', type=str, required=True, help="reference species")
-	parser.add_argument('-q', '--qry', metavar='queries', nargs='+', type=str, required=True, help="query species")
-	parser.add_argument('-o', '--output', metavar='OUTPUT_FILE_PREFIX', type=str, default=None, help="the output file prefix.")
-	parser.add_argument('--format', metavar='figure file out format', action='append', default=['pdf', 'png'], help="default=%(default)s")
-	parser.add_argument('--nrow', metavar='nrow', type=int, default=None, help="number of rows. default=%(default)s")
-	parser.add_argument('--min_same_block', type=int, default=25, help="min gene number in a block on the same chromosome. default=%(default)s")
+	parser.add_argument('-s', '--collinearity', metavar='INPUT_BLOCK_FILE', type=str, 
+		required=True, help="the blocks (*.collinearity, output of MCSCANX)")
+	parser.add_argument('-g', '--gff', metavar='INPUT_GENE_GFF_FILE', type=str, 
+		required=True, help="the annotation gff file (one of MCSCANX input)")
+	parser.add_argument('-r', '--ref', metavar='reference', type=str, required=True, 
+		help="reference species")
+	parser.add_argument('-q', '--qry', metavar='queries', nargs='+', type=str, 
+		required=True, help="query species")
+	parser.add_argument('-o', '--output', metavar='OUTPUT_FILE_PREFIX', type=str, 
+		default=None, help="the output file prefix.")
+	parser.add_argument('--format', metavar='figure file out format', action='append', 
+		default=['pdf', 'png'], help="default=%(default)s")
+	parser.add_argument('--nrow', metavar='nrow', type=int, default=None, 
+		help="number of rows. default=%(default)s")
+	parser.add_argument('--min_same_block', type=int, default=25, 
+		help="min gene number in a block on the same chromosome. default=%(default)s")
 	add_ploidy_opts(parser)
 	args = parser.parse_args()
 	sps = [args.ref] + args.qry
@@ -61,7 +77,8 @@ def main():
 	args = makeArgparse()
 	plot_fold(**args.__dict__)
 def plot_fold(collinearity, gff, ref, qry, **kargs):
-	d_ortholog_graph, d_paralog_graph = parse_collinearity(collinearity, ref, qry, **kargs)
+	d_ortholog_graph, d_paralog_graph = parse_collinearity(
+			collinearity, ref, qry, **kargs)
 	d_coord_path, d_coord_graph = parse_gff(gff, [ref]+qry)
 	data = []
 	for sp in qry:
@@ -70,9 +87,10 @@ def plot_fold(collinearity, gff, ref, qry, **kargs):
 					d_paralog_graph[sp], **kargs)
 		data += [np.array(sorted(d_fold.items()))]
 	return plot_bars(data, **kargs)
-def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1, suptitle=None, max_ploidy=10, 
-			color='white', edgecolor='black', ylabel='Number of windows', 
-			xlabel='Relative ploidy per reference block', **kargs):
+def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1, 
+		suptitle=None, max_ploidy=10, color='white', edgecolor='black', 
+		ylabel='Number of windows', xlabel='Relative ploidy per reference block', 
+		**kargs):
 	if ax is None:
 		if nrow*ncol == 1:
 			ax = plt.subplot(111)
@@ -101,8 +119,6 @@ def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1, suptitle=None
 	plt.xticks(tick_label)
 	if suptitle is not None:
 		plt.suptitle(suptitle)
-	#plt.subplots_adjust()
-	#plt.xlabel(xlabel)
 	if outfigs is not None:
 		for outfig in outfigs:
 			plt.savefig(outfig)
@@ -111,11 +127,9 @@ def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1, suptitle=None
 def parse_collinearity(collinearity, ref, qry, min_block=10, min_same_block=25, **kargs):
 	d_ortholog_graph = {}
 	d_paralog_graph = {}
-	#d_ref_ortholog = {}
 	for sp in qry:
 		d_ortholog_graph[sp] = nx.Graph()
 		d_paralog_graph[sp] = nx.Graph()
-	#	d_ref_ortholog[sp] = {}
 	
 	qry = set(qry)
 	for rc in Collinearity(collinearity):
@@ -128,20 +142,9 @@ def parse_collinearity(collinearity, ref, qry, min_block=10, min_same_block=25, 
 			d_paralog_graph[sp1].add_edges_from(rc.pairs)
 			continue
 		elif (sp1 == ref and sp2 in qry):
-	#		r,q = sp1, sp2
 			d_ortholog_graph[sp2].add_edges_from(rc.pairs)
 		elif (sp2 == ref and sp1 in qry):
-	#		r, q = sp2, sp1
 			d_ortholog_graph[sp1].add_edges_from(rc.pairs)
-	#	else:
-	#		continue
-	#	try: d_ref_ortholog[sp][r] += [q]
-	#	except KeyError: d_ref_ortholog[sp][r] = [q]
-	# ortholog -> paralog
-	#for sp in qry:
-	#	for r, qs in d_ref_ortholog[sp].items():
-	#		for q1, q2 in itertools.combinations(qs, 2):
-	#			d_paralog_graph[sp].add_edge(q1, q2)
 	return d_ortholog_graph, d_paralog_graph
 	
 def parse_gff(gff, sps):
@@ -170,10 +173,8 @@ def parse_gff(gff, sps):
 			d_coord_graph[sp].add_edge(*edge)
 	return d_coord_path, d_coord_graph
 def get_ploidy(ref_coord_paths, ref_coord_graph, qry_coord_graph, rq_ortholog_graph, 
-			qry_paralog_graph=None, # not used
 			window_size=20, window_step=10, **kargs):
-	'''for each query. 参考分段，每段对应query有多少块'''
-	
+	'''For each query, how many segments correspond to the query.'''
 	d_fold = {}
 	for path in ref_coord_paths:
 		for i in range(0, len(path), window_step):
@@ -196,27 +197,13 @@ def get_ploidy(ref_coord_paths, ref_coord_graph, qry_coord_graph, rq_ortholog_gr
 			ref_blocks = map_graph(bin, rq_ortholog_graph, qry_blocks)
 			ref_clusters = overlap_blocks(ref_blocks, ref_coord_graph, **kargs)
 			ncmpt1 = len(qry_blocks)
-		#	print orthologs, qry_blocks, ref_blocks
-		#	if len(ref_blocks) == 1:
-		#		ncmpt2 = 1
-		#	else:
 			ncmpt2 = max([len(x) for x in nx.connected_components(ref_clusters)])
-		#	insect_nodes = set(clusters.nodes()) & set(qry_paralog_graph.nodes())
-		#	for n1, n2 in itertools.combinations(insect_nodes, 2):
-		#		if qry_paralog_graph.has_edge(n1, n2):
-		#			clusters.add_edge(n1, n2)
-		#	ncmpt2 = len(list(nx.connected_components(clusters)))
-		#	if ncmpt2 == 0:
-		#		continue
-		#	ploidy = int(round(1e0*ncmpt1/ncmpt2, 0)) if qry_paralog_graph else ncmpt1
-		#	#ploidy = ncmpt1
 			ploidy = ncmpt2
-#			print ncmpt1, ncmpt2, ploidy
 			try: d_fold[ploidy] += 1
 			except KeyError: d_fold[ploidy] = 1
 	return d_fold
 def map_graph(bin, rq_ortholog_graph, qry_blocks):
-	'''将qry的block映射到ref的block'''
+	'''map qry block to ref block'''
 	ref_blocks = []
 	for block in qry_blocks:
 		ref_block = []
@@ -225,7 +212,7 @@ def map_graph(bin, rq_ortholog_graph, qry_blocks):
 		ref_blocks += [ref_block]
 	return ref_blocks
 def overlap_blocks(blocks, coord_graph, min_overlap=3, **kargs):
-	'''将有overlap的block连起来'''
+	'''Concatenate blocks that have overlap.'''
 	blocks = list(map(tuple, blocks))
 	G = nx.Graph()
 	for b in blocks:
@@ -239,7 +226,7 @@ def overlap_blocks(blocks, coord_graph, min_overlap=3, **kargs):
 			G.add_edge(b1, b2)
 	return G
 def cluster_genes(genes, coord_graph, max_distance=25, **kargs):
-	'''根据坐标，将gene聚类为block'''
+	'''Cluster genes into blocks based on their coordinates.'''
 	d_bin = {}
 	for gene in genes:
 		try: chrom = coord_graph.nodes[gene]['chrom']

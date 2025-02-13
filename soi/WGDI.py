@@ -69,7 +69,6 @@ class AK:
 			yield line
 	def lazy_lines(self, gene_axis=True, **kargs):
 		is_order = self.is_order()
-		#print(not gene_axis and is_order)
 		if not gene_axis and is_order:
 			return self.map_to_raw_coord(**kargs)
 		return self._parse_line()
@@ -78,7 +77,7 @@ class AK:
 		if max(ends) > 2e6:
 			return False
 		return True
-	def plot(self, sort_by_sg=True, outfig=None, bar_width=0.5, #hatchs='/\|-+xoO.*'
+	def plot(self, sort_by_sg=True, outfig=None, bar_width=0.5,
 			hatchs = ['//', r'\\', '++', 'xx', '--'],
 			plot_labels=True, min_segment=50):
 		chromosomes = list(self)
@@ -114,12 +113,9 @@ class AK:
 			for seg in chrom:
 				color,length, hatch = seg.color, len(seg), d_hatchs[seg.subgenome]
 				if length < min_segment:
-			#		continue
 					color = 'white'
 				plt.bar(i, length, width=bar_width, color=color, bottom=yoffset, hatch=hatch, align='center')
 				yoffset += length
-#		if plot_labels:
-#			plt.xticks(range(i+1), labels, fontsize='xx-large')
 		ax.tick_params('x', which='major', length=0, labelsize=15)
 		ax.xaxis.set_tick_params(length=0)
 		ax.spines['right'].set_color('none')
@@ -129,7 +125,6 @@ class AK:
 		ax.yaxis.set_ticks([])
 		ax.xaxis.set_ticks([])
 		xlabel = '$x$ = {}'.format(Nchrom)
-#		plt.xlabel(xlabel, fontsize=40, labelpad=8)
 		plt.ylabel('')
 		plt.savefig(outfig, bbox_inches='tight', transparent=True)
 	def plot_dotplot(self, ax=None, d_offset={}, gff=None, align='center', xy=1,  axis='x', width=0.5, label=True, gene_axis=False, fontsize=10):
@@ -137,12 +132,10 @@ class AK:
 		has_lab = False
 		texts = []
 		for sgement in self.lazy_lines(gene_axis, gff=gff):
-		#	print(sgement, d_offset)
 			if sgement.chrom not in d_offset:
 				continue
 			offset = d_offset[sgement.chrom] + sgement.start
 			lab = sgement.label if label else None
-		#	print(xy, len(sgement), width, offset, sgement.color, align, lab, gene_axis, self.is_order(), sgement.start, sgement.end)
 			bar(xy, len(sgement), width, offset, color=sgement.color, align=align, )
 			if not lab:
 				continue
@@ -150,14 +143,14 @@ class AK:
 			if axis == 'x':
 				x = offset + len(sgement)/2
 				y = xy + width*1.05
-				text = plt.text(x, y, lab, horizontalalignment='center',verticalalignment='bottom',fontsize=fontsize)
+				text = plt.text(x, y, lab, horizontalalignment='center',
+							verticalalignment='bottom',fontsize=fontsize)
 			elif axis == 'y':
 				x = xy + width*1.07
 				y = offset + len(sgement)/2
-				text = plt.text(x, y, lab, horizontalalignment='left',verticalalignment='center',fontsize=fontsize, rotation=90)
+				text = plt.text(x, y, lab, horizontalalignment='left',
+						verticalalignment='center',fontsize=fontsize, rotation=90)
 			texts += [text]
-#		if texts:
-#			_adjust_text(texts)
 		return has_lab
 	def to_jcvi(self, gene_axis=False, gff=None, outpre='jcvi'):
 		f1 = open(outpre+'.bed', 'w')
@@ -191,7 +184,8 @@ class Chromosome:
 	@property
 	def longest_subgenome(self):
 		super_segments = []
-		for subgenome, segments in itertools.groupby(sorted(self.segments, key=lambda x:x.subgenome), 
+		for subgenome, segments in itertools.groupby(
+				sorted(self.segments, key=lambda x:x.subgenome), 
 					key=lambda x:x.subgenome):
 			segments = Chromosome(list(segments))
 			segments.subgenome = subgenome
@@ -214,14 +208,15 @@ class Segment:
 	def __repr__(self):
 		return self.id
 	def write(self, fout):
-		print('\t'.join(map(str, (self.chrom, self.start, self.end, self.color, self.subgenome))), file=fout)
+		print('\t'.join(map(str, (self.chrom, self.start, self.end, self.color, 
+				self.subgenome))), file=fout)
 def stats_besthits(alignment, pol_indice, dip_indice, labels, blasts):
 	from Blast import MultiBlastOut
 	logger.info('loading {}'.format(blasts))
 	d_besthits = MultiBlastOut(blasts).filter_besthit(pair=True)
 	logger.info('loading {}'.format(alignment))
-	polAlns, dipAlns = Alignment(alignment, indice=pol_indice), Alignment(alignment, indice=dip_indice)
-	#polSp, dipSp = polAlns.species, dipAlns.species
+	polAlns = Alignment(alignment, indice=pol_indice)
+	dipAlns = Alignment(alignment, indice=dip_indice)
 	d_count = {}
 	x, y = 0, 0
 	for polAln, dipAln in zip(polAlns, dipAlns):
@@ -295,7 +290,8 @@ def overlap_and_color_simple(simple, outfile, blocks, d_genes, color):
 		line = line.split('*')[-1]
 		temp = line.strip().split()
 		b1g1, b1g2, b2g1, b2g2 = temp[:4]
-		if overlap_blocks(b1g1, b1g2, blocks, d_genes) and overlap_blocks(b2g1, b2g2, blocks, d_genes):
+		if overlap_blocks(b1g1, b1g2, blocks, d_genes) and \
+				overlap_blocks(b2g1, b2g2, blocks, d_genes):
 			line = color + '*' + line
 		f.write(line)
 	f.close()
@@ -348,9 +344,6 @@ class Alignment:
 	def parse_colnames(self, colnames):
 		if colnames is None:
 			return self.species
-#			for line in self:
-#				break
-#			return [i+1 for i in range(len(line.genes))]
 		names = []
 		for line in open(colnames):
 			tmp = line.strip().split()
@@ -363,7 +356,7 @@ class Alignment:
 	def stat_sps(self, prefix='stat_sps'):	# by species
 		f1= open(prefix+'.copy', 'w')
 		f2= open(prefix+'.ngenes', 'w')
-		line = ['copy', 'freq', 'column']	# 
+		line = ['copy', 'freq', 'column']
 		print('\t'.join(line), file=f1)
 		line = ['freq', 'column']	# total gene number, sp
 		print('\t'.join(line), file=f2)
@@ -460,8 +453,6 @@ class Alignment:
 				line = list(map(str, line))
 				print('\t'.join(line), file=f1)
 			for c, freq in list(Counter(retain).items()):
-#				if c == 0:
-#					continue
 				line =  [c, freq, self.colnames[col]]
 				line = list(map(str, line))
 				print('\t'.join(line), file=f2)
@@ -515,7 +506,6 @@ class Alignment:
 		d_exp = TPM(expfile).to_dict()
 		logger.info('{} TPM loaded'.format(len(d_exp)))
 		for sp, lines, idx in self.parse_by_species():
-			#print >> sys.stderr, sp
 			for line in lines:
 				if line.missing_rate > max_missing:
 					continue
@@ -556,7 +546,6 @@ class Alignment:
 	def sg_ks(self, ksfile, reflines, key='ks', max_missing=0, fout=sys.stdout, **kargs):
 		d_ks = KaKsParser(ksfile).to_dict(key=key)
 		for sp, lines, idx in self.parse_by_species():
-			#print >> sys.stderr, sp
 			for ref, line in zip(reflines, lines):
 				refg = ref.genes[0]
 				if refg is None:
@@ -575,12 +564,14 @@ class Alignment:
 					line = [sg, ks, gene, sp]
 					line = list(map(str, line))
 					print('\t'.join(line), file=fout)
-	def genetrees(self, pep, cds=None, outdir='genetrees', genetrees='sg.genetrees', alignments='sg.alignments'):
+	def genetrees(self, pep, cds=None, outdir='genetrees', genetrees='sg.genetrees', 
+			alignments='sg.alignments'):
 		self.trimal_opts, self.iqtree_opts = '-automated1', '-mset GTR'
 		mafft_template = '. ~/.bashrc; mafft --auto {} > {} 2> /dev/null'
 		pal2nal_template = 'pal2nal.pl -output fasta {} {} > {}'
 		trimal_template = 'trimal %s -in {} -out {} > /dev/null' % (self.trimal_opts, )
-		iqtree_template = 'iqtree2 -redo -s {} %s -B 1000 -nt 1 {} > /dev/null' % (self.iqtree_opts, )
+		iqtree_template = 'iqtree2 -redo -s {} %s -B 1000 -nt 1 {} > /dev/null' % (
+			self.iqtree_opts, )
 
 		mkdirs(outdir)
 		self.tmpdir = outdir
@@ -605,11 +596,11 @@ class Alignment:
 					continue
 				rc = d_pep[gene]
 				xid = colname + '.' + gene
-				rc.id = format_id_for_iqtree(xid) #format_id_for_iqtree(gene)
+				rc.id = format_id_for_iqtree(xid)
 				d_idmap[rc.id] = colname
 				SeqIO.write(rc, f_pep, 'fasta')
 				rc = d_cds[gene]
-				rc.id = format_id_for_iqtree(xid) #format_id_for_iqtree(gene)
+				rc.id = format_id_for_iqtree(xid)
 				SeqIO.write(rc, f_cds, 'fasta')
 			f_pep.close()
 			f_cds.close()
@@ -641,10 +632,11 @@ class Alignment:
 		nbin = 10
 		ncpu = 50
 		cmd_file = '{}/{}.cmds.list'.format(self.tmpdir, 'cds')
-		#run_job(cmd_file, cmd_list=cmd_list, tc_tasks=ncpu, by_bin=nbin, fail_exit=False)
 		treefiles = cdsTreefiles
-		ColinearGroups().cat_genetrees(treefiles, genetrees, idmap=d_idmap, plain=False, format_confidence='%d')
-	def win_trees(self, pep, gff, win_size=50, win_step=10, min_ratio=0.7, min_seqs=4, tmpdir='tmp', exclude_ref=False, **kargs):
+		ColinearGroups().cat_genetrees(treefiles, genetrees, idmap=d_idmap, 
+			plain=False, format_confidence='%d')
+	def win_trees(self, pep, gff, win_size=50, win_step=10, min_ratio=0.7, 
+			min_seqs=4, tmpdir='tmp', exclude_ref=False, **kargs):
 		mkdirs(tmpdir)
 		logger.info('vars: {}'.format(vars()))
 		prefix = '{}/{}'.format(tmpdir, os.path.basename(self.alignment))
@@ -664,18 +656,15 @@ class Alignment:
 		for line in self:
 			line.species = species
 			valid = line.nonmissing
-			#print line.id, valid
 			if len(valid) == len(species):
 				nolost += 1
 			if exclude_ref:
 				valid = valid[1:]
 			if len(valid) < min_seqs or 1.0*len(valid)/nsp < min_ratio:
 				continue
-			#print line.id, valid
 			id = line.id
 			outSeq = '{}.{}'.format(prefix, id)
 			f = open(outSeq, 'w')
-		#	logger.info(valid)
 			for gene, sp in valid:
 				rc = d_seqs[gene]
 				rc.id = sp
@@ -721,13 +710,15 @@ class Alignment:
 				iqtreefile = alnTrim + '.treefile'
 				treefile = alnTrim + '.tre'
 				cmds = []
-				cmd = 'trimal -automated1 -in "{}" -out "{}" &> /dev/null'.format(outALN, alnTrim)
+				cmd = 'trimal -automated1 -in "{}" -out "{}" &> /dev/null'.format(
+						outALN, alnTrim)
 				cmds += [cmd]
 				cmd = 'iqtree2 --redo -s "{}" -T 1 -B 1000 {} --mset JTT &> /dev/null'.format(alnTrim, opts)
 				cmds += [cmd]
 				cmd = 'nw_reroot "{intre}" {root} | nw_prune - {root} '.format(
 						intre=iqtreefile, root=root,)
-				cmd += ' | nw_topology -I - | nw_order - | nw_order - -c d | nw_order - > {}'.format(treefile)
+				cmd += ' | nw_topology -I - | nw_order - | nw_order - -c d | \
+nw_order - > {}'.format(treefile)
 				cmds += [cmd]
 				cmds = ' && '.join(cmds)
 				d_treefiles[(chrom, start, end)] = treefile
@@ -838,5 +829,6 @@ def main():
 		AK(akfile).to_jcvi(gff=gff, **kargs)
 	else:
 		raise ValueError('Unknown sub command: {}'.format(subcmd))
+
 if __name__ == '__main__':
 	main() 

@@ -8,7 +8,6 @@ import numpy as np
 try: from xopen import xopen as open
 except ImportError: from .small_tools import open_file as open
 from .small_tools import mkdirs,flattern
-#from small_tools import open_file as open
 from collections import Counter, OrderedDict
 from lazy_property import LazyWritableProperty as lazyproperty
 from .RunCmdsMP import run_cmd, run_job, logger
@@ -29,7 +28,6 @@ def catAln(inALNs, outALN, allow_missing=True, idmap=None):
 					try: sp = idmap[rc.id]
 					except KeyError: continue
 				species.add(sp)
-				
 	names = [os.path.basename(aln).split('.')[0] for aln in inALNs]
 	d_seqs = {}
 	lens = []
@@ -68,13 +66,15 @@ def catAln(inALNs, outALN, allow_missing=True, idmap=None):
 	xlens = ','.join(map(str, lens))
 	names = ','.join(names)
 	logger.info('{} alignment files missing'.format(nm))
-	description = 'taxa:{} genes:{} sites:{} blocks:{} names:{}'.format(ntax, len(lens), sum(lens), xlens, names)
-	logger.info('Concatenating {} genes of {} taxa ({} sites)'.format(len(lens), ntax, sum(lens)))
+	description = 'taxa:{} genes:{} sites:{} blocks:{} names:{}'.format(
+			ntax, len(lens), sum(lens), xlens, names)
+	logger.info('Concatenating {} genes of {} taxa ({} sites)'.format(
+			len(lens), ntax, sum(lens)))
 	for sp, seqs in list(d_seqs.items()):
 		seqs = ''.join(seqs)
 		print('>{} {}\n{}'.format(sp, description, seqs), file=outALN)
 
-class Group():  # 解析groups.tsv，迭代返回每行
+class Group():  # Parse groups.tsv and iterate to return each row.
 	def __init__(self, inGrp):
 		self.inGrp = inGrp
 	def __iter__(self):
@@ -87,7 +87,7 @@ class Group():  # 解析groups.tsv，迭代返回每行
 				self.species = line.strip().split('\t')
 				continue
 			yield GroupRecord(line, self.species)
-class GroupRecord(object): # 解析每行
+class GroupRecord(object): # Parse each line
 	def __init__(self, line, species):
 		line = line.strip('\n\r').split('\t')
 		self.ogid = self.id = line[0]
@@ -99,7 +99,7 @@ class GroupRecord(object): # 解析每行
 	def __iter__(self):
 		return iter(self.genes)
 	def get_group(self, sps=None):
-		'''获取指定物种集（默认为所有）的所有基因'''
+		'''Get all genes for the specified set of species (default to all).'''
 		if isinstance(sps, str):
 			sps = {sps}
 		else:	# list, set
@@ -120,22 +120,16 @@ class GroupRecord(object): # 解析每行
 	@property
 	def counter(self):
 		return {sp: len(genes) for sp, genes in sorted(self.spdict.items())}
-#		return dict(zip(self.species, self.counts))
 	@property
 	def singlecopy_ratio(self):
-	#	singles = [v for v in self.counts if v == 1]
 		try: return 1.0*len(self.singlecopy_dict)/self.nsp
 		except ZeroDivisionError: return 0
-#	@property
-#	def singlecopy_dict(self):
-#		return {genes[0]: sp for sp, genes, count in zip(self.species, self.genes, self.counts) if count==1}
 	@property
 	def singlecopy_dict(self):
 		return {genes[0]: sp for sp, genes in list(self.spdict.items()) if len(genes)==1}
 	@property
 	def singlecopy_genes(self):
 		return list(self.singlecopy_dict.keys())
-		
 	def _strip(self, values):
 		return [v for v in values if v]
 def copy_number_density(OFdir, outPrefix='orthogroups'):
@@ -167,16 +161,13 @@ data = read.table(datafile, head=T)
 library(ggplot2)
 p <- ggplot(data, aes(x=gene_count, y=frequency, color=species)) + \
 	geom_line() + \
-	scale_x_continuous(breaks=seq(1, {xlim}, 1), limits=c(1, {xlim})) #+ \
-#   scale_colour_hue(l=45) + \
-#	scale_y_log10()
+	scale_x_continuous(breaks=seq(1, {xlim}, 1), limits=c(1, {xlim}))
 ggsave('{outfig}', p, width=12, height=7)
-
 '''.format(datafile=datafile, outfig=outfig, xlim=xlim), file=f)
 	cmd = 'Rscript {}'.format(rsrc)
 	os.system(cmd)
 
-class OrthoMCLGroup():  # 解析groups.txt，迭代返回每行
+class OrthoMCLGroup():  # Parse groups.txt and iterate to return each line.
 	def __init__(self, inGrp, sps=None):
 		self.inGrp = inGrp
 		self.sps = sps
@@ -190,7 +181,7 @@ class OrthoMCLGroup():  # 解析groups.txt，迭代返回每行
 		for rc in self:
 			species = species | set(rc.species)
 		return species
-class OrthoMCLGroupRecord(GroupRecord): # 解析每行
+class OrthoMCLGroupRecord(GroupRecord): # Parse each line.
 	def __init__(self, line=None, genes=None, ogid=None, nsp=None, sps=None):
 		if line is not None:
 			line = line.strip().split()
@@ -216,12 +207,10 @@ class OrthoMCLGroupRecord(GroupRecord): # 解析每行
 			try: d[sp] += [gene]
 			except KeyError:  d[sp] = [gene]
 		return d
-	
 	@property
 	def mean_copies(self):
 		copies = [len(genes) for sp, genes in list(self.spdict.items())]
 		return 1.0* sum(copies) / len(copies)
-
 	def write(self, fout):
 		print('{}: {}'.format(self.ogid, ' '.join(self.genes)), file=fout)
 	def classify(self):
@@ -248,7 +237,8 @@ def parse_species(species, orthofinder=None):
 	elif orthofinder is not None:
 		species = orthofinder.Species
 	return species
-def to_hybpiper(ResultsDir, cdsSeq=None, outOGSeq=None, species=None, min_singlecopy=0.7, only_stats=False):
+def to_hybpiper(ResultsDir, cdsSeq=None, outOGSeq=None, species=None, 
+		min_singlecopy=0.7, only_stats=False):
 	species = parse_species(species)
 	Orthogroups = OrthoFinder(ResultsDir).Orthogroups
 	if not only_stats:
@@ -293,7 +283,6 @@ def pan_stats(OFdir, species):
 	result = OrthoFinder(OFdir)
 	species = parse_species(species, result)
 	d_groups = {}
-#	for group in result.get_orthogroups(species):
 	for group in result.get_mcl_orthogroups(species):
 		ogid = group.ogid
 		for sp in set(group.species):
@@ -328,18 +317,16 @@ def _flower_plot(d_groups, outfig):
 		others = _ins | _dis
 		shell = len(ids & others)
 		unique = len(ids - others)
-#		sp = '$' + sp.replace('_', '~') + '$'
 		data[sp] = dict(color=color, shell=shell, unique=unique)
 		
 	fig, ax = plt.subplots(subplot_kw={'aspect': 'equal'}, figsize=(9, 9), dpi=300)
 	flower_plot(data, n_core=n_core, core_color=colors[0], shell_color=colors[1], alpha=0.3, ax=ax)
-	#plt.tight_layout()
 	plt.savefig(outfig, )
 def plot_pan(data, outfig, alpha=0.2):
 	import matplotlib.pyplot as plt
 	data = np.array(data)
 	x = data[:, 0]
-	cc, cd = ('#1f77b4', '#ff7f0e',) # '#2ca02c', '#d62728')
+	cc, cd = ('#1f77b4', '#ff7f0e',) 
 	yc, ycL, ycU = data[:, 1], data[:, 2], data[:, 3]
 	yd, ydL, ydU = data[:, 4], data[:, 5], data[:, 6]
 	plt.figure(figsize=(8, 6))
@@ -375,29 +362,22 @@ def insect_groups(groups):
 		dispens = dispens | (ids - insect)
 	return insect, dispens
 
-def to_astral(ResultsDir, pepSeq, outTrees, species=None, tmpdir='/io/tmp/share', min_singlecopy=0.7):
+def to_astral(ResultsDir, pepSeq, outTrees, species=None, 
+		tmpdir='/io/tmp/share', min_singlecopy=0.7):
 	from RunCmdsMP import run_job
 	tmpdir = '{}/to_astral.{}'.format(tmpdir, os.getpid())
 	logger.info('change tmpdir to {}'.format(tmpdir))
 	if not os.path.exists(tmpdir):
 		mkdirs(tmpdir)
 	species = parse_species(species)
-	#print >>sys.stderr, species
 	result = OrthoFinder(ResultsDir)
 	if species is None:
 		species = result.Species
 	print(species, file=sys.stderr)
-	#Orthogroups = OrthoFinder(ResultsDir).Orthogroups
 	d_seqs = seq2dict(pepSeq)
 	cmd_list = []
 	treefiles = []
-	#for og in Group(Orthogroups):
 	for og in result.get_orthogroups(sps=species):
-#	for og in result.get_orthologs_cluster(sps=species):
-		#print og.spdict
-		#if not og.singlecopy_ratio >= min_singlecopy:
-		#	continue
-		#d_singlecopy = {genes[0]: sp for sp, genes, count in zip(og.species, og.genes, og.counts) if count==1}
 		d_singlecopy = {genes[0]: sp for sp, genes in list(og.spdict.items()) if len(genes)==1}
 		singlecopy_ratio = 1.0*len(d_singlecopy) / len(species)
 		if not singlecopy_ratio >= min_singlecopy:
@@ -417,7 +397,7 @@ def to_astral(ResultsDir, pepSeq, outTrees, species=None, tmpdir='/io/tmp/share'
 		cmds = [cmd]
 		cmd = 'mafft --auto {} > {}'.format(outSeq, alnSeq)
 		cmds += [cmd]
-		cmd = 'trimal -automated1 -in {} -out {} &> /dev/null'.format(alnSeq, alnTrim)	# -gt 0.8 (before 2020-2-21)
+		cmd = 'trimal -automated1 -in {} -out {} &> /dev/null'.format(alnSeq, alnTrim)
 		cmds += [cmd]
 		cmd = 'iqtree -s {} -bb 1000 -mset JTT -nt 1 &> /dev/null'.format(alnTrim)
 		cmds += [cmd]
@@ -465,10 +445,10 @@ def retrieve_orthologs(ResultsDir, collinearity, gff, fout=sys.stdout):
 				if G.has_edge(inner_gid1, inner_gid2):
 					orthologs.add((inner_gid1, inner_gid2))
 			last_g1, last_g2 = g1, g2
-#	print >> sys.stderr, len(orthologs), 'orthologs retrieved'
 	for ortholog in orthologs:
 		print('\t'.join(ortholog), file=fout)
 	print(len(orthologs), 'pairs retrieved.', file=sys.stderr)
+
 def retrieve_allele(ResultsDir, collinearity, gff, fout=sys.stdout, min_block=10, win_size=20, diff_sp=True, min_score=100, sps=None):
 	from mcscan import Collinearity
 	import networkx as nx
@@ -492,13 +472,8 @@ def retrieve_allele(ResultsDir, collinearity, gff, fout=sys.stdout, min_block=10
 			blastG.edge[g1][g2]['weight'] + 1
 		else:
 			blastG.add_edge(g1, g2, OG='none', weight=1)
-#		if float(line[-1]) > min_score:
-#			g1, g2 = line[:2]
-#			blastG.add_edge(g1, g2, OG='none')
-#	print >> sys.stderr, blastG.has_edge('Arachis_hypogaea_A|Ahyas02G0018300', 'Arachis_hypogaea_B|Ahyas12G0022700')
 	altG = nx.Graph() 	# allel Graph
 	_sps = set([])
-#	for rc in sorted(Collinearity(collinearity, gff), key=lambda x: -x.N):
 	blocks = []
 	for rc in Collinearity(collinearity, gff):
 		if rc.N < min_block:
@@ -516,27 +491,21 @@ def retrieve_allele(ResultsDir, collinearity, gff, fout=sys.stdout, min_block=10
 	d_syn = {}
 	blocks = sorted(blocks, reverse=1)
 	for score, N, genes1, genes2, chr1, chr2, sp1, sp2, Alignment in blocks:
-#		chr1, chr2 = rc.chr1, rc.chr2
-#		genes1, genes2 = rc.genes1, rc.genes2   # [g1,g2,g3,...]
 		key = (sp1, sp2)
 		if key not in d_syn:
 			d_syn[key] = set([])
 		for g1, g2 in zip(genes1, genes2):
 			id1, id2 = g1.id, g2.id
-#			if not (altG.has_node(id1) and altG.has_node(id2)):
 			if not id1 in d_syn[key] and not id2 in d_syn[key]:
 				og = G.edge[g1.id][g2.id]['OG']
 				altG.add_edge(g1.id, g2.id, source='MCScanX-{}'.format(Alignment), OG=og, weight=4)
 				d_syn[key] = d_syn[key] | {g1.id, g2.id}
-
 	# OG
 	def mean_dist(inner_g1, inner_g2, g1_idx, g2_idx):
 		import math
 		return math.sqrt(abs(inner_g1.index - g1_idx) * abs(inner_g2.index - g2_idx))
 	for score, N, genes1, genes2, chr1, chr2, sp1, sp2, Alignment in blocks:
 		key = (sp1, sp2)
-		#g1_start, g1_end = genes1[0].index, genes1[-1].index
-		#g2_start, g2_end = genes2[0].index, genes2[-1].index
 		for g1, g2 in zip(genes1, genes2):
 			g1_idx = g1.index
 			g2_idx = g2.index
@@ -550,27 +519,24 @@ def retrieve_allele(ResultsDir, collinearity, gff, fout=sys.stdout, min_block=10
 				id1,id2 = (inner_g1.id, inner_g2.id)
 				if G.has_edge(id1,id2) and not altG.has_edge(id1,id2) and \
 					not id1 in d_syn[key] and not id2 in d_syn[key]: # reduce network
-#not (altG.has_node(id1) and altG.has_node(id2)):
 					og = G.edge[id1][id2]['OG']
 					altG.add_edge(id1,id2, source='OG', OG=og, weight=2)
 					d_syn[key] = d_syn[key] | {id1,id2}
 	# blast
-#	for score, N, genes1, genes2, chr1, chr2, Alignment in blocks:
-#		for g1, g2 in zip(genes1, genes2):
-#			g1_idx = g1.index
-#			g2_idx = g2.index
-#			g1_start, g1_end = max(0, g1_idx-win_size/2), g1_idx+win_size/2
-#			g2_start, g2_end = max(0, g2_idx-win_size/2), g2_idx+win_size/2
-#			inner_genes1 = d_chrom[chr1][g1_start:g1_end+1]
-#			inner_genes2 = d_chrom[chr2][g2_start:g2_end+1]
-#			for inner_g1, inner_g2 in itertools.product(inner_genes1, inner_genes2):
-#				id1,id2 = (inner_g1.id, inner_g2.id)
-##				if tuple(sorted((id1,id2))) == ('Arachis_hypogaea_A|Ahyas02G0018300', 'Arachis_hypogaea_B|Ahyas12G0022700'):
-##					print >> sys.stderr, 'yes', blastG.has_edge(id1,id2), altG.has_edge(id1,id2), altG.has_node(id1), altG.has_node(id2)
-#				if blastG.has_edge(id1,id2) and not altG.has_edge(id1,id2) and not altG.has_node(id1) and not altG.has_node(id2):
-#					weight = blastG.edge[id1][id2]['weight'] * 0.5
-#					og = 'none'
-#					altG.add_edge(id1,id2, source='blast', OG=og, weight=weight)
+	for score, N, genes1, genes2, chr1, chr2, Alignment in blocks:
+		for g1, g2 in zip(genes1, genes2):
+			g1_idx = g1.index
+			g2_idx = g2.index
+			g1_start, g1_end = max(0, g1_idx-win_size/2), g1_idx+win_size/2
+			g2_start, g2_end = max(0, g2_idx-win_size/2), g2_idx+win_size/2
+			inner_genes1 = d_chrom[chr1][g1_start:g1_end+1]
+			inner_genes2 = d_chrom[chr2][g2_start:g2_end+1]
+			for inner_g1, inner_g2 in itertools.product(inner_genes1, inner_genes2):
+				id1,id2 = (inner_g1.id, inner_g2.id)
+				if blastG.has_edge(id1,id2) and not altG.has_edge(id1,id2) and not altG.has_node(id1) and not altG.has_node(id2):
+					weight = blastG.edge[id1][id2]['weight'] * 0.5
+					og = 'none'
+					altG.add_edge(id1,id2, source='blast', OG=og, weight=weight)
 	# resolve repeats
 	d_degrees = altG.degree(weight='weight')
 	print(sorted(sps), file=sys.stderr)
@@ -582,16 +548,13 @@ def retrieve_allele(ResultsDir, collinearity, gff, fout=sys.stdout, min_block=10
 		primary_genes = []
 		alter_genes = []
 		for sp in sorted(sps):
-#		for sp, genes in sorted(sp_dict.items()):
 			genes = sp_dict.get(sp, [])
-		#	print >> sys.stderr, genes
 			g_pri = max(genes, key=lambda x:d_degrees[x]) if genes else '-'
 			g_alt = set(genes) - set([g_pri])
 			g_alt = [d_genes[x].raw_gene for x in g_alt]
 			g_alt = ','.join(g_alt) if g_alt else '-'
 			primary_genes += [g_pri]
 			alter_genes += [g_alt]
-		#print >> sys.stderr, primary_genes, sp_dict
 		attrs = []
 		for pri_g1, pri_g2 in itertools.combinations(primary_genes, 2):
 			try: 
@@ -603,13 +566,6 @@ def retrieve_allele(ResultsDir, collinearity, gff, fout=sys.stdout, min_block=10
 			except KeyError:
 				attr = '-'
 			attrs += [attr]
-#		pri_g1, pri_g2 = primary_genes[0], primary_genes[1]
-#		try: attr = altG.edge[pri_g1][pri_g2]
-#		except KeyError as e:
-#			print >> sys.stderr, sg.edges(), primary_genes
-#			raise KeyError(e)
-#		source = attr['source']
-#		og = attr['OG']
 		idxes = [d_genes[g].index for g in primary_genes if g != '-']
 		gidx = round(1.0* sum(idxes) / len(idxes), 2)
 		idxes = [d_genes[g].ichr for g in primary_genes if g != '-']
@@ -636,6 +592,7 @@ def lazy_orthologs(ortholog):
 	else:
 		parser = OrthoFinder(ortholog)
 	return parser
+
 class SonicParanoid:
 	def __init__(self, ResultsDir, inparanoid=False):
 		self.ResultsDir = ResultsDir
@@ -646,7 +603,7 @@ class SonicParanoid:
 			self.Orthogroups = '{}/ortholog_groups/ortholog_groups.tsv'.format(ResultsDir)
 			self.Orthologues = glob.glob('{}/species_to_species_orthologs/*/*'.format(ResultsDir))
 	def get_homologs(self, sps=None, sp1=None, sp2=None, **kargs):
-		'''获取成对的orthologs'''
+		'''Obtain pairwise orthologs'''
 		if sp1 is not None or sp2 is not None:
 			sps = {sp1, sp2}
 		if sps is not None:
@@ -655,7 +612,8 @@ class SonicParanoid:
 				if self.inparanoid:
 					orthoFile = '{}/table.{}-{}'.format(self.ResultsDir, sp1, sp2)
 				else:
-					orthoFile = '{}/species_to_species_orthologs/{}/{}-{}'.format(self.ResultsDir, sp1, sp1, sp2)
+					orthoFile = '{}/species_to_species_orthologs/{}/{}-{}'.format(
+						self.ResultsDir, sp1, sp1, sp2)
 				orthoFiles += [orthoFile]
 		else:
 			orthoFiles = self.Orthologues
@@ -705,10 +663,11 @@ class OrthoFinder:
 	def __init__(self, ResultsDir):
 		self.ResultsDir = ResultsDir
 		self.WorkingDirectory = '{}/WorkingDirectory/'.format(ResultsDir)
-#		self.SpeciesTreeAlignment = '{}/WorkingDirectory/Alignments_ids/SpeciesTreeAlignment.fa'.format(ResultsDir)
-		self.SpeciesTreeAlignment = '{}/MultipleSequenceAlignments/SpeciesTreeAlignment.fa'.format(ResultsDir)
+		self.SpeciesTreeAlignment = \
+			'{}/MultipleSequenceAlignments/SpeciesTreeAlignment.fa'.format(ResultsDir)
 		self.SpeciesIDs = '{}/WorkingDirectory/SpeciesIDs.txt'.format(ResultsDir)
-		self.SpeciesTree_rooted = '{}/Species_Tree/SpeciesTree_rooted_node_labels.txt'.format(ResultsDir)
+		self.SpeciesTree_rooted = \
+			'{}/Species_Tree/SpeciesTree_rooted_node_labels.txt'.format(ResultsDir)
 		self.Orthologues = glob.glob('{}/Orthologues/*/*__v__*.tsv'.format(ResultsDir))
 		self.Duplications = '{}/Gene_Duplication_Events/Duplications.tsv'.format(ResultsDir)
 		self.Orthogroups = '{}/Orthogroups/Orthogroups.tsv'.format(ResultsDir)
@@ -720,7 +679,6 @@ class OrthoFinder:
 	def get_orthogroups(self, sps=None):
 		for group in Group(self.Orthogroups):
 			genes = list(group.get_group(sps=sps))
-			#print genes
 			yield OrthoMCLGroupRecord(ogid=group.ogid, genes=genes)
 	def get_mcl_orthogroups(self, sps=None):
 		for group in OrthoMCLGroup(self.MCLOrthogroups):
@@ -728,7 +686,7 @@ class OrthoFinder:
 			yield OrthoMCLGroupRecord(ogid=group.ogid, genes=genes)
 	@property
 	def OGDict(self):
-		'''gene id -> OG id的字典'''
+		'''dictionary: gene id -> OG id '''
 		d = {}
 		for rc in Group(self.Orthogroups):
 			for genes in rc.genes:
@@ -743,16 +701,14 @@ class OrthoFinder:
 			d[group.ogid] = list(group.get_group())
 		return d
 	def get_oglogs(self):
-		'''从self.Orthogroups获取所有的同源关系'''
+		'''Get all orthologous relationships from self.Orthogroups.'''
 		for rc in Group(self.Orthogroups):
 			genes =  list(rc.get_group())
 			for g1, g2 in itertools.combinations(genes, 2):
 				yield g1, g2
 	@property
 	def Single_Copy_Orthologue(self):
-		'''单拷贝OG'''
-	#	Single_Copy_OGs = [fa.split('/')[-1].split('.')[0] for fa in \
-	#			glob.glob('{}/Single_Copy_Orthologue_Sequences/*.fa'.format(self.ResultsDir))]
+		'''Single_Copy OG'''
 		Single_Copy_OGs = [line.strip() for line in \
 			open('{}/Orthogroups/Orthogroups_SingleCopyOrthologues.txt'.format(self.ResultsDir))]
 		return Single_Copy_OGs
@@ -767,7 +723,7 @@ class OrthoFinder:
 			print(cmd, file=sys.stderr)
 			run_cmd(cmd)
 	def Single_Copy_Codon_Align(self, cdsSeqs, tmpdir='/tmp'):
-		'''生成单拷贝OG的密码子比对'''
+		'''Generate codon alignments for single-copy orthogroups.'''
 		Single_Copy_OGs = self.Single_Copy_Orthologue
 		singlecopy_seqdir = self.formatdir('Single_Copy_Orthologue_Sequences')
 		self.checkdir('Single_Copy_Orthologue_Sequences')
@@ -801,7 +757,7 @@ class OrthoFinder:
 					for OG in self.Single_Copy_Orthologue]
 	@property
 	def SequenceIDdict(self):
-		'''蛋白序列新编id与原id的映射'''
+		'''Mapping of new IDs to original IDs for protein sequences.'''
 		d = {}
 		for line in open(self.SequenceIDs):
 			if line.startswith('#'):
@@ -810,7 +766,7 @@ class OrthoFinder:
 			d[id] = geneName
 		return d
 	def get_SequenceDict(self):
-		'''蛋白序列id和record的映射关系'''
+		'''Mapping relationships between protein sequence IDs and records.'''
 		self.Sequences = glob.glob('{}/WorkingDirectory/Species*.fa'.format(self.ResultsDir))
 		d_seq_ids = self.SequenceIDdict
 		d_seqs = {}
@@ -856,7 +812,7 @@ class OrthoFinder:
 				yield d_sp0[sp1], d_sp0[sp2], temp
 	@property
 	def SpeciesIDdict(self):
-		'''物种新编id和名称的映射关系'''
+		'''Mapping relationship between new species IDs and names.'''
 		d = {}
 		for line in open(self.SpeciesIDs):
 			if line.startswith('#'):
@@ -869,7 +825,7 @@ class OrthoFinder:
 		return d
 	@lazyproperty
 	def Species(self):
-		'''物种名称的列表'''
+		'''List of species names.'''
 		species = []
 		for line in open(self.SpeciesIDs):
 			if line.startswith('#'):
@@ -881,21 +837,21 @@ class OrthoFinder:
 		return species
 	@property
 	def reverse_SpeciesIDdict(self):
-		'''物种名称和新编id的字典'''
+		'''Dictionary of species names and new IDs.'''
 		return dict([(spName, id) for id, spName in list(self.SpeciesIDdict.items())])
 	def spName2Id(self, *sps):
-		'''获取指定物种的新编id'''
+		'''Get the new ID of the specified species.'''
 		d_sp = self.reverse_SpeciesIDdict
 		return [d_sp[sp] for sp in sps]
 	def spId2Name(self, *sps):
-		'''获取指定物种id的名称'''
+		'''Get the name of the specified species ID.'''
 		d_sp = self.SpeciesIDdict
 		return [d_sp[sp] for sp in sps]
 	def get_species(self, genes, sep='|'):
-		'''由基因名获取物种名，继承自OrthoMCL的编号格式'''
+		'''Retrieve species name from gene name, inherited from the OrthoMCL format.'''
 		return [gene.split(sep)[0] for gene in genes]
 	def get_species_specific(self, sp):
-		'''获取指定物种特有的所有基因'''
+		'''Get all genes that are unique to the specified species.'''
 		i = 0
 		d_genes = {}
 		all_sp_genes = []
@@ -909,11 +865,8 @@ class OrthoFinder:
 			sp_genes = temp[spidx]
 			temp.pop(spidx)
 			genes = temp[1:]
-#			print >> sys.stderr, genes
 			sp_genes = sp_genes.split(', ')
 			all_sp_genes += sp_genes
-#			if sp_genes:
-#				print >> sys.stderr,genes
 			if not (sp_genes and set(genes) == set([''])):
 				continue
 			for gene in sp_genes:
@@ -947,7 +900,7 @@ class OrthoFinder:
 			print('\t'.join(line), file=fout)
 		
 	def get_species_specific2(self, sp, ex_sps=[]):
-		'''获取指定物种特有的所有基因, 相对于其他指定物种集'''
+		'''Get all genes that are unique to the specified species.'''
 		if not ex_sps:
 			ex_sps = set(self.Species) - set([sp])
 		d_specific = {}
@@ -958,19 +911,19 @@ class OrthoFinder:
 			d_genes = og.spdict
 			sp_ngene = d_count.get(sp, 0)
 			ex_sps_ngene = [d_count.get(ex_sp, 0) for ex_sp in ex_sps]
-			if sp_ngene >0 and not any(ex_sps_ngene):	# specific: 0 in this and all 0 in others
+			# specific: >0 in this and all 0 in others
+			if sp_ngene >0 and not any(ex_sps_ngene):
 				ogs += 1
 				genes += sp_ngene
 				if sp_ngene >1:
 					mogs += 1
 					mgenes += sp_ngene
 				for gene in d_genes[sp]:
-#					_, gene = gene_format_common(gene)
 					d_specific[gene] = og.ogid
 		print('exclude species: {}\ntotal specific OGs: {}\ntotal specific genes:{}\n\
-specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), ogs, genes, mogs, mgenes), file=sys.stderr)
+specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(
+			len(ex_sps), ogs, genes, mogs, mgenes), file=sys.stderr)
 		return d_specific
-
 	def count_og(self, sps):
 		ogs, genes = 0,0
 		for og in Group(self.Orthogroups):
@@ -981,7 +934,7 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 				genes += sum(count)
 		return ogs, genes
 	def get_blast_files(self, sp1, sp2, byName=True):
-		'''获取两物种间或物种内的blast文件'''
+		'''Retrieve the BLAST files inter- or intra-species.'''
 		if byName:
 			sp1, sp2 = self.spName2Id(sp1, sp2)
 		blast_files = []
@@ -993,7 +946,7 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 			blast_files += ['{}/WorkingDirectory/Blast{}_{}.txt.gz'.format(self.ResultsDir, sp1, sp2)]
 		return blast_files
 	def get_paralogs(self, sp=None, byName=True, min_support=0.5):
-		'''由Gene_Duplication_Events/获取paralogs'''
+		'''Retrieve paralogs from Gene_Duplication_Events/'''
 		if sp is not None and not byName:
 			sp, = self.spId2Name(sp)
 		Duplications = self.Duplications
@@ -1021,7 +974,7 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 					para_pairs.add( (g1, g2) )
 		return para_pairs
 	def get_paralogs2(self, sps=None, sp=None, byName=True):
-		'''由Orthologues/获取paralogs'''
+		'''Retrieve paralogs from Orthologues/'''
 		if sp is not None:
 			if not byName:
 				sp, = self.spId2Name(sp)
@@ -1032,8 +985,8 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 				for sp1, sp2 in itertools.permutations(sps, 2):
 					if not byName:
 						sp1,sp2 = self.spId2Name(sp)
-#				orthoFiles += glob.glob('{}/Orthologues/*{}*.tsv'.format(self.ResultsDir, sp))
-					orthoFiles += ['{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(self.ResultsDir, sp1, sp1, sp2)]
+					orthoFiles += ['{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(
+						self.ResultsDir, sp1, sp1, sp2)]
 		else:
 			orthoFiles = self.Orthologues
 		para_pairs = set([])
@@ -1063,27 +1016,29 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 						para_pairs.add( (g1, g2) )
 		return para_pairs
 	def get_paralogs3(self):
-		'''由Orthogroups/Orthogroups.tsv获取paralogs'''
+		'''Retrieve paralogs from Orthogroups/Orthogroups.tsv'''
 		para_pairs = set([])
 		for rc in Group(self.Orthogroups):
-		#	print vars(rc)
 			for genes in rc.genes:
 				for g1, g2 in itertools.combinations(genes, 2):
 					para_pairs.add( (g1, g2) )
 		return para_pairs
 	def get_orthologs(self, sps=None, sp1=None, sp2=None, byName=True):
-		'''获取成对的orthologs'''
+		'''Retrieve orthologous pairs'''
 		if sps is not None:
 			orthoFiles = []
 			for sp1, sp2 in itertools.permutations(sps, 2):
 				if not byName:
 					sp1, sp2 = self.spId2Name(sp1, sp2)
-				orthoFiles += ['{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(self.ResultsDir, sp1, sp1, sp2)]
+				orthoFiles += ['{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(
+							self.ResultsDir, sp1, sp1, sp2)]
 		elif sp1 is not None or sp2 is not None:
 			if not byName:
 				sp1, sp2 = self.spId2Name(sp1, sp2)
-			orthoFiles = ['{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(self.ResultsDir, sp1, sp1, sp2),
-						  '{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(self.ResultsDir, sp2, sp2, sp1),]
+			orthoFiles = ['{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(
+							self.ResultsDir, sp1, sp1, sp2),
+						  '{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(
+							self.ResultsDir, sp2, sp2, sp1),]
 		else:
 			orthoFiles = self.Orthologues
 		ortho_pairs = set([])
@@ -1112,7 +1067,7 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 		return ortho_pairs
 		
 	def get_homologs(self, sps=None, sp1=None, sp2=None, byName=True, **kargs):
-		'''获取成对的orthologs'''
+		'''Retrieve orthologs and inparalogs'''
 		if sp1 is not None or sp2 is not None:
 			sps = {sp1, sp2}
 		if sps is not None:
@@ -1161,13 +1116,11 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 		return ortho_pairs
 
 	def get_orthologs_cluster(self, **kargs):
-		'''获取orthologs的cluster，属OG的子集'''
+		'''Retrieve the clusters of orthologs, which are a subset of OGs.'''
 		import networkx as nx
 		G = nx.Graph()
 		for g1, g2 in self.get_orthologs(**kargs):
 			G.add_edge(g1, g2)
-#		for g1, g2 in self.get_paralogs2():
-#			G.add_edge(g1, g2)
 		i = 0
 		for cmpt in nx.connected_components(G):
 			i += 1
@@ -1179,21 +1132,17 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 			if self.is_singlecopy(cmpt):
 				yield cmpt
 	def is_singlecopy(self, cmpt):
-		'''严格意义上只适用于2个物种'''
 		sps = [gene_format_o(g)[0] for g in cmpt]
 		if len(sps) == len(set(sps)):
 			return True
 		else:
 			return False
 	def get_singlecopy_orthologs2(self, sps, singlecopy_ratio=1):
-		'''获取目标物种集的单拷贝直系同源基因'''
+		'''Retrieve the single-copy orthologs for the target species set.'''
 		nsp = len(sps)
 		for og in self.get_orthologs_cluster(sps=sps):
-		#	if self.is_singlecopy2(cmpt, sps):
-		#		yield cmpt
 			og.nsp = nsp
 			if og.singlecopy_ratio >= singlecopy_ratio:
-		#		yield OrthoMCLGroupRecord(genes=og.singlecopy_genes, ogid=ogid)
 				yield og
 	def is_singlecopy2(self, cmpt, sps):
 		if sps is None:
@@ -1212,7 +1161,7 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 			rc.description += ' {} sites'.format(len(rc.seq))
 			SeqIO.write(rc, f, fmt)
 	def get_root(self, treefile, fmt='newick'):
-		'''从树文件获取root'''
+		'''Retrieve the root from the tree file.'''
 		tree = Phylo.read(treefile, fmt)
 		root  = tree.root
 		if root.name == 'N0':
@@ -1221,7 +1170,7 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 					return clade.name
 		return root.name
 	def re_root(self, treefile, root, out_treefile, fmt='newick'):
-		'''由Phylo进行reroot'''
+		'''Reroot the tree using Phylo.'''
 		tree = Phylo.read(treefile, fmt)
 		for clade in tree.find_clades(root):
 			if root == clade.name:
@@ -1232,7 +1181,7 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(len(ex_sps), 
 		tree.root_with_outgroup(root)
 		Phylo.write(tree, out_treefile, fmt)
 	def get_aln_len(self, alnfile, fmt='fasta'):
-		'''获取alignment的长度'''
+		'''Get the length of the alignment.'''
 		for rc in SeqIO.parse(alnfile, fmt):
 			return len(rc.seq)
 	
@@ -1249,16 +1198,17 @@ def single_copy_stats(OFdir, species=None, ):
 		sps = species = result.Species
 	else:
 		sps = species
-	groups = [group.singlecopy_ratio for group in result.get_singlecopy_orthologs2(sps=sps, singlecopy_ratio=0)]
+	groups = [group.singlecopy_ratio for group in result.get_singlecopy_orthologs2(
+				sps=sps, singlecopy_ratio=0)]
 	for percent in range(0,105,5):
 		min_ratio = percent/1e2
 		groups = [ratio for ratio in groups if ratio>= min_ratio]
 		line = [percent, len(groups)]
 		line = list(map(str, line))
 		print('\t'.join(line), file=sys.stdout)
-def single_copy_cds_align2(OFdir, pepSeqs, cdsSeqs, outALN, species=None, singlecopy_ratio=1,
-			tmpdir='./tmp', ncpu=20, mode='grid'):
-	'''获取目标物种集的单拷贝直系同源基因的密码子比对'''
+def single_copy_cds_align2(OFdir, pepSeqs, cdsSeqs, outALN, species=None, 
+		singlecopy_ratio=1, tmpdir='./tmp', ncpu=20, mode='grid'):
+	'''Retrieve the codon alignments of single-copy orthologs for the target species set.'''
 	if not os.path.exists(tmpdir):
 		os.mkdir(tmpdir)
 	species = parse_species(species)
@@ -1279,7 +1229,7 @@ def single_copy_cds_align2(OFdir, pepSeqs, cdsSeqs, outALN, species=None, single
 		f2 = open(outCds, 'w')
 		for gene in group.singlecopy_genes:
 			rc = d_pep[gene]
-			rc.id, g = gene_format_common(gene)	# pep id	-> taxon
+			rc.id, g = gene_format_common(gene)	# pep id -> taxon
 			SeqIO.write(rc, f1, 'fasta')
 			try: rc = d_cds[gene]
 			except KeyError as e:
@@ -1296,15 +1246,12 @@ def single_copy_cds_align2(OFdir, pepSeqs, cdsSeqs, outALN, species=None, single
 		cmds += [cmd]
 		alnPepTrim = alnPep  + '.trimal'
 		cmd = 'trimal -in {} -out {} -gt 0.8'.format(alnPep, alnPepTrim)
-		#os.system(cmd)
 		alnCds = outCds + '.aln'
 		cmd = 'pal2nal.pl -output fasta {} {} > {} 2> /dev/null'.format(alnPep, outCds, alnCds)
 		cmds += [cmd]
-		#os.system(cmd)
 		alnCodon = alnCds + '.trimal'
 		cmd = 'trimal -in {} -out {} -gt 0.8'.format(alnCds, alnCodon)
 		cmds += [cmd]
-		#os.system(cmd)
 		cmds = ' && '.join(cmds)
 		cmd_list += [cmds]
 		alnfiles += [alnCodon]
@@ -1318,13 +1265,12 @@ def single_copy_cds_align2(OFdir, pepSeqs, cdsSeqs, outALN, species=None, single
 
 def collinear_og_trees(OFdir, collinearity, taxon, seqfile, tmpdir='/io/tmp/share', min_N=10):
 	from mcscan import Collinearity
-	#tmpdir = '{}/collinear.{}'.format(tmpdir, os.getpid())
 	tmpdir = '/io/tmp/share/collinear.15867/'
 	mkdirs(tmpdir)
 	result = OrthoFinder(OFdir)
 	d_seqs = seq2dict(seqfile)
 	d_ogdict = result.OGDict
-	# 取出指定物种旁系共线性基因所在OG
+	# Retrieve the OGs containing paralogous genesfor the specified species.
 	ogs = []
 	for rc in Collinearity(collinearity):
 		if rc.N < min_N:
@@ -1335,7 +1281,7 @@ def collinear_og_trees(OFdir, collinearity, taxon, seqfile, tmpdir='/io/tmp/shar
 			og1, og2 = d_ogdict[g1], d_ogdict[g2]
 			assert og1 == og2
 			ogs += [og1]
-	# 对OG建树
+	# Construct trees for OGs.
 	d_genedict = result.GenesDict
 	cmd_list = []
 	for og in set(ogs):
@@ -1346,8 +1292,9 @@ def collinear_og_trees(OFdir, collinearity, taxon, seqfile, tmpdir='/io/tmp/shar
 			sp, g = gene_format_common(gene)
 			sps += [sp]
 		mono = {'Ananas_comosus', 'Brachypodium_distachyon', 'Musa_acuminata', 'Oryza_sativa'}
-		eudi = {'Aquilegia_coerulea', 'Arabidopsis_thaliana', 'Coffea_canephora', 'Nelumbo_nucifera', 
-			'Populus_trichocarpa', 'Solanum_lycopersicum', 'Tetracendron_sinense', 'Theobroma_cacao',
+		eudi = {'Aquilegia_coerulea', 'Arabidopsis_thaliana', 'Coffea_canephora', 
+			'Nelumbo_nucifera', 'Populus_trichocarpa', 'Solanum_lycopersicum', 
+			'Tetracendron_sinense', 'Theobroma_cacao',
 			'Trochodendron_aralioides'}
 		magn = {'Cinnamomum_kanehirae', 'Liriodendron_chinense', 'Litsea_cubeba'}
 		sps = set(sps)
@@ -1376,8 +1323,6 @@ def collinear_og_trees(OFdir, collinearity, taxon, seqfile, tmpdir='/io/tmp/shar
 		cmd_list += [cmds]
 		print(treefile)
 	cmd_file = '{}/cmds.list'.format(tmpdir)
-	#run_job(cmd_file, cmd_list=cmd_list, tc_tasks=50, by_bin=5)
-
 
 
 def get_all_homo_pairs(OFdir, outpairs, species=None,):
@@ -1389,7 +1334,8 @@ def get_all_homo_pairs(OFdir, outpairs, species=None,):
 			print('{}\t{}'.format(*pair), file=outpairs)
 
 def to_codeml(OFdir, outDir, pepSeq, cdsSeq, species=None, min_species=0.7, min_seqs=4, singlecopy=False):
-	'''准备正选择文件，不再要求单拷贝; 因此也改用基因树'''
+	'''Prepare positive selection files without requiring single-copy; 
+	therefore, gene trees are also used.'''
 	print(vars(), file=sys.stderr)
 	if not os.path.exists(outDir):
 		os.mkdir(outDir)
@@ -1481,7 +1427,10 @@ def exists_and_size_gt_zero(FILE):
 	return os.path.exists(FILE) and os.path.getsize(FILE) > 0
 
 def to_paml(OFdir, outDir, cdsSeq, species=None, singlecopy=True):
-	'''生成PAML正选择分析所需文件；取共有基因；多拷贝基因取树枝最短的那个;singlecopy=True则只取完全单拷贝基因'''
+	'''Generate files required for PAML positive selection analysis; 
+	select common genes; 
+	for multi-copy genes, choose the one with the shortest branch length; 
+	if singlecopy=True, then only completely single-copy genes are selected.'''
 	print(vars(), file=sys.stderr)
 	if not os.path.exists(outDir):
 		os.mkdir(outDir)
@@ -1508,10 +1457,7 @@ def to_paml(OFdir, outDir, cdsSeq, species=None, singlecopy=True):
 			s += 1
 			groups += [genes]
 			continue
-#		if j >3:
-#			break
 		groups += [select_genes_bytree(genes, d_seqs, j)]
-#	return
 	print('total {} groups, shared {}, single copy {}'.format(i, j, s))
 	i = 0
 	d_cds = seq2dict(cdsSeq)
@@ -1550,7 +1496,7 @@ def seq2dict(seq):
 def format_of_id(id):
 	return re.compile(r'[\(\)]').sub('_', id)
 def select_genes_bytree(genes, d_seqs, i):
-	'''从树上选择多拷贝基因中的一个：树枝最短的那个'''
+	'''Select one gene from multi-copy genes based on the shortest branch length in the tree.'''
 	outSeq = '/io/tmp/share/xxx{}.fa'.format(i)
 	with open(outSeq, 'w') as f:
 		for gene in genes:
@@ -1561,12 +1507,9 @@ def select_genes_bytree(genes, d_seqs, i):
 	print("if [ $SGE_TASK_ID -eq {} ]; then".format(i))
 	cmd = 'mafft --auto {} > {} 2> /dev/null'.format(outSeq, alnSeq)
 	print(cmd)
-#	os.system(cmd)
 	cmd = 'iqtree -s {} -pre {} -nt AUTO &> /dev/null'.format(alnSeq,alnSeq)
-#	os.system(cmd)
 	print(cmd)
 	print('fi')
-#	return
 	treefile = alnSeq + '.treefile'
 	d_dist = {}
 	tree = Phylo.read(treefile, 'newick')
@@ -1593,7 +1536,6 @@ def select_genes_bytree(genes, d_seqs, i):
 		if sp1 == sp0:
 			continue
 		gene1 = gene1.replace('|', '-')
-	#	print gene1,node0
 		dist = tree.distance(gene1,node0)
 		try: d_dist[sp1][gene0] = dist
 		except KeyError: d_dist[sp1] = {gene0: dist}
@@ -1603,7 +1545,7 @@ def select_genes_bytree(genes, d_seqs, i):
 	print(sorted(genes),sorted(nodes))
 	return nodes
 def single_copy_cds_align(OFdir, cdsSeqs, outALN, tmpdir='./tmp'):
-	'''首尾连接单拷贝的CDS alignment'''
+	'''Concatenate the codon alignments of single-copy genes.'''
 	if not os.path.exists(tmpdir):
 		os.mkdir(tmpdir)
 
@@ -1615,7 +1557,7 @@ def single_copy_pep_align(OFdir, outALN, ):
 	inALNs = result.Single_Copy_Pep_Align()
 	catAln(inALNs, outALN)
 def cafe_count(OFdir, outCount):
-	'''生成CAFE所需的基因家族计数文件'''
+	'''Generate the gene family count file for CAFE.'''
 	def _count(genes):
 		return len([v for v in genes.split(', ') if v.strip()])
 	result = OrthoFinder(OFdir)
@@ -1632,13 +1574,11 @@ def cafe_count(OFdir, outCount):
 		ogId = temp[0]
 		group = temp[1:]
 		count = [_count(genes) for genes in group]
-		#if ogId == 'OG0000008':
-		#	print ogId, group, count
 		line = ['(null)', ogId] + count
 		line = list(map(str, line))
 		print('\t'.join(line), file=outCount)
 def to_cafe(OFdir, outCount, species=None):
-	'''取出目标物种集的基因计数，用于cafe'''
+	'''Retrieve the gene counts for the target species set, for CAFE.'''
 	species = parse_species(species)
 	result = OrthoFinder(OFdir)
 	i = 0
@@ -1658,7 +1598,8 @@ def to_cafe(OFdir, outCount, species=None):
 		line = list(map(str, line))
 		print('\t'.join(line), file=outCount)
 	print('total {total} families, {left} left, removed: {too_high_std} std>100,\
-{too_high_max} max>100, {too_many_zero} none_zero<5'.format(total=i, **d_reason), file=sys.stderr)
+{too_high_max} max>100, {too_many_zero} none_zero<5'.format(
+		total=i, **d_reason), file=sys.stderr)
 def upsetplot(OFdir, outprefix, species=None, min_count=1):
 	species = parse_species(species)
 	print(species)
@@ -1732,7 +1673,7 @@ dev.off()
 	os.system(cmd)
 
 def cafe_filter(fam_size, d_reason={}, max_sd=100, none_zero=5, min_sp=0.5):
-	'''过滤掉标准偏差太大、最大值太大、非空值太少的OG'''
+	'''Filter out OGs with too large SD, maximum value, or too few non-null values.'''
 	import numpy as np
 	for reason in ['left', 'too_high_std', 'too_high_max', 'too_many_zero']:
 		if reason not in d_reason:
@@ -1753,7 +1694,7 @@ def cafe_filter(fam_size, d_reason={}, max_sd=100, none_zero=5, min_sp=0.5):
 	return False
 
 def species_specific_genes(OFdir, sp, outTsv, ex_sps=[]):
-	'''物种特有基因'''
+	'''Species-specific genes'''
 	result = OrthoFinder(OFdir)
 	print('\t'.join(['gene', 'group']), file=outTsv)
 	d_genes = result.get_species_specific2(sp, ex_sps)
@@ -1761,17 +1702,14 @@ def species_specific_genes(OFdir, sp, outTsv, ex_sps=[]):
 		print('\t'.join([gene.split('|', 1)[1], str(group)]), file=outTsv)
 	
 def bootstrap_species_tree(OFdir, outdir, bootstrap=1000, iqtree_options='-mset JTT'):
-	'''重新用iqtree建树'''
+	'''Reconstruct  tree using IQ-TREE.'''
 	result = OrthoFinder(OFdir)
 	msa = result.SpeciesTreeAlignment
 	treefile = result.SpeciesTree_rooted
 	new_msa = '{}/singlecopy_aligned.faa'.format(outdir)
-	#os.link(msa, new_msa)	2020-5-31 改为-automated1，之前为-gt 0.8
-	cmd = '[ -s {0} ] && trimal -in {0} -automated1 > {1}'.format(msa, new_msa)	# 2020-5-24改回link
+	cmd = '[ -s {0} ] && trimal -in {0} -automated1 > {1}'.format(msa, new_msa)
 	run_cmd(cmd)
 	prefix = new_msa
-#	result.convert_seq_id(msa, new_msa)
-#	print >>sys.stderr, 'alignments have {} sites'.format(result.get_aln_len(new_msa))
 	try:
 		root = result.get_root(result.SpeciesTree_rooted)
 	except IOError:
@@ -1790,7 +1728,7 @@ def bootstrap_species_tree(OFdir, outdir, bootstrap=1000, iqtree_options='-mset 
 	os.system(cmd)
 	return new_treefile_rooted
 def singlecopy_tree(OFdir, outdir, bootstrap=1000, iqtree_options='-mset JTT'):
-	'''取单拷贝基因建树'''
+	'''Construct tree using single-copy genes.'''
 	result = OrthoFinder(OFdir)
 	new_msa = '{}/singlecopy_aligned.faa'.format(outdir)
 	prefix = new_msa
@@ -1799,7 +1737,8 @@ def singlecopy_tree(OFdir, outdir, bootstrap=1000, iqtree_options='-mset JTT'):
 		single_copy_pep_align(OFdir, outALN)
 	if root or not re.compile(r'N\d').match(root):
 		iqtree_options += ' -o {}'.format(root)
-	cmd = "iqtree -s {} -pre {} -bb {} -bnni -nt AUTO  {} > /dev/null".format(new_msa, prefix, bootstrap, iqtree_options)
+	cmd = "iqtree -s {} -pre {} -bb {} -bnni -nt AUTO  {} > /dev/null".format(
+			new_msa, prefix, bootstrap, iqtree_options)
 	os.system(cmd)
 	new_treefile = '{}.treefile'.format(prefix)
 	new_treefile_rooted = '{}.rooted.tre'.format(prefix)
@@ -1854,7 +1793,8 @@ def get_paralogs(OFdir, outHomo, min_support=0.5):
 		if i == 1:
 			continue
 		temp = line.strip().split('\t')
-		Orthogroup, Species_Trer_Node, Gene_Tree_Node, Support, Type, Genes_1, Genes_2 = temp
+		Orthogroup, Species_Trer_Node, Gene_Tree_Node, Support, Type, Genes_1, Genes_2 \
+			= temp
 		Support = float(Support)
 		if Support < min_support:
 			continue
@@ -1885,13 +1825,12 @@ def gene_format_common(gene):
 		sp = sp1
 		g = sp + '|' + g
 	return (sp, g)
-def MCScanX_transposed(OFdir, tsp, cspp, spmap, gff, datadir='data', outdir='result',):
-	'''MCScanX_transposed流程'''
+def MCScanX_transposed(OFdir, tsp, cspp, spmap, gff, datadir='data', outdir='result'):
+	'''MCScanX_transposed pipeline'''
 	if not os.path.exists(datadir):
 		os.mkdir(datadir)
 	d_spmap = spmap2dict(spmap)
 	result = OrthoFinder(OFdir)
-	#prepare t.gff, t.blast
 	t_abr = d_spmap[tsp]
 	t_gff = '%s/%s.gff' % (datadir, t_abr)
 	checkpoint = t_gff + '.ok'
@@ -1915,7 +1854,6 @@ def MCScanX_transposed(OFdir, tsp, cspp, spmap, gff, datadir='data', outdir='res
 		os.mknod(checkpoint)
 	else:
 		print('checkpoint: %s exists, skipping prepare %s' % (checkpoint, t_blast))
-
 	# prepare c-t.gff, c-t.blast
 	for csp in cspp:
 		c_abr = d_spmap[csp]
@@ -1926,7 +1864,6 @@ def MCScanX_transposed(OFdir, tsp, cspp, spmap, gff, datadir='data', outdir='res
 			os.mknod(checkpoint)
 		else:
 			print('checkpoint: %s exists, skipping prepare %s' % (checkpoint, c_gff))
-
 		c_blast = '%s/%s_%s.blast' % (datadir, t_abr, c_abr)
 		checkpoint = c_blast + '.ok'
 		if not os.path.exists(checkpoint):
@@ -1945,7 +1882,8 @@ def MCScanX_transposed(OFdir, tsp, cspp, spmap, gff, datadir='data', outdir='res
 	suffix = '_'.join([d_spmap[sp] for sp in [tsp]+cspp])
 	outdir += '.' + suffix
 	log = 'run_%s.log' % (suffix,)
-	cmd = 'MCScanX_h-transposed.pl -i %s -t %s -c %s -o %s -x %s &> %s' % (datadir, t_abr, c_abrs, outdir, len(cspp), log)
+	cmd = 'MCScanX_h-transposed.pl -i %s -t %s -c %s -o %s -x %s &> %s' % (
+			datadir, t_abr, c_abrs, outdir, len(cspp), log)
 	print('CMD: %s' % cmd)
 	os.system(cmd)
 	outcount = 'run_%s.count.xls' % (suffix,)
@@ -2069,9 +2007,6 @@ def aln2beast(inALN, outNEX, partify=True):
 				genes = re.compile(r'genes:(\d+)').search(desc).groups()[0]
 			except:
 				genes = 0
-			#try:
-			#	sites = re.compile(r'sites:(\d+)').search(desc).groups()[0]
-			#except:
 			sites = len(rc.seq)
 			try:
 				blocks = re.compile(r'blocks:(.*)').search(desc).groups()[0]
@@ -2124,7 +2059,7 @@ def og2gene(OFdir, oglist, outsv, species=None):
 			continue
 		for gene in group.get_group(sps=species):
 			gene = gene.split('|', 1)[-1]
-			line = [gene, og] #+ group.raw_genes
+			line = [gene, og]
 			print('\t'.join(line), file=outsv)
 def classify_genes(OFdir, outsv=sys.stdout, species=None):
 	OrthoFinder(OFdir).classify_genes(sps=parse_species(species), fout=outsv)
@@ -2177,13 +2112,15 @@ def main():
 	print('CMD: {}'.format(' '.join(sys.argv)), file=sys.stderr)
 	subcommand = sys.argv[1]
 	kargs = parse_key_opts(sys.argv)
-	if subcommand == 'reTree': # 重新建树，加上bootstrap
+	# Reconstruct the tree with bootstrap support.
+	if subcommand == 'reTree':
 		OFdir=sys.argv[2]
 		outdir=sys.argv[3]
 		if not os.path.exists(outdir):
 			os.makedirs(outdir)
 		bootstrap_species_tree(OFdir=OFdir, outdir=outdir)
-	elif subcommand == 'reTree2': # 只用单拷贝基因建树
+	# Construct the tree using only single-copy genes.
+	elif subcommand == 'reTree2':
 		OFdir=sys.argv[2]
 		outdir=sys.argv[3]
 		if not os.path.exists(outdir):
@@ -2202,36 +2139,37 @@ def main():
 	elif subcommand == 'uniqlogs':
 		OFdir=sys.argv[2]
 		get_unique_logs(OFdir)
-	elif subcommand == 'oglogs':	# 获取OG的所有同源基因对
+	# Retrieve all homologous gene pairs for each OG
+	elif subcommand == 'oglogs':
 		OFdir=sys.argv[2]
 		outHomo = sys.stdout
 		get_oglogs(OFdir, outHomo)
-	elif subcommand == 'to_cafe':	# 准备cafe计数【ximi】
+	# prepare files for cafe
+	elif subcommand == 'to_cafe':
 		OFdir=sys.argv[2]
 		outTsv = sys.stdout
-	#	cafe_count(OFdir, outTsv)	@ 2020-6废弃
 		try: species = sys.argv[3]
 		except IndexError: species = None
 		to_cafe(OFdir, outTsv, species=species)
 	elif subcommand == 'upset':
 		OFdir=sys.argv[2]
-		outprefix = 'upset' #sys.argv[3]
+		outprefix = 'upset'
 		try: species = sys.argv[3]
 		except IndexError: species = None
 		try: min_count = int(sys.argv[4])
 		except IndexError: min_count = 1
 		upsetplot(OFdir, outprefix, species=species, min_count=min_count)
-	elif subcommand == 'MCScanX_transposed': # 封装MCScanX_transposed【当归】
+	elif subcommand == 'MCScanX_transposed':
 		OFdir=sys.argv[2]
 		tsp, cspp, spmap, gff = sys.argv[3:7]
 		cspp = cspp.split(',')
 		MCScanX_transposed(OFdir, tsp, cspp, spmap, gff)
-	elif subcommand == 'single_copy_cds':   # single_copy_cds alignments【水青树】
+	elif subcommand == 'single_copy_cds':   # single_copy_cds alignments
 		OFdir=sys.argv[2]
 		cdsSeqs =sys.argv[3]
 		outALN = sys.stdout
 		single_copy_cds_align(OFdir, cdsSeqs, outALN)
-	elif subcommand == 'single_copy_cds2':   # single_copy_cds
+	elif subcommand == 'single_copy_cds2':
 		OFdir=sys.argv[2]
 		pepSeqs = sys.argv[3]
 		cdsSeqs = sys.argv[4]
@@ -2239,7 +2177,7 @@ def main():
 		try: species = sys.argv[5]
 		except IndexError: species = None
 		single_copy_cds_align2(OFdir, pepSeqs, cdsSeqs, outALN, species=species, **kargs)
-	elif subcommand == 'single_copy_stats':   # single_copy_cds
+	elif subcommand == 'single_copy_stats':
 		OFdir=sys.argv[2]
 		try: species = sys.argv[3]
 		except IndexError: species = None
@@ -2248,35 +2186,37 @@ def main():
 		OFdir=sys.argv[2]
 		outALN = sys.stdout
 		single_copy_pep_align(OFdir, outALN)
-	elif subcommand == 'catAln':		  # 合并alignments
+	elif subcommand == 'catAln':  # cocnat alignments
 		inALNs = sys.argv[2:]
 		outALN = sys.stdout
 		catAln(inALNs, outALN)
-	elif subcommand == 'to_paml':		# 为PAML准备OG【垫柳】
+	elif subcommand == 'to_paml':
 		OFdir =sys.argv[2]
 		outDir, cdsSeq = sys.argv[3:5]
 		try: species = sys.argv[5]
 		except IndexError: species = None
 		singlecopy = False if len(sys.argv) > 6 else True # default: True
 		to_paml(OFdir, outDir, cdsSeq, species=species, singlecopy=singlecopy)
-	elif subcommand == 'species_specific':	# 物种特有基因【垫柳】
+	elif subcommand == 'species_specific':
 		OFdir =sys.argv[2]
 		sp =sys.argv[3]
 		ex_sps = sys.argv[4:]
 		outTsv = sys.stdout
 		species_specific_genes(OFdir, sp, outTsv, ex_sps)
-	elif subcommand == 'aln2beast':	# alignment文件转换为BEAST的输入nex文件【醉鱼草】
+	# Convert the alignment file to a NEX file for BEAST input.
+	elif subcommand == 'aln2beast':
 		inALN = sys.argv[2]
 		outNEX = sys.stdout
 		aln2beast(inALN, outNEX)
-	elif subcommand == 'singlecopy_orthologs':	# 准备两物种间单拷贝OG【醉鱼草】
+	# Prepare single-copy OGs for two species.
+	elif subcommand == 'singlecopy_orthologs':
 		OFdir=sys.argv[2]
 		try: sp1, sp2 =sys.argv[3:5]
 		except: sp1, sp2 = None, None
 		outHomo = sys.stdout
 		print(OFdir, sp1, sp2, file=sys.stderr)
 		get_singlecopy_orthologs(OFdir, outHomo, sp1=sp1, sp2=sp2)
-	elif subcommand == 'to_astral': # 生成单拷贝基因树【润楠】
+	elif subcommand == 'to_astral':
 		OFdir=sys.argv[2]
 		pepSeq =sys.argv[3]
 		outTrees = sys.stdout
@@ -2285,7 +2225,7 @@ def main():
 		try: cutoff = float(sys.argv[5])
 		except IndexError: cutoff = 0.7
 		to_astral(OFdir, pepSeq, outTrees, species=species, min_singlecopy=cutoff)
-	elif subcommand == 'to_hybpiper':  # 目标基因组装【柳】
+	elif subcommand == 'to_hybpiper':
 		OFdir=sys.argv[2]
 		cdsSeq =sys.argv[3]
 		outOGSeq = sys.stdout
@@ -2299,7 +2239,7 @@ def main():
 		try: species = sys.argv[3]
 		except IndexError: species = None
 		to_hybpiper(OFdir, species=species, only_stats=True)
-	elif subcommand == 'venn':	# venn数据【ximi】
+	elif subcommand == 'venn':
 		OFdir=sys.argv[2]
 		outTsv = sys.stdout
 		species = sys.argv[3]
@@ -2309,46 +2249,49 @@ def main():
 		try: species = sys.argv[3]
 		except IndexError: species = None
 		pan_stats(OFdir, species)
-
 	elif subcommand == 'cn_density':
 		OFdir=sys.argv[2]
 		copy_number_density(OFdir)
-	elif subcommand == 'to_codeml':		# 正选择【杜鹃】
+	elif subcommand == 'to_codeml':	# Positive Selection
 		OFdir =sys.argv[2]
 		outDir, pepSeq, cdsSeq = sys.argv[3:6]
 		try: species = sys.argv[6]
 		except IndexError: species = None
 		to_codeml(OFdir, outDir, pepSeq, cdsSeq, species=species)
-	elif subcommand == 'og2gene':		# 列出OG对应的基因，用于富集分析
+	# List the genes of each OG for enrichment analysis.
+	elif subcommand == 'og2gene':
 		OFdir =sys.argv[2]
 		oglist = sys.argv[3]
 		try: species = sys.argv[4]
 		except IndexError: species = None
 		outsv = sys.stdout
 		og2gene(OFdir, oglist, outsv, species=species)
-	elif subcommand == 'classify_genes':	# 基因分类：单拷贝、多拷贝等
+	# Gene classification: single-copy, multi-copy, etc.
+	elif subcommand == 'classify_genes':
 		OFdir =sys.argv[2]
 		try: species = sys.argv[3]
 		except IndexError: species = None
 		outsv = sys.stdout
 		classify_genes(OFdir, outsv, species)
-	elif subcommand == 'homo_pairs':	# 获取目标物种集的所有同源基因对
+	# Obtain all homologous gene pairs for the target species set.
+	elif subcommand == 'homo_pairs':
 		OFdir =sys.argv[2]
 		outpairs = sys.stdout
 		try: species = sys.argv[3]
 		except IndexError: species = None
 		get_all_homo_pairs(OFdir, outpairs, species=species)
-	elif subcommand == 'retrieve_orthologs':	# 根据共线性回收假阴性的直系同源基因
+	# Recover false-negative orthologous genes based on synteny.
+	elif subcommand == 'retrieve_orthologs':
 		OFdir =sys.argv[2]
 		collinearity, gff = sys.argv[3:5]
 		retrieve_orthologs(OFdir, collinearity, gff, fout=sys.stdout)
-	elif subcommand == 'retrieve_allele':	# 回收共线性两翼的假阴性和直系同源基因
+	# Recover false-negative orthologous genes in the syntenic flanking regions.
+	elif subcommand == 'retrieve_allele':
 		OFdir =sys.argv[2]
 		collinearity, gff = sys.argv[3:5]
 		try: sps=sys.argv[5]
 		except IndexError: sps=None
 		retrieve_allele(OFdir, collinearity, gff, fout=sys.stdout, sps=sps)
-
 	elif subcommand == 'enrich_add_og':
 		OFdir =sys.argv[2]
 		richfile = sys.argv[3]
@@ -2367,7 +2310,7 @@ def main():
 		species = sys.argv[3]
 		outblast = sys.stdout
 		get_Blast(OFdir, species, outblast)
-	elif subcommand == 'count_og':	# 2021-4-7, for zhuhongda
+	elif subcommand == 'count_og':
 		OFdir =sys.argv[2]
 		species = sys.argv[3]
 		count_og(OFdir, species)
