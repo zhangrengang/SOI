@@ -277,10 +277,11 @@ def evaluate_orthology(ref, qry):
 	TP = len(qry_pairs & ref_pairs)	# true positive
 	FP = AD - TP	# false positive
 	FN = AP - TP	# false negative
+	logger.info('TP: {}; FP: {}; FN: {}'.format(TP, FP, FN))
 	precision = 1.0 * TP/ (TP+FP)
 	recall = 1.0 * TP/ (TP+FN)
-	f1_score = 2* precision * recall / (precision + recall)
-	logger.info('TP: {}; FP: {}; FN: {}'.format(TP, FP, FN))
+	try: f1_score = 2* precision * recall / (precision + recall)
+	except ZeroDivisionError: f1_score = 0
 	logger.info('Precision: {}; Recall: {}; F1 Score: {}'.format(precision, recall, f1_score))
 	line = [qry, precision, recall, f1_score]
 	print('\t'.join(map(str, line)))
@@ -2755,7 +2756,7 @@ class ToAstral(ColinearGroups):
 		xs = 'sc' if self.singlecopy else 'mc'
 		self.suffix = '{}.{}'.format(self.suffix, xs)
 
-		nbin = 20
+		nbin = 60 if self.onlyaln else 10
 		cmd_file = '{}/{}.cmds.list'.format(self.tmpdir, self.suffix)
 		run_job(cmd_file, cmd_list=cmd_list, tc_tasks=self.ncpu, by_bin=nbin, fail_exit=False)
 
