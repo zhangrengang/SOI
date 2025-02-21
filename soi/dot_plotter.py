@@ -256,8 +256,14 @@ def is_same_prefix(labels):
 	else:
 		return False
 def is_same_prefix2(labels):
-	for i, strs in enumerate(zip(*labels)):
+	lst_labels = list(zip(*labels))
+	for i, strs in enumerate(lst_labels):
 		if len(set(strs)) > 1:
+			if i > 0: # retrieve number preifx
+				for j in range(i-1, 0, -1):
+					strj = lst_labels[j][0]
+					if not re.compile(r'[1-9]').match(strj):
+						return j+1				
 			return i
 def _remove_prefix(labels):
 	'''remove prefix of chromosome id'''
@@ -385,7 +391,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	for _xlabel, xposition, xline in zip(xlabels, xpositions, xelines):
 		x = xline
 		plt.vlines(x, ymin, ymax, color=chr_color, linewidth=1)
-		x, y = xposition, -tot_leny/150.0
+		x, y = xposition, -tot_leny/120.0
 		plt.text(x, y, _xlabel, horizontalalignment='center',verticalalignment='top',
 			fontsize=xcsize) #, rotation=30)
 	for x in [xmin, xmax]:

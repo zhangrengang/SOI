@@ -409,7 +409,7 @@ Post-filter: {:.3f}; {:.3f} for removed blocks.'.format(
 		'Pre-filter number of syntenic blocks', 'Post-filter number of syntenic blocks', 
 		'Pre-filter number of syntenic gene pairs', 'Post-filter number of syntenic gene pairs',
 		'Mean OI of removed gene pairs', 'Mean OI of retained gene pairs',
-		'Estimated precision', 'Estimated recall']
+		'Estimated precision of orthology inference', 'Estimated recall of orthology inference']
 	print('\t'.join(line), file=out_stats)
 	for sp_pair, self in d_sp_count.items():
 		line = [sp_pair[0], sp_pair[1], self.pre_no, self.post_nso, 
