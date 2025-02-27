@@ -1929,7 +1929,6 @@ def bootstrap_species_tree(OFdir, outdir, bootstrap=1000, iqtree_options='-mset 
     new_treefile = '{}.treefile'.format(prefix)
     new_treefile_rooted = '{}.rooted.tre'.format(prefix)
     print('re-root with {}'.format([root]), file=sys.stderr)
-    # result.re_root(new_treefile, root, new_treefile_rooted)
     cmd = 'nw_reroot {} {} > {}'.format(
         new_treefile, root, new_treefile_rooted)
     os.system(cmd)

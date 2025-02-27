@@ -42,7 +42,6 @@ class Gene():
         try:
             self.species, self.raw_gene = id.split('|', 1)
         except ValueError:
-            # logger.warn('Species id not found in `{}`, ignoring'.format(id))
             self.species, self.raw_gene = None, id
 
     def __str__(self):
@@ -132,14 +131,10 @@ class KaKs():
          GC, ML_Score, AICc, Akaike_Weight, Model) = self.info
         self.sequence = Sequence
         self.method = Method
-# try: self.ka = float(Ka)
-# except ValueError: self.ka =None
         try:
             self.ks = float(Ks)
         except ValueError:
             self.ks = 0  # too few substitution, NA
-# try: self.kaks = float(Ka_Ks)
-# except ValueError: self.kaks = None
 
     def parse_pair(self):
         if not hasattr(self, 'pair'):
@@ -2300,7 +2295,7 @@ max_missing=0 does not allow any missing species.'''
         return Gff(self.gff).get_genes()
 
     def get_trees(self):  # gene trees
-        '''完全符合倍性比的基因树'''
+        '''Gene trees that perfectly matches the ploidy ratio.'''
         from creat_ctl import sort_version
         if not os.path.exists(self.tmpdir):
             os.mkdir(self.tmpdir)
@@ -2916,7 +2911,7 @@ class ToAstral(ColinearGroups):
     def __init__(self, input=None, pep=None, spsd=None, cds=None, tmpdir='tmp', root=None, both=True, suffix=None,
                  ncpu=50, max_taxa_missing=0.5, max_mean_copies=10, max_copies=5, singlecopy=False, onlyaln=False,
                  source=None, orthtype='orthologues', fast=True, concat=False, clean=False, overwrite=False,
-                 aligner='muscle', trimal_opts='-automated1', iqtree_opts=''):
+                 aligner='mafft', trimal_opts='-automated1', iqtree_opts=''):
         self.input = input
         self.pep = pep
         self.cds = cds

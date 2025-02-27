@@ -1,6 +1,3 @@
-from .colors import Colors
-from .mcscan import Collinearity, Gff, XCollinearity
-from lazy_property import LazyWritableProperty as lazyproperty
 import sys
 import numpy as np
 import collections
@@ -9,6 +6,9 @@ import matplotlib as mpl
 from matplotlib.gridspec import GridSpec
 mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
+from lazy_property import LazyWritableProperty as lazyproperty
+from .colors import Colors
+from .mcscan import Collinearity, Gff, XCollinearity
 
 
 def eval(collinearities, orthologs, gff, ref=None, pre=None):
@@ -86,26 +86,18 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9):
         bm = sum(rcs.refcounts[:, 1])  # gene number of all blocks
         kargs = dict(color=colors[i], alpha=1, label=_sp)
         ax0.plot(-2, -2, linestyle='-', marker='o',  **kargs)
-# ax0.barh(0, 0, height=0, left=0, align='center', label=_sp)
 
         ax1.plot(range(1, nb+1), np.cumsum(ns),
                  drawstyle="steps-post",  **kargs)
         ax2.plot(range(1, nb+1), ns, drawstyle="steps-post", **kargs)
-# ax2.scatter(i50, sn50, label=_sp)
         ax3.scatter(len(rcs.ns), bm, **kargs)
-# ax4.hist(rcs.extended_frs, bins=40, histtype='step', **kargs)
         hist_plot(rcs.extended_frs, ax4, bins=40, **kargs)
-# ax4.scatter(rcs.frs, rcs.ns,  alpha=0.6, label=_sp)
-# ax5.scatter(fn50, sn50, alpha=0.8, label=_sp)
         ax5.scatter(fm, sm, **kargs)
 
-# ax5.hist(rcs.extended_ns, bins=30, histtype='step', label=_sp)
-# ax5.scatter(np.mean(rcs.extended_frs), np.mean(rcs.extended_ns), label=_sp)
         ax6.scatter(fm, om, **kargs)
-# ax7.hist(rcs.extended_ois, bins=40, histtype='step', **kargs)
         hist_plot(rcs.extended_ois, ax7, bins=40, **kargs)
         ax8.plot(rcs.refcounts[:, 0], rcs.refcounts[:, 1], **kargs)
-# print(sn50, sm)
+
         line = [sp1, sp2, nb, bm, int(min(ns)), int(max(ns)), int(np.median(ns)),
                 round(np.mean(ns), 1), sm, round(fm, 2), round(om, 2)]
         print('\t'.join(map(str, line)))
