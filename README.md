@@ -1,3 +1,6 @@
+[![Build Status for Linux](https://img.shields.io/badge/Linux-Build%20Passing-brightgreen)](https://github.com/zhangrengang/soi/actions/workflows/main-linux.yml)
+[![Build Status for macOS](https://img.shields.io/badge/macOS-Build%20Passing-brightgreen)](https://github.com/zhangrengang/soi/actions/workflows/main-mac.yml)
+
 ## Table of Contents
 
    * [Quick start](#Quick-start)
