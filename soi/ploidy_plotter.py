@@ -9,10 +9,6 @@ import itertools
 import matplotlib.pyplot as plt
 from .mcscan import Collinearity, Gff
 
-__version__ = '0.1'
-__LastModified__ = '20200616'
-__Example__ = None
-
 
 def add_ploidy_opts(parser):
     parser.add_argument('--window_size', metavar='INT', type=int, default=50,
@@ -36,10 +32,7 @@ def add_ploidy_opts(parser):
 def makeArgparse():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Version: {}\nLast Modification Date: {}".format(
-            __version__, __LastModified__),
-        version="Version: {}".format(__version__),
-        description="Example: {}".format(__Example__))
+        )
     parser.add_argument('-s', '--collinearity', metavar='INPUT_BLOCK_FILE', type=str,
                         required=True, help="the blocks (*.collinearity, output of MCSCANX)")
     parser.add_argument('-g', '--gff', metavar='INPUT_GENE_GFF_FILE', type=str,
@@ -55,7 +48,7 @@ def makeArgparse():
     parser.add_argument('--nrow', metavar='nrow', type=int, default=None,
                         help="number of rows. default=%(default)s")
     parser.add_argument('--min_same_block', type=int, default=25,
-                        help="min gene number in a block on the same chromosome. default=%(default)s")
+                        help=argparse.SUPPRESS) #"min gene number in a block on the same chromosome. default=%(default)s")
     add_ploidy_opts(parser)
     args = parser.parse_args()
     sps = [args.ref] + args.qry
@@ -73,7 +66,7 @@ def makeArgparse():
     args.ncol = int(ceil(1e0*len(args.qry) / args.nrow))
     args.outfigs = [args.output+'.'+fmt for fmt in args.format]
     suptitle = 'Reference: ' + args.ref
-    xlabel = 'Relative Ploidy by {}-gene windows'.format(args.window_size)
+    xlabel = 'Relative Ploidy'.format(args.window_size)
     args.suptitle = '{} ({})'.format(xlabel, suptitle)
     args.titles = args.qry
     print('{} x {} figure'.format(args.nrow, args.ncol), file=sys.stderr)

@@ -10,6 +10,7 @@ def akr(collinearity, gff, anc, spsd, rounds=3):
     '''To refine ancestral karyotype: 
 1. to prune non-syntenic and tandemly repeated genes;
 2. to add genes that show synteny in other genomes. '''
+
     synG = ColinearGroups(collinearity,
                           spsd=spsd, nosamechr=True, noparalog=False).to_graph()
     gffG = Gff(gff).to_graph()
@@ -41,8 +42,7 @@ def akr(collinearity, gff, anc, spsd, rounds=3):
         print(set(ancG.nodes) - set(d_ancs))
         ancG.remove_internals(set(ancG.nodes) - set(d_ancs))
         logger.info((len(ancG), len(list(ancG.starts))))
-# with open('sny.{}.gfa'.format('x'), 'w') as fout:
-# ancG.to_gfa(fout)
+
         # insert syntenic nodes
         np, nn = insert_syn(ancG, gffG, d_ancs, synG, TANDEM=TANDEM)
         logger.info('inserted {} paths, {} nodes'.format(np, nn))
@@ -50,9 +50,8 @@ def akr(collinearity, gff, anc, spsd, rounds=3):
 
         with open('sny.{}.gfa'.format(i), 'w') as fout:
             ancG.to_gfa(fout)
+
     # final remove non-syntenic nodes
-# d_ancs = process_synG(synG, ancG, TANDEM=TANDEM)
-# ancG.remove_internals(set(ancG.nodes) - set(d_ancs))
     logger.info(len(ancG))
     ancG.to_wgdi(anc+'.akr')
     ancG.to_idmap()

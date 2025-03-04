@@ -15,7 +15,7 @@ class HexColors:
     '''get default colors'''
 
     def __init__(self, colors_hex=None):
-        if colors_hex is None:
+        if colors_hex is None:	# HEX colors
             colors_hex = COLORS_HEX
         elif isinstance(colors_hex, str):
             colors_hex = colors_hex.split(',')

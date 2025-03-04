@@ -3,9 +3,8 @@ import numpy as np
 from math import ceil
 from collections import OrderedDict
 import matplotlib.pyplot as plt
-# from xopen import xopen as open
 from .small_tools import parse_kargs
-
+from .small_tools import open_file as open
 
 def main(inDepth=sys.argv[1], vvlines=None, order=None,
          window_size=50000, window_step=25000, minlength=0.005,

@@ -245,7 +245,7 @@ def main():
     key = sys.argv[1]
     func = FUNC[key]  # functions
     func(**args.__dict__)  # execute
-    logger.info('Completed')
+    logger.info('Completed\n')
 
 
 if __name__ == '__main__':

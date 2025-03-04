@@ -16,6 +16,8 @@ sg_colors = ['#f9c00c', '#00b9f1', '#7200da', '#f9320c', '#00b8a9']
 
 
 class TPM:
+    '''Parser for TMP table'''
+
     def __init__(self, tpmfile):
         self.tpmfile = tpmfile
 
@@ -47,6 +49,8 @@ class TPMLine:
 
 
 class AK:
+    '''Parser for WGDI ancestor.txt'''
+
     def __init__(self, akfile):
         self.akfile = akfile
 
@@ -382,13 +386,15 @@ def group_genes(genes, d_genes, max_dist=50):
 
 
 class Alignment:
+    '''Parser for WGDI -a output (alignment file)'''
+
     def __init__(self, alignment, indice=None, idmap=None, colnames=None, **kargs):
         self.alignment = alignment
         self.indice = self.parse_indice(indice)  # cut columns
         if idmap is None and colnames is not None:
             idmap = colnames
         self.idmap = self.parse_idmap(idmap)  # idx - name * unique ID
-        self.colnames = self.parse_colnames(colnames)  # names	* repeat allowed
+        self.colnames = self.parse_colnames(colnames)  # names    * repeat allowed
 
     def __iter__(self):
         return self._parse()

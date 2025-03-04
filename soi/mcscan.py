@@ -19,12 +19,7 @@ from .small_tools import mkdirs, flatten, test_s, test_f, parse_kargs, \
 from .RunCmdsMP import run_cmd, run_job, logger
 from .small_tools import open_file as open
 
-
-def get_chrom(chrom):
-    try:
-        return chrom.split('|', 1)[1]
-    except IndexError:
-        return chrom
+SEP = "|"
 
 
 class Gene():
@@ -188,40 +183,6 @@ class KaKsParser:
         return d
 
 
-def collinearity_ratio(collinearity, chrmap, outMat, min_N=20):
-    '''collinearity ratio for heatmap'''
-    from creat_ctl import get_good_chrs, Chrs
-    d_chrs = {rc.chr: rc.geneN for rc in Chrs(chrmap)}
-    good_chrs = get_good_chrs(chrmap, min_genes=200)
-    good_chrs = set(good_chrs)
-    chrs = set([])
-    d_count = {}
-    for rc in Collinearity(collinearity, ):
-        if rc.N < min_N:
-            continue
-        chr1, chr2 = rc.chr1, rc.chr2
-        if set([chr1, chr2]) - good_chrs:
-            continue
-        key = tuple(sorted([chr1, chr2]))
-        try:
-            d_count[key] += rc.N
-        except KeyError:
-            d_count[key] = rc.N
-        chrs = chrs | set([chr1, chr2])
-    chrs = sorted(chrs)
-    print('\t'.join(['']+chrs), file=outMat)
-    for chr1 in chrs:
-        n1 = d_chrs[chr1]
-        line = [chr1]
-        for chr2 in chrs:
-            n2 = d_chrs[chr2]
-            key = tuple(sorted([chr1, chr2]))
-            cn = d_count.get(key, 0)
-            ratio = cn*2.0 / (n1+n2)
-            line += [str(ratio)]
-        print('\t'.join(line), file=outMat)
-
-
 class XCollinearity:
     '''lazy supporting multiple input formats:
     collinearities = "file";
@@ -374,6 +335,13 @@ def get_homologs(orthologs, outHomo):
         pair.write(outHomo)
 
 
+def get_chrom(chrom):
+    try:
+        return chrom.split('|', 1)[1]
+    except IndexError:
+        return chrom
+
+
 def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.stdout,
                                 gff=None, kaks=None, source=None, min_n=0, min_dist=None,
                                 min_ratio=0.5, max_ratio=1, species=None, homo_class=None,
@@ -492,6 +460,40 @@ def divide(x, y):
         return x/y
     except ZeroDivisionError:
         return 0
+
+
+def collinearity_ratio(collinearity, chrmap, outMat, min_N=20):
+    '''collinearity ratio for heatmap'''
+    from creat_ctl import get_good_chrs, Chrs
+    d_chrs = {rc.chr: rc.geneN for rc in Chrs(chrmap)}
+    good_chrs = get_good_chrs(chrmap, min_genes=200)
+    good_chrs = set(good_chrs)
+    chrs = set([])
+    d_count = {}
+    for rc in Collinearity(collinearity, ):
+        if rc.N < min_N:
+            continue
+        chr1, chr2 = rc.chr1, rc.chr2
+        if set([chr1, chr2]) - good_chrs:
+            continue
+        key = tuple(sorted([chr1, chr2]))
+        try:
+            d_count[key] += rc.N
+        except KeyError:
+            d_count[key] = rc.N
+        chrs = chrs | set([chr1, chr2])
+    chrs = sorted(chrs)
+    print('\t'.join(['']+chrs), file=outMat)
+    for chr1 in chrs:
+        n1 = d_chrs[chr1]
+        line = [chr1]
+        for chr2 in chrs:
+            n2 = d_chrs[chr2]
+            key = tuple(sorted([chr1, chr2]))
+            cn = d_count.get(key, 0)
+            ratio = cn*2.0 / (n1+n2)
+            line += [str(ratio)]
+        print('\t'.join(line), file=outMat)
 
 
 class Count:
@@ -1947,11 +1949,11 @@ class ColinearGroups:
                 d_ks[key] = ks
         # print sp_pairs
         self.d_ks = d_ks
-        if self.orthologs is not None:  # 直系同源关系，无共线性信息
+        if self.orthologs is not None:  # Orthologs without synteny information
             for pair in Pairs(self.orthologs):
-                if set(pair.species) - set(self.sp_dict):  # 只保留目标物种
+                if set(pair.species) - set(self.sp_dict):  # Retain only the target species
                     continue
-                if pair.species in sp_pairs:  # 只导入无共线性信息的
+                if pair.species in sp_pairs:  # Import only those without synteny information.
                     continue
                 G.add_edge(*pair.pair)
         return G
@@ -3448,7 +3450,7 @@ def main():
         except IndexError:
             min_n = 10
         block_ks(collinearity, kaks, outkaks, min_n=min_n)
-    elif subcmd == 'count_genes':
+    elif subcmd == 'count_genes': # count genes by chromosome pair
         collinearity, sp1, sp2 = sys.argv[2:5]
         count_genes(collinearity, sp1, sp2)
     elif subcmd == 'to_ark':  # Convert to ARK format
@@ -3486,7 +3488,7 @@ def main():
         except:
             gff, chrLst, pep, cds = 'all_species_gene.gff', 'chr.list', 'pep.faa', 'cds.fa'
         Gff(gff).to_wgdi(chrLst, pep, cds, **kargs)
-    elif subcmd == 'cr':
+    elif subcmd == 'cr':  # collinearity ratio
         collinearity, chrmap = sys.argv[2:4]
         collinearity_ratio(collinearity, chrmap, outMat=sys.stdout, **kargs)
     elif subcmd == 'ortho_block':
@@ -3494,7 +3496,7 @@ def main():
         OFdir = sys.argv[-1]
         fout = sys.stdout
         identify_orthologous_blocks(collinearity, [OFdir], fout, **kargs)
-    elif subcmd == 'get_ks':
+    elif subcmd == 'get_ks':  # subset Ks file based on a Pair file
         ksfile = sys.argv[2]
         get_ks(ksfile, pairfile=sys.stdin, outks=sys.stdout,
                outpair=sys.stderr, **kargs)
@@ -3505,7 +3507,7 @@ def main():
         OFdir = sys.argv[2]
         outHomo = sys.stdout
         get_homologs(OFdir, outHomo)
-    elif subcmd == 'get_blocks':
+    elif subcmd == 'get_blocks':  # subset collinearity file based on block IDs
         collinearity, block_ids = sys.argv[2:4]
         get_blocks(collinearity, block_ids, fout=sys.stdout)
     else:

@@ -29,6 +29,7 @@ ISOTIMEFORMAT = '%Y-%m-%d %X'
 
 
 def lazy_decode(line):
+    '''For python3 when read a file'''
     try:
         line = line.decode()
     except AttributeError:
@@ -70,6 +71,7 @@ def check_ckp(ckgfile, log=True, overwrite=False):
 
 
 def tr_numeric(val):
+    '''lazy to transform to numeric'''
     try:
         return int(val)
     except:
@@ -332,40 +334,6 @@ def run_time(func):
         print('Total Time Used: %s\n' % time_convert(end-start), file=f)
         f.close()
     return _run_time
-
-
-class pypsl:
-    def __init__(self, inPsl):
-        self.input = inPsl
-
-    def read(self):
-        title = ''
-        for line in open(self.input, 'r'):
-            if re.compile(r'\d+').match(line):
-                self.match = int(temp[0])
-                self.mis_match = int(temp[1])
-                self.rep_match = int(temp[2])
-                self.ambigs = int(temp[3])
-                self.q_gap_count = int(temp[4])
-                self.q_gap_bases = int(temp[5])
-                self.t_gap_count = int(temp[6])
-                self.t_gap_bases = int(temp[7])
-                self.strand = temp[8]
-                self.q_name = temp[9]
-                self.q_size = int(temp[10])
-                self.q_start = int(temp[11])
-                self.q_end = int(temp[12])
-                self.t_name = temp[13]
-                self.t_size = int(temp[14])
-                self.t_start = int(temp[15])
-                self.t_end = int(temp[16])
-                self.block_count = int(temp[17])
-                self.block_sizes = temp[18].rstrip(',').split(',')
-                self.q_starts = temp[19].rstrip(',').split(',')
-                self.t_starts = temp[20].rstrip(',').split(',')
-                self.block_sizes = [int(value) for value in self.block_sizes]
-                self.q_starts = [int(value) for value in self.q_starts]
-                self.t_starts = [int(value) for value in self.q_starts]
 
 
 def bk_not_overwrite(input_file_bk):

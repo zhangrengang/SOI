@@ -1,9 +1,5 @@
 #!/bin/env python
 # coding: utf-8
-from .RunCmdsMP import logger
-from .WGDI import AK
-from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
-from .mcscan import Collinearity, Gff, XCollinearity
 import logging
 import argparse
 import sys
@@ -17,9 +13,11 @@ import matplotlib.cm as cm
 
 mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
-# mpl.rcParams['ps.fonttype'] = 42
-# mpl.rcParams['font.family'] = 'sans-serif'
-# mpl.rcParams['font.sans-serif'] = 'Arial'
+
+from .RunCmdsMP import logger
+from .WGDI import AK
+from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
+from .mcscan import Collinearity, Gff, XCollinearity
 
 
 def dotplot_args(parser):
@@ -34,13 +32,13 @@ def dotplot_args(parser):
     parser.add_argument('--format', metavar='FORMAT', action='append', default=['pdf', 'png'],
                         help="output figure format [default=%(default)s]")
     parser.add_argument('--homology', action='store_true', default=False,
-                        help="`-s` is in homology format (gene1<tab>gene2). [default=%(default)s]")
+                        help=argparse.SUPPRESS) #"`-s` is in homology format (gene1<tab>gene2). [default=%(default)s]")
     parser.add_argument('--number-plots', action='store_true', default=False,
                         help="number subplots with (a-d). [default=%(default)s]")
     parser.add_argument('--min-block', metavar='INT', type=int, default=None,
                         help="min gene number in a block. [default=%(default)s]")
-    parser.add_argument('--min-same-block', metavar='INT', type=int, default=25,
-                        help="min gene number in a block on the same chromosome. [default=%(default)s]")
+    parser.add_argument('--min-same-block', metavar='INT', type=int, default=None,
+                        help=argparse.SUPPRESS)  # "min gene number in a block on the same chromosome. [default=%(default)s]")
     parser.add_argument('--min-dist', dest='tandem_dist', metavar='INT', type=int, default=None,
                         help="remove tandem with distance shorter than this value. [default=%(default)s]")
     parser.add_argument('--plot-dot', action='store_true', default=None,
@@ -126,14 +124,14 @@ def dotplot_args(parser):
     group_ks.add_argument('--hist-ylim', type=float, default=None,
                           help=argparse.SUPPRESS)  # "max y axis of Ks histgram. [default=%(default)s]")
 
-    group_ploidy = parser.add_argument_group('ploidy plot',
+    group_ploidy = parser.add_argument_group('Ploidy plot',
                                              'options to plot relative ploidy (synteny depth)')
     group_ploidy.add_argument('--plot-ploidy', action='store_true', default=False,
                               help="plot relative ploidy. [default=%(default)s]")
     add_ploidy_opts(group_ploidy)
 
     group_bin = parser.add_argument_group(
-        'plot Ks by bins', 'options to plot binned Ks')
+        'Plot Ks by bins', 'options to plot binned Ks')
     group_bin.add_argument('--plot-bin', action='store_true', default=False,
                            help="plot binned Ks. [default=%(default)s]")
 
@@ -169,7 +167,6 @@ def makeArgparse():
         args = parser.parse_args(['-h'])
     else:
         args = parser.parse_args()
-
     return args
 
 
@@ -207,7 +204,8 @@ def main(args):
             lower_ks=args.lower_ks, upper_ks=args.upper_ks,
             cluster=args.cluster, diagonal=args.diagonal, gene_axis=args.gene_axis,
             matrix=args.matrix, min_same_block=args.min_same_block,
-            min_block=args.min_block, tandem_dist=args.tandem_dist, **ks_args)
+            min_block=args.min_block, tandem_dist=args.tandem_dist, 
+            ploidy=args.plot_ploidy, **ks_args)
 
     logger.info('{} blocks to plot'.format(len(blocks)))
     # positions of chromosome labels
@@ -253,49 +251,6 @@ def main(args):
                 ploidy=args.plot_ploidy, ploidy_data=ploidy_data,
                 ortholog_graph=ortholog_graph, **args.__dict__
                 )
-
-
-def is_mcscan_style(labels):
-    matches = [re.compile(
-        r'[A-Za-z]{2}\d{1,5}[A-Za-z]*$').match(lab) for lab in labels]
-    return all(matches)
-
-
-def match_paptern(lab, pattern):
-    match = re.compile(pattern).match(lab)
-    if match:
-        return match.groups()[0]
-    else:
-        return
-
-
-def is_same_prefix(labels):
-    matches = [match_paptern(lab, r'(\D+)') for lab in labels]
-    matches = list(set(matches))
-    if len(matches) == 1 and matches[0] is not None:
-        return len(matches[0])
-    else:
-        return False
-
-
-def is_same_prefix2(labels):
-    lst_labels = list(zip(*labels))
-    for i, strs in enumerate(lst_labels):
-        if len(set(strs)) > 1:
-            if i > 0:  # retrieve number preifx
-                for j in range(i-1, 0, -1):
-                    strj = lst_labels[j][0]
-                    if not re.compile(r'[1-9]').match(strj):
-                        return j+1
-            return i
-
-
-def _remove_prefix(labels):
-    '''remove prefix of chromosome id'''
-    same_prefix = is_same_prefix2(labels)
-    if same_prefix:
-        return [label[same_prefix:] for label in labels]
-    return labels
 
 
 def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=None,
@@ -553,6 +508,7 @@ def plot_collapse(kXs, kYs, Ks, xlabels, ylabels, xpositions, ypositions,
 
 
 def plot_label(ax, label, **kargs):
+    '''a/b/c/d labels'''
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
     xoffset = (xmax-xmin) / 60
@@ -565,6 +521,7 @@ def plot_label(ax, label, **kargs):
 
 def plot_fold(ax, titles, ref_coord_paths, ref_coord_graph, qry_coord_graph,
               rq_ortholog_graph, **kargs):
+    '''c/d subplots'''
     d_fold = get_ploidy(ref_coord_paths, ref_coord_graph,
                         qry_coord_graph, rq_ortholog_graph, **kargs)
     data = [np.array(sorted(d_fold.items()))]
@@ -573,6 +530,7 @@ def plot_fold(ax, titles, ref_coord_paths, ref_coord_graph, qry_coord_graph,
 
 def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False,
               xlabel='Ks', ylabel=' of syntenic gene pairs', fontsize=None, output_hist=False):
+    '''b subplot'''
     if cmap is None:
         cmap = cm.jet
     allKs = [v for v in allKs if v >= 0 and v is not None]
@@ -609,6 +567,49 @@ def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False
     ax.minorticks_on()
     cbar = plt.colorbar(ax=ax)
     return xlim, ylim
+
+
+def is_mcscan_style(labels):
+    matches = [re.compile(
+        r'[A-Za-z]{2}\d{1,5}[A-Za-z]*$').match(lab) for lab in labels]
+    return all(matches)
+
+
+def match_paptern(lab, pattern):
+    match = re.compile(pattern).match(lab)
+    if match:
+        return match.groups()[0]
+    else:
+        return
+
+
+def is_same_prefix(labels):
+    matches = [match_paptern(lab, r'(\D+)') for lab in labels]
+    matches = list(set(matches))
+    if len(matches) == 1 and matches[0] is not None:
+        return len(matches[0])
+    else:
+        return False
+
+
+def is_same_prefix2(labels):
+    lst_labels = list(zip(*labels))
+    for i, strs in enumerate(lst_labels):
+        if len(set(strs)) > 1:
+            if i > 0:  # retrieve number preifx
+                for j in range(i-1, 0, -1):
+                    strj = lst_labels[j][0]
+                    if not re.compile(r'[1-9]').match(strj):
+                        return j+1
+            return i
+
+
+def _remove_prefix(labels):
+    '''remove the same prefix of chromosome id'''
+    same_prefix = is_same_prefix2(labels)
+    if same_prefix:
+        return [label[same_prefix:] for label in labels]
+    return labels
 
 
 def parse_hvlines(bedfile, min_span=10):
@@ -712,7 +713,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
                        hide_blocks=None, use_median=False, lower_ks=None, upper_ks=None,
                        cluster=False, diagonal=False, gene_axis=False, source=None, use_frac=False,
                        ofdir=None, of_ratio=0, of_color=False, tandem_dist=None, min_block=None,
-                       matrix=None, min_same_block=None, **ks_args):
+                       matrix=None, min_same_block=None, ploidy=None, **ks_args):
     blocks = XCollinearity(collinearity, orthologs=ofdir, gff=gff, kaks=kaks,
                            homology=homology, source=source, **ks_args)
     chrs1s, chrs2s = set(chrs1), set(chrs2)
@@ -757,16 +758,18 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
         if use_median:
             ks = [rc.median_ks] * len(ks)
 
-        # use OI
-        if ofdir:
-            ratio = rc.oi
+        # use OI or fractionation_rate
+        if ofdir or use_frac:
             if use_frac:
                 ratio = rc.fractionation_rate(both=True)
+            else:
+                ratio = rc.oi
             if not ratio > of_ratio:
                 continue
             if of_color:
                 ks = [ratio] * len(genes1)
-        ortholog_graph.add_edges_from(rc.pairs)
+        if ploidy:
+            ortholog_graph.add_edges_from(rc.pairs)
         try:
             d_blocks[(chr1, chr2)] += [(genes1, genes2, ks)]
         except KeyError:
