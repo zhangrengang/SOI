@@ -14,6 +14,7 @@
       - [outgroup](#outgroup)
       - [phylo](#phylo)
       - [dotplot](#dotplot)
+      - [Other functions](#other-functions)
    * [Phylogenomics pipeline](#Phylogenomics-pipeline)
    * [Input formats](#input-formats)
    * [Output formats](#output-formats)
@@ -129,10 +130,10 @@ Then you can download the container image and run:
 ```
 apptainer remote add --no-login SylabsCloud cloud.sylabs.io
 apptainer remote use SylabsCloud
-apptainer pull orthoindex.sif library://shang-hongyun/collection/centos8dock-orthoindex.sif:1.0
+apptainer pull orthoindex.sif library://shang-hongyun/collection/orthoindex:1.2.0
 ./orthoindex.sif soi -h
 ```
-The image can be found [here](https://cloud.sylabs.io/library/shang-hongyun/collection/centos8dock-orthoindex.sif).
+The image can be found [here](https://cloud.sylabs.io/library/shang-hongyun/collection/orthoindex).
 
 ## Subcommands ##
 ```
@@ -158,7 +159,7 @@ optional arguments:
 The subcommand `filter` filters orthologous blocks with a default minimum index of 0.6:
 ```
 $ soi filter -h
-usage: soi filter [-h] -s [FILE [FILE ...]] -o [FOLDER/FILE [FOLDER/FILE ...]] [-c FLOAT] [-upper FLOAT] [-n INT]
+usage: soi filter [-h] -s [FILE [FILE ...]] -o [FOLDER/FILE [FOLDER/FILE ...]] [-c FLOAT] [-u FLOAT] [-n INT] [-g FILE] [-d INT] [-stat OUT_STATS] [-oo]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -168,8 +169,14 @@ optional arguments:
                         Orthologues output from OrthoFinder (folder), or OrthoMCL (file). [required]
   -c FLOAT, -cutoff FLOAT
                         Cutoff (lower limit) of Orthology Index [default=0.6]
-  -upper FLOAT          Upper limit of Orthology Index [default=1]
+  -u FLOAT, -upper FLOAT
+                        Upper limit of Orthology Index [default=1]
   -n INT, -min_n INT    Minimum gene number in a block [default=0]
+  -g FILE, -gff FILE    Gff file. [required for `-d`]
+  -d INT, -min_dist INT
+                        Minimum distance to remove a tandem repeated block [default=None]
+  -stat OUT_STATS       Output stats by species pairs. [default=None]
+  -oo                   Output retained orthology instead of synteny. [default=False]
 ```
 Usage examples:
 ```
@@ -179,12 +186,16 @@ soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ > collinea
 # from outputs of MCscanX and OrthoMCL
 soi filter -s mcscanx/*.collinearity -o pairs/orthologs.txt > collinearity.ortho
 
-# from a list file and increase the cutoff
+# from a list file and decrease the cutoff
 ls wgdi/*.collinearity > collinearity.list
-soi filter -s collinearity.list -o OrthoFinder/OrthoFinder/Result*/ -c 0.7 > collinearity.ortho
+soi filter -s collinearity.list -o OrthoFinder/OrthoFinder/Result*/ -c 0.5 > collinearity.ortho
 
-# filter a paralogous peak
+# filter a out-paralogous peak
 soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -c 0.05 -upper 0.4 > collinearity.para
+
+# remove intra-species, tandem repeat-derived synteny
+soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -gff all_species_gene.gff -d 200 > collinearity.homo
+
 ```
 #### `cluster` ####
 The subcommand ‘cluster’ groups orthologous syntenic genes into syntenic orthogroups (SOGs), through constructing an orthologous syntenic graph 
@@ -248,8 +259,9 @@ trimming alignments with trimAl v1.2 (Capella-Gutierrez et al. 2009) (parameter:
 and reconstructing maximum-likelihood trees with IQ-TREE v2.2.0.3 (Minh et al. 2020). 
 ```
 $ soi phylo -h
-usage: soi phylo [-h] -og FILE -pep FILE [-cds FILE] [-both] [-fmt STR] [-root [TAXON [TAXON ...]]] [-pre STR] [-mm FLOAT] [-mc INT] [-sc] [-ss FILE] [-concat] [-p INT] [-tmp FOLDER]
-                 [-clean]
+sage: soi phylo [-h] -og FILE -pep FILE [-cds FILE] [-both] [-root [TAXON [TAXON ...]]] [-pre STR] [-mm FLOAT] [-mc INT] [-sc]
+                 [-ss FILE] [-fmt {orthomcl,orthofinder,mcscanx}] [-only_aln] [-concat] [-trimal_opts STR] [-iqtree_opts STR]
+                 [-p INT] [-tmp FOLDER] [-clean]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -258,7 +270,6 @@ optional arguments:
   -pep FILE             Protein fasta file. [required]
   -cds FILE             CDS fasta file. [default=None]
   -both                 To use both CDS and PEP to build gene trees. [default: only CDS when `-cds` is true]
-  -fmt STR              Format of `-orthogroup` input. [default=orthomcl]
   -root [TAXON [TAXON ...]], -outgroup [TAXON [TAXON ...]]
                         Outgroups to root gene trees [default=None]
   -pre STR, -prefix STR
@@ -269,10 +280,15 @@ optional arguments:
                         To limit a common maximum copy number for every species. [default=6]
   -sc, -singlecopy      Only retrieve singlecopy genes (=`-max_copies 1`). [default=None]
   -ss FILE, -spsd FILE  To limit a specific copy number for each species (format: 'TAXON<tab>NUMBER'). [default=None]
+  -fmt {orthomcl,orthofinder,mcscanx}
+                        Format of `-orthogroup` input. [default=orthomcl]
+  -only_aln             Only aligning sequences, to skip trimal and iqtree. [default=None]
   -concat               To concatenate alignments for tools such as IQTREE (valid when `-singlecopy` is true). [default=None]
+  -trimal_opts STR      TrimAl options. [default='-automated1']
+  -iqtree_opts STR      IQ-TREE options. [default='']
   -p INT, -ncpu INT     Number of processors. [default=20]
   -tmp FOLDER, -tmpdir FOLDER
-                        Temporary folder. [default=./tmp/]
+                        Temporary folder. [default=./tmp-8a639818-fb56-11ef-b568-4cd98fb9bbe7]
   -clean                Cleanup temporary folder. [default=None]
 ```
 Usage examples:
@@ -293,35 +309,45 @@ with colored by the Orthology Index or Ks values.
 
 ```
 $ soi dotplot -h
-usage: soi dotplot [-h] -s FILE [FILE ...] -g FILE -c FILE [-o STR] [--format FORMAT] [--homology] [--cluster] [--diagonal] [--gene-axis] [--number-plots] [--min-block INT]
-                   [--min-same-block INT] [--xlabel XLABEL] [--ylabel YLABEL] [--figsize NUM] [--fontsize NUM] [--dotsize NUM] [--ofdir FOLDER/FILE [FOLDER/FILE ...]] [--of-ratio FLOAT]
-                   [--of-color] [--kaks FILE] [--ks-hist] [--max-ks Ks] [--ks-cmap Ks [Ks ...]] [--ks-step Ks] [--use-median] [--method STR] [--lower-ks Ks] [--upper-ks Ks]
-                   [--plot-ploidy] [--window_size INT] [--window_step INT] [--min_block INT] [--max_distance INT] [--max_ploidy INT] [--min_overlap FLOAT] [--color COLOR]
-                   [--edgecolor COLOR]
+usage: soi dotplot [-h] -s FILE [FILE ...] -g FILE -c FILE [-o STR] [--format FORMAT] [--number-plots] [--min-block INT]
+                   [--min-dist INT] [--cluster] [--diagonal] [--gene-axis] [--xlines FILE] [--ylines FILE] [--xbars FILE]
+                   [--ybars FILE] [--xbarlab] [--ybarlab] [--xlabel XLABEL] [--ylabel YLABEL] [--figsize NUM [NUM ...]]
+                   [--fontsize NUM] [--dotsize NUM] [--ofdir FOLDER/FILE [FOLDER/FILE ...]] [--of-ratio FLOAT] [--of-color]
+                   [--kaks FILE] [--ks-hist] [--max-ks Ks] [--ks-cmap Ks [Ks ...]] [--ks-step Ks] [--use-median] [--method STR]
+                   [--lower-ks Ks] [--upper-ks Ks] [--output-hist] [--cbar] [--plot-ploidy] [--window_size INT]
+                   [--window_step INT] [--min_block INT] [--max_distance INT] [--max_ploidy INT] [--min_overlap FLOAT]
+                   [--color COLOR] [--edgecolor COLOR] [--plot-bin]
+
 
 optional arguments:
   -h, --help            show this help message and exit
-  -s FILE [FILE ...]    syntenic block file (*.collinearity, output of MCSCANX/WGDI)
-  -g FILE               gene annotation gff file (*.gff, one of MCSCANX/WGDI input)
-  -c FILE               chromosomes config file (*.ctl, same format as MCSCANX dotplotter)
+  -s FILE [FILE ...]    syntenic block file (*.collinearity, output of MCSCANX/WGDI)[required]
+  -g FILE               gene annotation gff file (*.gff, one of MCSCANX/WGDI input)[required]
+  -c FILE               chromosomes config file (*.ctl, same format as MCSCANX dotplotter)[required]
   -o STR                output file prefix. [default: the same as `-c`]
   --format FORMAT       output figure format [default=['pdf', 'png']]
-  --homology            `-s` is in homology format (gene1<tab>gene2). [default=False]
+  --number-plots        number subplots with (a-d). [default=False]
+  --min-block INT       min gene number in a block. [default=None]
+  --min-dist INT        remove tandem with distance shorter than this value. [default=None]
+
+Dot plot:
+  settings for dot plots
+
   --cluster             cluster chromosomes. [default=False]
   --diagonal            try to put blocks onto the diagonal. [default=False]
   --gene-axis           use gene as axis instead of base pair. [default=False]
-  --number-plots        number subplots with (a-d). [default=False]
-  --min-block INT       min gene number in a block. [default=None]
-  --min-same-block INT  min gene number in a block on the same chromosome. [default=25]
-
-Art settings:
-  art settings for plots
-
+  --xlines FILE         bed/pos file to add vertical lines. [default=None]
+  --ylines FILE         bed/pos file to add horizontal lines. [default=None]
+  --xbars FILE          ancetor file to set colorbar for x axis. [default=None]
+  --ybars FILE          ancetor file to set colorbar for y axis. [default=None]
+  --xbarlab             plot labels for x bars. [default=False]
+  --ybarlab             plot labels for y bars. [default=False]
   --xlabel XLABEL       x label for dot plot. [default=None]
   --ylabel YLABEL       y label for dot plot. [default=None]
-  --figsize NUM         figure size [default=18]
-  --fontsize NUM        font size [default=10]
-  --dotsize NUM         dot size [default=0.8]
+  --figsize NUM [NUM ...]
+                        figure size (width [height]) [default=[16]]
+  --fontsize NUM        font size of chromosome labels [default=10]
+  --dotsize NUM         dot size [default=1]
 
 Orthology Index filter/color:
   filtering or coloring blocks by Orthology Index (prior to Ks color)
@@ -332,7 +358,7 @@ Orthology Index filter/color:
   --of-color            coloring dots by Orthology Index [default=None]
 
 Ks plot:
-  options to plot with Ks
+  options to histogram plot with Ks
 
   --kaks FILE           kaks output from KaKs_Calculator/WGDI. [default=None]
   --ks-hist             plot histogram or not [default=None]
@@ -344,8 +370,10 @@ Ks plot:
   --method STR          Ks calculation method [default=NG86]
   --lower-ks Ks         lower limit of median Ks. [default=None]
   --upper-ks Ks         upper limit of median Ks. [default=None]
+  --output-hist         output the data for histogram plot. [default=False]
+  --cbar                plot color bar when no histogram plot. [default=False]
 
-ploidy plot:
+Ploidy plot:
   options to plot relative ploidy (synteny depth)
 
   --plot-ploidy         plot relative ploidy. [default=False]
@@ -357,9 +385,17 @@ ploidy plot:
   --min_overlap FLOAT   min overlap. [default=0.4]
   --color COLOR         bar fill color. [default=None]
   --edgecolor COLOR     bar edge color. [default=None]
+
+Plot Ks by bins:
+  options to plot binned Ks
+
+  --plot-bin            plot binned Ks. [default=False]
 ```
 
 Usage examples: see [Quick Start](#Quick-Start).
+
+#### Other functions ####
+	**Macro-synteny phylogeny**: See [the function](SOI-tools.md#macro-synteny-phylogeny)
 
 ### Phylogenomics pipeline ###
 

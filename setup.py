@@ -3,18 +3,17 @@ from soi.__version__ import version
 
 from setuptools import setup, find_packages
 from distutils.extension import Extension
-#from Cython.Build import cythonize
 
 with open('README.md') as f:
     long_description = f.read()
 
 
 setup(
-    name='orthoindex',
+    name='soi',
     version=version,
-    description='OrthoIndex: distinguishing synteny from orthology to out-paralogy',
-    url='https://github.com/zhangrengang/orthoindex/',
-    author='Zhang, Ren-Gang and Wang, Zhao-Xuan',
+    description='SOI: identifying orthologous synteny',
+    url='https://github.com/zhangrengang/soi/',
+    author='Zhang, Ren-Gang',
     license='GPL-3.0',
 
     python_requires='>=3.7',
