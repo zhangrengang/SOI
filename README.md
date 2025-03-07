@@ -395,7 +395,7 @@ Plot Ks by bins:
 Usage examples: see [Quick Start](#Quick-Start).
 
 #### Other functions ####
-	**Macro-synteny phylogeny**: See [the function](SOI-tools.md#macro-synteny-phylogeny)
+**Macro-synteny phylogeny**: See [the function](SOI-tools.md#macro-synteny-phylogeny)
 
 ### Phylogenomics pipeline ###
 
