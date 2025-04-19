@@ -450,7 +450,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
             ax = plt.subplot2grid((6, 5), (5, 0), colspan=2)
             label = '(b)'
         titles = [None]
-        _xlabel = 'Relative ploidy (y / x)'
+        _xlabel = 'Synteny depth (Y / X)' #'Relative ploidy (y / x)'
         # _ylabel = 'Number of {}-gene windows'.format(kargs['window_size'])
         _ylabel = 'Number of windows'
         plot_fold(ax, titles, coord_path1, coord_graph1, coord_graph2, ortholog_graph,
@@ -465,7 +465,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
             ax = plt.subplot2grid((6, 5), (5, 3), colspan=2)
             label = '(c)'
         titles = [None]
-        _xlabel = 'Relative ploidy (x / y)'
+        _xlabel = 'Synteny depth (X / Y)' # 'Relative ploidy (x / y)'
         plot_fold(ax, titles, coord_path2, coord_graph2, coord_graph1, ortholog_graph,
                   xlabel=_xlabel, ylabel=None, **kargs)
         if number_plots:
