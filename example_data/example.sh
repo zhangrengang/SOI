@@ -4,14 +4,14 @@
 soi dotplot -s Populus_trichocarpa-Salix_dunnii.collinearity.gz \
 	-g Populus_trichocarpa-Salix_dunnii.gff.gz -c Populus_trichocarpa-Salix_dunnii.ctl  \
 	--kaks Populus_trichocarpa-Salix_dunnii.collinearity.ks.gz \
-	--xlabel '$Populus\ trichocarpa$' --ylabel '$Salix\ dunnii$' \
+	--xlabel '$Populus~trichocarpa$' --ylabel '$Salix~dunnii$' \
 	--ks-hist --max-ks 1.5 -o Populus_trichocarpa-Salix_dunnii     \
 	--plot-ploidy --gene-axis --number-plots  
 # B
 soi dotplot -s Populus_trichocarpa-Salix_dunnii.orthologs.gz    \
 	-g Populus_trichocarpa-Salix_dunnii.gff.gz -c Populus_trichocarpa-Salix_dunnii.ctl  \
 	--kaks Populus_trichocarpa-Salix_dunnii.collinearity.ks.gz \
-	--xlabel '$Populus\ trichocarpa$' --ylabel '$Salix\ dunnii$'  \
+	--xlabel '$Populus~trichocarpa$' --ylabel '$Salix\ dunnii$'  \
 	--ks-hist --max-ks 1.5 -o Populus_trichocarpa-Salix_dunnii.o   \
 	--plot-ploidy --gene-axis --number-plots  \
 	--homology	# homology input
@@ -26,7 +26,7 @@ soi dotplot -s Populus_trichocarpa-Salix_dunnii.collinearity.gz \
 soi dotplot -s Populus_trichocarpa-Salix_dunnii.collinearity.gz \
 	-g Populus_trichocarpa-Salix_dunnii.gff.gz -c Populus_trichocarpa-Salix_dunnii.ctl  \
 	--kaks Populus_trichocarpa-Salix_dunnii.collinearity.ks.gz \
-	--xlabel '$Populus\ trichocarpa$' --ylabel '$Salix\ dunnii$' \
+	--xlabel '$Populus\ trichocarpa$' --ylabel '$Salix~dunnii$' \
 	--ks-hist --max-ks 1.5 -o Populus_trichocarpa-Salix_dunnii.io  \
 	--plot-ploidy --gene-axis --number-plots \
 	--ofdir OrthoFinder/OrthoFinder/Results_*/ --of-ratio 0.6	# filtering by Orthology Index

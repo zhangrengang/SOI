@@ -91,7 +91,7 @@ def plot_fold(collinearity, gff, ref, qry, **kargs):
     return plot_bars(data, **kargs)
 
 
-def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1,
+def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1, fontsize=10, 
               suptitle=None, max_ploidy=10, color='white', edgecolor='black',
               ylabel='Number of windows', xlabel='Relative ploidy per reference block',
               **kargs):
@@ -119,9 +119,9 @@ def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1,
             sax.set_title(title)
         sax.set_xlim(0, max_ploidy)
         if xlabel is not None and i >= (nrow-1)*ncol:
-            sax.set_xlabel(xlabel)
+            sax.set_xlabel(xlabel, fontsize=fontsize)
         if ylabel is not None and i % ncol == 0:
-            sax.set_ylabel(ylabel)
+            sax.set_ylabel(ylabel, fontsize=fontsize)
     plt.xticks(tick_label)
     if suptitle is not None:
         plt.suptitle(suptitle)
