@@ -539,4 +539,4 @@ SOG3002: Angelica_sinensis|AS10G01791 Apium_graveolens|Ag1G00857 Apium_graveolen
 ```
 
 ## Citation ##
-Zhang RG, Shang HY, Zhou MJ et. al. Robust identification of orthologous synteny with the Orthology Index and its applications in reconstructing the evolutionary history of plant genomes. bioRxiv, 2024 [http://doi.org/10.1101/2024.08.22.609065]
+Zhang R G, Shang H Y, Milne R I et. al. SOI: robust identification of orthologous synteny with the Orthology Index and broad applications in evolutionary genomics [J]. Nucleic. Acids. Res., 2025, 53 (7) [https://doi.org/10.1093/nar/gkaf320]
