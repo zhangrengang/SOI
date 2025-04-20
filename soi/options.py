@@ -148,15 +148,15 @@ def args_phylo(parser):
 						help="Orthogroups output from `cluster` or `outgroup` sub-commands. \
 [required]")
 	parser.add_argument('-pep', required=True,  type=str,
-						dest='pep',  metavar='FILE',
+						dest='pep',  metavar='PEP FILE',
 						help="Protein fasta file. [required]")
 	parser.add_argument('-cds', type=str, default=None,
-						dest='cds',  metavar='FILE',
+						dest='cds',  metavar='CDS FILE',
 						help="CDS fasta file. [default=%(default)s]")
-	parser.add_argument('-both', default=None,
+	parser.add_argument('-both', default=False,
 						dest='both', action='store_true',
-						help="To use both CDS and PEP to build gene trees. \
-[default: only CDS when `-cds` is true]")
+						help="To use both CDS and PEP to build gene trees (only valid when `-cds` is true). \
+[default: %(default)s]")
 	parser.add_argument('-root', '-outgroup', type=str, metavar='TAXON',
 						dest='root', nargs='*', default=None,
 						help="Outgroups to root gene trees [default=%(default)s]")
@@ -169,31 +169,35 @@ def args_phylo(parser):
 	args_phylo_common(parser)
 
 	parser.add_argument('-aligner', type=str, default='muscle',
-						dest='aligner', metavar='STR',
+						dest='aligner', metavar='STR', choices=['muscle', 'mafft'], 
 						help="Aligner: muscle (v3/v5) or mafft. [default=%(default)s]")
 
-	parser.add_argument('-only_aln', default=None,
+	parser.add_argument('-only_aln', default=False,
 						dest='onlyaln', action='store_true',
-						help="Only aligning sequences, to skip trimal and iqtree. [default=%(default)s]")
-	parser.add_argument('-concat', default=None,
+						help="Only aligning sequences, to skip trimal and iqtree. [default: %(default)s]")
+	parser.add_argument('-concat', default=False,
 						dest='concat', action='store_true',
 						help="To concatenate alignments for tools such as IQTREE \
-(valid when `-singlecopy` is true). [default=%(default)s]")
+(valid when `-singlecopy` is true). [default: %(default)s]")
 	parser.add_argument('-trimal_opts', type=str, default='-automated1',
 						dest='trimal_opts',  metavar='STR',
 						help="TrimAl options. [default='%(default)s']")
 	parser.add_argument('-iqtree_opts', type=str, default='',
 						dest='iqtree_opts',  metavar='STR',
 						help="IQ-TREE options. [default='%(default)s']")
+	parser.add_argument('-fast', default=False,
+                        dest='fast', action='store_true',
+                        help="Speedup IQ-TREE by restricting model set (JTT for PEP and GTR for CDS). \
+[default: %(default)s]")
 	parser.add_argument('-p', '-ncpu', type=int, default=20,
 						dest='ncpu', metavar='INT',
 						help="Number of processors. [default=%(default)s]")
 	parser.add_argument('-tmp', '-tmpdir', type=str, default=default_tmpdir,
 						dest='tmpdir',  metavar='FOLDER',
 						help="Temporary folder. [default=%(default)s]")
-	parser.add_argument('-clean', default=None,
+	parser.add_argument('-clean', default=False,
 						dest='clean', action='store_true',
-						help="Cleanup temporary folder. [default=%(default)s]")
+						help="Cleanup temporary folder. [default: %(default)s]")
 	# overwrite
 
 

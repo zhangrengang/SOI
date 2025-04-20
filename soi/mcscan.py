@@ -2918,7 +2918,7 @@ def orthomcl_stats(source='orthomcl', **kargs):
 class ToAstral(ColinearGroups):
 	def __init__(self, input=None, pep=None, spsd=None, cds=None, tmpdir='tmp', root=None, both=True, suffix=None,
 				 ncpu=50, max_taxa_missing=0.5, max_mean_copies=10, max_copies=5, singlecopy=False, onlyaln=False,
-				 source=None, orthtype='orthologues', fast=True, concat=False, clean=False, overwrite=False,
+				 source=None, orthtype='orthologues', fast=False, concat=False, clean=False, overwrite=False,
 				 aligner='muscle', trimal_opts='-automated1', iqtree_opts=''):
 		self.input = input
 		self.pep = pep
@@ -3046,7 +3046,7 @@ class ToAstral(ColinearGroups):
 		iqtree_template = 'iqtree2 -redo -s {} %s -nt 1 {} > /dev/null' % (
 			self.iqtree_opts, )
 		reroot_template = 'mv {tree} {tree}.bk && nw_reroot -l {tree}.bk {root} | nw_order -c n - > {tree}'
-		aligner_template = {'mafft': mafft_template, 'muscle5': muscle_template, 'muscle3': muscle3_template}
+		aligner_template = {'mafft': mafft_template, 'muscle5': muscle5_template, 'muscle3': muscle3_template}
 		aligner_template = aligner_template[self.aligner]
 		mkdirs(self.tmpdir)
 		d_pep = seq2dict(self.pep)
