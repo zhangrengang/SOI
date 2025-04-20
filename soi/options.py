@@ -170,7 +170,7 @@ def args_phylo(parser):
 
 	parser.add_argument('-aligner', type=str, default='muscle',
 						dest='aligner', metavar='STR', choices=['muscle', 'mafft'], 
-						help="Aligner: muscle (v3/v5) or mafft. [default=%(default)s]")
+						help="Aligner: muscle (v5/v3) or mafft. [default=%(default)s]")
 
 	parser.add_argument('-only_aln', default=False,
 						dest='onlyaln', action='store_true',
