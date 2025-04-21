@@ -119,7 +119,7 @@ soi -h
 Alternatviely, the released version can be installed through [conda](https://anaconda.org/) or [mamba](https://github.com/mamba-org/mamba):
 ```
 mamba create -n OrthoIndex
-mamba install -n OrthoIndex -c mouseking9 -c conda-forge -c bioconda  orthoindex
+mamba install -n OrthoIndex -c conda-forge -c bioconda soi
 mamba activate OrthoIndex
 soi -h
 ```
