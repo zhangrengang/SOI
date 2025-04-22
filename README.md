@@ -14,7 +14,8 @@
       - [outgroup](#outgroup)
       - [phylo](#phylo)
       - [dotplot](#dotplot)
-      - [Other functions](#other-functions)
+   * [Other functions](#other-functions)
+      - [Macro-synteny phylogeny](#Macro-synteny-phylogeny)
    * [Phylogenomics pipeline](#Phylogenomics-pipeline)
    * [Input formats](#input-formats)
    * [Output formats](#output-formats)
@@ -394,8 +395,9 @@ Plot Ks by bins:
 
 Usage examples: see [Quick Start](#Quick-Start).
 
-#### Other functions ####
-**Macro-synteny phylogeny**: See [the function](SOI-tools.md#macro-synteny-phylogeny)
+### Other functions ###
+#### Macro-synteny phylogeny ####
+See [the function](SOI-tools.md#macro-synteny-phylogeny).
 
 ### Phylogenomics pipeline ###
 
