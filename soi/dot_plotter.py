@@ -270,9 +270,11 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	xsize = ysize = fontsize * 2.5  # species label
 	labsize = fontsize *1.5 # lab size of plots
 	if xlabel is not None and xlabels is not None and remove_prefix:
+		logger.info('trying to remove the same prefix for X chromosome labels: {}'.format(xlabels))
 		xlabels = _remove_prefix(xlabels)
 		xcsize = xcsize*1.5
 	if ylabel is not None and ylabels is not None and remove_prefix:
+		logger.info('trying to remove the same prefix for Y chromosome labels: {}'.format(ylabels))
 		ylabels = _remove_prefix(ylabels)
 		ycsize = ycsize*1.5
 	figwidth = x = figsize[0]
@@ -609,7 +611,7 @@ def _remove_prefix(labels):
 	'''remove the same prefix of chromosome id'''
 	same_prefix = is_same_prefix2(labels)
 	if same_prefix:
-		logger.info('same prefix `{}` will be removed'.format(labels[0][:same_prefix]))
+		logger.info('the same prefix `{}` will be removed'.format(labels[0][:same_prefix]))
 		return [label[same_prefix:] for label in labels]
 	return labels
 
