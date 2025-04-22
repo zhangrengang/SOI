@@ -33,10 +33,10 @@ def args_filter(parser):
 [required]")
 	parser.add_argument('-c', '-cutoff',  type=float, default=0.6,
 						dest='min_ratio',  metavar='FLOAT',
-						help="Cutoff (lower limit) of Orthology Index [default=%(default)s]")
+						help="Cutoff (lower limit) of Orthology Index (rataining blocks > this cutoff) [default=%(default)s]")
 	parser.add_argument('-u', '-upper',  type=float, default=1,
 						dest='max_ratio',  metavar='FLOAT',
-						help="Upper limit of Orthology Index [default=%(default)s]")
+						help="Upper limit of Orthology Index (rataining blocks <= this cutoff) [default=%(default)s]")
 	parser.add_argument('-n', '-min_n',  type=int, default=0,
 						dest='min_n',  metavar='INT',
 						help="Minimum gene number in a block [default=%(default)s]")

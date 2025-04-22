@@ -85,7 +85,7 @@ def dotplot_args(parser):
 	group_orth.add_argument('--ofdir', metavar='FOLDER/FILE', type=str, nargs='+', default=None,
 							help="OrthoFinder output folder/ OrthoMCL output pair file. [default=%(default)s]")
 	group_orth.add_argument('--of-ratio', metavar='FLOAT', type=float, default=0,
-							help="Orthology Index cutoff [default=%(default)s]")
+							help="Orthology Index cutoff (only show blocks >= cutoff) [default=%(default)s]")
 	group_orth.add_argument('--of-color', action='store_true', default=None,
 							help="coloring dots by Orthology Index [default=%(default)s]")
 	group_orth.add_argument('--use-frac',  action='store_true', default=False,
@@ -322,7 +322,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 
 	if ks is not None:
 		try:
-			min_ks = min([v for v in Ks if v > 0])
+			min_ks = min([v for v in Ks if v >= 0])
 		except ValueError:  # ValueError: min() arg is an empty sequence
 			min_ks = 0
 		if ks_cmap:
@@ -609,6 +609,7 @@ def _remove_prefix(labels):
 	'''remove the same prefix of chromosome id'''
 	same_prefix = is_same_prefix2(labels)
 	if same_prefix:
+		logger.info('same prefix `{}` will be removed'.format(labels[0][:same_prefix]))
 		return [label[same_prefix:] for label in labels]
 	return labels
 
@@ -765,7 +766,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 				ratio = rc.fractionation_rate(both=True)
 			else:
 				ratio = rc.oi
-			if not ratio > of_ratio:
+			if not ratio >= of_ratio:	# =?
 				continue
 			if of_color:
 				ks = [ratio] * len(genes1)

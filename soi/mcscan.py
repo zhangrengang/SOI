@@ -133,7 +133,9 @@ class KaKs():
 
 	def parse_pair(self):
 		if not hasattr(self, 'pair'):
-			self.pair = re.compile(r'(\S+)\-([A-Z][a-z]*[_\-]\S+\|\S+)').match(
+#			pattern = r'(\S+)\-([A-Z][a-z]*[_\-]\S+\|\S+)'
+			pattern = r'(\S+\|\S+)\-(\S+\|\S+)'
+			self.pair = re.compile(pattern).match(
 				self.sequence).groups()  # tuple(Sequence.split('-'))
 		self.species = self.gene2species(self.pair)
 
