@@ -408,7 +408,7 @@ Plot Ks by bins:
 Usage examples: see [Quick Start](#Quick-Start).
 
 ### Other functions ###
-Other functions can be found in [SOI-tools](SOI-tools.md). Related functions can be requested by users via [issues](/issues).
+Other functions can be found in [SOI-tools](SOI-tools.md). Related functions can be requested by users via [issues](issues).
 #### Macro-synteny phylogeny ####
 See [the function](SOI-tools.md#macro-synteny-phylogeny).
 
