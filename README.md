@@ -50,7 +50,7 @@ soi dotplot -s Populus_trichocarpa-Salix_dunnii.orthologs.gz    \
         --xlabel '$Populus\ trichocarpa$' --ylabel '$Salix\ dunnii$'  \
         --ks-hist --max-ks 1.5 -o Populus_trichocarpa-Salix_dunnii.o   \
         --plot-ploidy --gene-axis --number-plots  \
-        --homology      # homology input
+              # homology input
 # C
 soi dotplot -s Populus_trichocarpa-Salix_dunnii.collinearity.gz \
         -g Populus_trichocarpa-Salix_dunnii.gff.gz -c Populus_trichocarpa-Salix_dunnii.ctl  \
