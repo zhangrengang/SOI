@@ -490,6 +490,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		plot_collapse(kXs, kYs, Ks, xlabels, ylabels, xpositions, ypositions,
 					  xelines, yelines, xclines, yclines, xlabel, ylabel, **_kargs)
 
+	logging.disable(logging.NOTSET)
 
 def plot_collapse(kXs, kYs, Ks, xlabels, ylabels, xpositions, ypositions,
 				  xelines, yelines, xclines, yclines, xlabel, ylabel,
