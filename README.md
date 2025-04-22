@@ -84,22 +84,30 @@ See [details how to prepare the data](https://github.com/zhangrengang/evolution_
 
 ### Example output dot plots ###
 ![dotplots](example_data/mege_4dot.png)
-Figure. The Orthology Index in identifying orthologous synteny: a typical case. 
-A) Ks-colored dot plots showing synteny detected by WGDI, 
+**Figure.** The Orthology Index in identifying orthologous synteny: a typical case. 
+
+**A**) Ks-colored dot plots showing synteny detected by WGDI, 
 with an observable distinction of three categories of syntenic blocks derived from three evolutionary events 
 (three peaks: Ks ≈ 1.5, Ks ≈ 0.27, and Ks ≈ 0.13). 
-B) Ks-colored dot plots illustrating orthology inferred by OrthoFinder2, with an observable high proportion of hidden out-paralogs (Ks ≈ 0.27). 
-C) Orthology Index (OI)-colored dot plots: integrating synteny (A) and orthology (B), 
+
+**B**) Ks-colored dot plots illustrating orthology inferred by OrthoFinder2, with an observable high proportion of hidden out-paralogs (Ks ≈ 0.27). 
+
+**C**) Orthology Index (OI)-colored dot plots: integrating synteny (A) and orthology (B), 
 with polarized and scalable distinction of three categories of syntenic blocks 
 (three peaks: OI ≈ 0, OI ≈ 0.1, and OI ≈ 0.9). 
-D) Ks-colored dot plots of synteny after applying an OI cutoff of 0.6, 
+
+**D**) Ks-colored dot plots of synteny after applying an OI cutoff of 0.6, 
 with clean 1:1 orthology as expected from the evolutionary history. 
+
 A-D are plotted using the `dotplot` subcommand with four subplots: 
-a) dot plots with colored by Ks or OI (x-axis and y-axis, chromosomes of the two genomes; 
+
+**a**) dot plots with colored by Ks or OI (x-axis and y-axis, chromosomes of the two genomes; 
 a dot indicates a homologous gene pair between the two genomes), 
-b) histogram (with the same color map as the dot plots) of Ks or OI 
+
+**b**) histogram (with the same color map as the dot plots) of Ks or OI 
 (x-axis, Ks or OI; y-axis, number of homologous gene pairs), 
-c-d) synteny depth (relative ploidy) derived from 50-gene windows (x-axis, synteny depth; y-axis, number of windows).
+
+**c-d**) synteny depth (orthologous synteny depth indicating relative ploidy) derived from 50-gene windows (x-axis, synteny depth; y-axis, number of windows).
 
 ## Introduction ##
 Orthology Index (OrthoIndex or OI) incorporates algorithmic advances of two methods (orthology inference and synteny detection), to determine the orthology of a syntenic block. 
@@ -112,8 +120,8 @@ You can install the environment and the lasest verion using [conda](https://anac
 git clone https://github.com/zhangrengang/orthoindex.git
 cd orthoindex
 
-conda env create -f OrthoIndex.yaml
-conda activate OrthoIndex
+mamba env create -f OrthoIndex.yaml
+mamba activate OrthoIndex
 python3 setup.py install
 soi -h
 ```
@@ -194,8 +202,12 @@ soi filter -s collinearity.list -o OrthoFinder/OrthoFinder/Result*/ -c 0.5 > col
 # filter a out-paralogous peak
 soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -c 0.05 -upper 0.4 > collinearity.para
 
-# remove intra-species, tandem repeat-derived synteny
+# remove intra-species, tandem repeat-derived synteny (in-paralogous)
 soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -gff all_species_gene.gff -d 200 > collinearity.homo
+
+# It can also distinguish in-paralogous from out-paralogous synteny split by a given speciation event, 
+# if we provide in-paralogs instead of orthologs
+soi filter -s wgdi/SP1-SP1.collinearity -o inparalogs.pairs > collinearity.inpara
 
 ```
 #### `cluster` ####
@@ -541,4 +553,6 @@ SOG3002: Angelica_sinensis|AS10G01791 Apium_graveolens|Ag1G00857 Apium_graveolen
 ```
 
 ## Citation ##
-Zhang R G, Shang H Y, Milne R I et. al. SOI: robust identification of orthologous synteny with the Orthology Index and broad applications in evolutionary genomics [J]. Nucleic. Acids. Res., 2025, 53 (7) [https://doi.org/10.1093/nar/gkaf320]
+Zhang R G, Shang H Y, Milne R I et. al. 
+SOI: robust identification of orthologous synteny with the Orthology Index and broad applications in evolutionary genomics [J]. 
+*Nucleic. Acids. Res.*, 2025, 53 (7) [https://doi.org/10.1093/nar/gkaf320]
