@@ -557,10 +557,11 @@ class Collinearity():
 			for line in open(self.collinearity):
 				line = lazy_decode(line)
 				if re.compile(r'#+ Alignment').match(line):  # mcscanx or wgdi
-					self.source = 'mcscanx'
 					if self.source is None and re.compile(r'# Alignment').match(line):
 						self.source = 'wgdi'
 						self.has_head = 0
+					else:
+						self.source = 'mcscanx'
 					self.header = ''.join(head)
 					if lines:
 						self.parse_lines(lines)
