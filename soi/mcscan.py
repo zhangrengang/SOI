@@ -560,8 +560,9 @@ class Collinearity():
 					if self.source is None and re.compile(r'# Alignment').match(line):
 						self.source = 'wgdi'
 						self.has_head = 0
-					else:
-						self.source = 'mcscanx'
+					#else:
+					#	self.source = 'mcscanx'
+					#print(self.source)
 					self.header = ''.join(head)
 					if lines:
 						self.parse_lines(lines)
@@ -603,7 +604,7 @@ class Collinearity():
 						self.chr1, self.chr2, self.orient = \
 						re.compile(pattern).match(line).groups()
 				except AttributeError:
-					print('unparsed LINE: {}'.format(line), file=sys.stderr)
+					print('unparsed head LINE: {}'.format(line), file=sys.stderr)
 					raise AttributeError()
 				self.chrs = (self.chr1, self.chr2)
 				self.sp1 = self.short_sp1 = self.chr1[:2]
