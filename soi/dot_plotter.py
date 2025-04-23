@@ -415,7 +415,8 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		label = '(a)'
 		plot_label(ax, label, fontsize=lsize)
 
-	tlabel = 'OrthoIndex' if of_color else 'Ks'  # histogram x label
+	#tlabel = 'OrthoIndex' if of_color else 'Ks'  # histogram x label
+	tlabel = 'OrthoIndex' if of_color else '$K_{\mathrm{S}}$'
 	if not ks is None and ks_hist is None and cbar:  # color map only
 		ax = plt.subplot2grid((21, 20), (20, 0), colspan=5)
 		plt.axis('off')

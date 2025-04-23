@@ -408,7 +408,7 @@ Plot Ks by bins:
 Usage examples: see [Quick Start](#Quick-Start).
 
 ### Other functions ###
-Other functions can be found in [SOI-tools](SOI-tools.md). Related functions can be requested by users via [issues](issues).
+Other functions can be found in [SOI-tools](SOI-tools.md). Related functions can be requested by users via [issues](https://github.com/zhangrengang/SOI/issues).
 #### Macro-synteny phylogeny ####
 See [the function](SOI-tools.md#macro-synteny-phylogeny).
 
@@ -556,4 +556,4 @@ SOG3002: Angelica_sinensis|AS10G01791 Apium_graveolens|Ag1G00857 Apium_graveolen
 ## Citation ##
 Zhang R G, Shang H Y, Milne R I et. al. 
 SOI: robust identification of orthologous synteny with the Orthology Index and broad applications in evolutionary genomics [J]. 
-*Nucleic. Acids. Res.*, 2025, 53 (7) [https://doi.org/10.1093/nar/gkaf320]
+*Nucleic. Acids. Res.*, 2025, 53 (7):gkaf320 [https://doi.org/10.1093/nar/gkaf320]

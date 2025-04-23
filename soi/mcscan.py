@@ -72,12 +72,12 @@ class KaKs():
 			self.parse_ks()
 		else:
 			print('unrecognized Ks format')
-		self.parse_pair()
+		#self.parse_pair()
 
 	def parse_4dtv(self):
 		(Sequence, fD_Sites, Identical_Sites, TS_Sites,
 		 TV_Sites, fDS, fDTS, fDTV, Corrected_4DTV) = self.info
-		self.sequence = Sequence
+		self.pair = self.sequence = Sequence
 		try:
 			self.ks = float(Corrected_4DTV)
 		except ValueError:
@@ -86,7 +86,7 @@ class KaKs():
 	def parse_yn00(self, method='NG86'):
 		(Sequence, dS_YN00, dN_YN00, dS_NG86, dN_NG86,
 		 dS_LWL85, dN_LWL85, dS_LWL85m, dN_LWL85m, dS_LPB93, dN_LPB93) = self.info
-		self.sequence = Sequence
+		self.pair = self.sequence = Sequence
 		d = {'YN00': dS_YN00, 'NG86': dS_NG86, 'LWL85': dS_LWL85, 'LWL85m': dS_LWL85m,
 			 'LPB93': dS_LPB93}
 		ks = d[method.upper()]
@@ -126,6 +126,7 @@ class KaKs():
 		 GC, ML_Score, AICc, Akaike_Weight, Model) = self.info
 		self.sequence = Sequence
 		self.method = Method
+		self.pair = Sequence
 		try:
 			self.ks = float(Ks)
 		except ValueError:
@@ -163,15 +164,22 @@ class KaKsParser:
 		for line in open(self.kaks):
 			line = lazy_decode(line)
 			temp = line.rstrip().split()
+			fmt = 'unknown'
 			if temp[0] in {'Sequence', 'id1'}:
+				self.kargs['wgdi'] = False
 				if temp[1] == 'Method':  # KaKsCalculator
 					self.kargs['kaks'] = True
+					fmt = 'KaKsCalculator'
 				elif temp[1] == 'dS-YN00':
 					self.kargs['yn00'] = True
+					fmt = 'yn00'
 				elif temp[2] == 'ka_NG86':  # wgdi -ks
 					self.kargs['wgdi'] = True
+					fmt = 'wgdi -ks'
 				elif temp[1] == '4D_Sites':
 					self.kargs['fdtv'] = True
+					fmt = '4dtv'
+				logger.info('Ks file format is from `{}`'.format(fmt))
 				continue
 			kaks = KaKs(temp, **self.kargs)
 			yield kaks
@@ -181,7 +189,7 @@ class KaKsParser:
 		for kaks in self:
 			ks = kaks.ks
 			d[kaks.pair] = ks
-			d[tuple(reversed(kaks.pair))] = ks
+	#		d[tuple(reversed(kaks.pair))] = ks
 		return d
 
 
@@ -549,6 +557,7 @@ class Collinearity():
 			for line in open(self.collinearity):
 				line = lazy_decode(line)
 				if re.compile(r'#+ Alignment').match(line):  # mcscanx or wgdi
+					self.source = 'mcscanx'
 					if self.source is None and re.compile(r'# Alignment').match(line):
 						self.source = 'wgdi'
 						self.has_head = 0
@@ -681,15 +690,28 @@ class Collinearity():
 	def gene2geneid(self, gene):
 		return gene.split('|', 1)[1]
 
+	def retrive_ks(self, d_ks, pair):
+		if pair in d_ks:
+			return d_ks[pair]
+		pair2 = tuple(reversed(pair))
+		if pair2 in d_ks:
+			return d_ks[pair2]
+		pair = '-'.join(pair)
+		if pair in d_ks:
+			return d_ks[pair]
+		pair2 = '-'.join(pair2)
+		if pair2 in d_ks:
+			return d_ks[pair2]
+
 	def parse_genes(self, genes1, genes2):
 		self.pairs = list(zip(genes1, genes2))
 		self.ks = []
 		for pair in self.pairs:
-			try:
-				ks = self.d_kaks[pair].ks
-			except KeyError:
-				ks = None
+	#		print(self.d_kaks, pair)
+			ks = self.retrive_ks(self.d_kaks, pair)
+			ks = ks.ks if ks is not None else ks
 			self.ks.append(ks)
+	#	print(self.ks[:10])
 		self.genes = [genes1, genes2]
 		try:  # Gene obj
 			self.genes1 = [self.d_gene[x] for x in genes1]
@@ -838,7 +860,7 @@ class Collinearity():
 		for kaks in KaKsParser(self.kaks, **kargs):
 			ks = kaks  # KaKs Obj
 			d[kaks.pair] = ks
-			d[tuple(reversed(kaks.pair))] = ks
+			#d[tuple(reversed(kaks.pair))] = ks
 		return d
 
 
