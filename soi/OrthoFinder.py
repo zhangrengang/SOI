@@ -282,7 +282,7 @@ def parse_species(species, orthofinder=None):
         if exists_and_size_gt_zero(species):
             species = [line.strip().split()[0] for line in open(species)]
         else:
-            species = [species]
+            species = species.split()
     elif orthofinder is not None:
         species = orthofinder.Species
     return species

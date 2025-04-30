@@ -241,7 +241,7 @@ class XCollinearity:
 		if self.orthologs is not None:
 			ortholog_pairs = set(XOrthology(self.orthologs, **self.kargs))
 			logger.info('\t{} homologous pairs'.format(len(ortholog_pairs)))
-		logger.info('parsing {} collinearity files: {} ...'.format(
+		logger.info('parsing synteny from {} collinearity files: {} ...'.format(
 			len(self.collinearities), self.collinearities[:3]))
 		nblock, ngene = 0, 0
 		for collinearity in self.collinearities:
@@ -263,7 +263,7 @@ class XCollinearity:
 					rc.ortholog_pairs = ortholog_pairs
 				yield rc
 		logger.info(
-			'\t{} collinearity blocks, {} collinearity genes'.format(nblock, ngene))
+			'  {} collinearity blocks, {} collinearity genes'.format(nblock, ngene))
 
 
 class Xpairs:
@@ -327,16 +327,176 @@ class XOrthology:
 
 	def _parse(self):
 		'''yield Pair object'''
+		i = 0
 		for ortholog in self.orthologs:
-			logger.info('parsing {} ...'.format(ortholog))
+			logger.info('parsing orthology: {} ...'.format(ortholog))
 			if os.path.isdir(ortholog):
 				# SonicParanoid / OrthoFinder
 				parser = lazy_orthologs(ortholog)
 				for pair in parser.get_homologs(**self.kargs):
 					yield Pair(*pair)
+					i += 1
 			else:  # orthomcl or similar format
 				for rc in Pairs(ortholog, parser=Pair):
 					yield rc
+					i += 1
+		logger.info('  parsed {} orthologs'.format(i))
+
+def retrieve_allele(collinearity, ResultsDir, gff, fout=sys.stdout, min_block=10, win_size=10, diff_sp=True, min_score=100, sps=None):
+	result = XOrthology(ResultsDir)
+	sps = parse_species(sps, result)
+	G = nx.Graph()  # OG Graph
+	ogid = 0
+	for rc in result:
+		if not (rc.species1 in set(sps) and rc.species2 in set(sps)):
+			continue
+		if diff_sp and rc.species1 == rc.species2:
+			continue
+		ogid += 1
+		G.add_edge(*rc, OG=ogid)
+		
+	# for group in result.get_orthogroups(sps):
+		# for g1, g2 in itertools.combinations(group.genes, 2):
+			# G.add_edge(g1, g2, OG=group.ogid)
+
+	# blastG = nx.Graph()  # blast Graph
+	# best_hits = {}
+	# for line in result.get_blast(sps):
+		# g1, g2 = line[:2]
+		# key = (g1, g2)
+		# score = float(line[-1])
+		# if key not in best_hits or (key in best_hits and best_hits[key] < score):
+			# best_hits[key] = score
+	# for (g1, g2), score in list(best_hits.items()):
+		# if blastG.has_edge(g1, g2):
+			# blastG.edge[g1][g2]['weight'] + 1
+		# else:
+			# blastG.add_edge(g1, g2, OG='none', weight=1)
+			
+	altG = nx.Graph() 	# allel Graph
+	_sps = set([])
+	blocks = []
+	#logger.info('parsing synteny: {} ...'.format(collinearity))
+	for rc in XCollinearity(collinearity, gff=gff):
+		if rc.N < min_block:
+			continue
+		if not (rc.species1 in set(sps) and rc.species2 in set(sps)):
+			continue
+		if diff_sp and rc.species1 == rc.species2:
+			continue
+		_sps = _sps | set([rc.species1, rc.species2])
+		blocks += [(rc.score, rc.N, rc.genes1, rc.genes2, rc.chr1,
+					rc.chr2, rc.species1, rc.species2, rc.Alignment)]
+
+	sps = _sps
+	d_chrom = rc.d_chrom  # chrom: [g1,g2,...]
+	d_genes = rc.d_gene		# gene.id: gene
+	d_syn = {}
+	blocks = sorted(blocks, reverse=1, key=lambda x:x[:2])	# sort
+	for score, N, genes1, genes2, chr1, chr2, sp1, sp2, Alignment in blocks:
+		key = (sp1, sp2)
+		if key not in d_syn:
+			d_syn[key] = set([])
+		for g1, g2 in zip(genes1, genes2):
+			id1, id2 = g1.id, g2.id
+			if not id1 in d_syn[key] and not id2 in d_syn[key]:	# unuse repeated
+				try: og = G[g1.id][g2.id]['OG']
+				except KeyError: og = None
+				altG.add_edge(
+					g1.id, g2.id, source='synteny-{}'.format(Alignment), OG=og, weight=4)
+				d_syn[key] = d_syn[key] | {g1.id, g2.id}
+	# OG
+
+	def mean_dist(inner_g1, inner_g2, g1_idx, g2_idx):
+		import math
+		return math.sqrt(abs(inner_g1.index - g1_idx) * abs(inner_g2.index - g2_idx))
+	# extend to flanking window
+	for score, N, genes1, genes2, chr1, chr2, sp1, sp2, Alignment in blocks:
+		key = (sp1, sp2)
+		for g1, g2 in zip(genes1, genes2):
+			g1_idx = g1.index
+			g2_idx = g2.index
+			g1_start, g1_end = max(0, g1_idx-win_size), g1_idx+win_size
+			g2_start, g2_end = max(0, g2_idx-win_size), g2_idx+win_size
+			inner_genes1 = d_chrom[chr1][g1_start:g1_end+1]
+			inner_genes2 = d_chrom[chr2][g2_start:g2_end+1]
+			inner_pairs = list(itertools.product(inner_genes1, inner_genes2))
+			inner_pairs = sorted(inner_pairs, key=lambda x: mean_dist(
+				x[0], x[1], g1_idx, g2_idx))
+			for inner_g1, inner_g2 in inner_pairs:
+				id1, id2 = (inner_g1.id, inner_g2.id)
+				if G.has_edge(id1, id2) and not altG.has_edge(id1, id2) and \
+						not id1 in d_syn[key] and not id2 in d_syn[key]:  # reduce network
+					og = G[id1][id2]['OG']
+					altG.add_edge(id1, id2, source='orthology', OG=og, weight=2)
+					d_syn[key] = d_syn[key] | {id1, id2}
+	# blast
+	# for score, N, genes1, genes2, chr1, chr2, Alignment in blocks:
+		# for g1, g2 in zip(genes1, genes2):
+			# g1_idx = g1.index
+			# g2_idx = g2.index
+			# g1_start, g1_end = max(0, g1_idx-win_size/2), g1_idx+win_size/2
+			# g2_start, g2_end = max(0, g2_idx-win_size/2), g2_idx+win_size/2
+			# inner_genes1 = d_chrom[chr1][g1_start:g1_end+1]
+			# inner_genes2 = d_chrom[chr2][g2_start:g2_end+1]
+			# for inner_g1, inner_g2 in itertools.product(inner_genes1, inner_genes2):
+				# id1, id2 = (inner_g1.id, inner_g2.id)
+				# if blastG.has_edge(id1, id2) and not altG.has_edge(id1, id2) and not altG.has_node(id1) and not altG.has_node(id2):
+					# weight = blastG.edge[id1][id2]['weight'] * 0.5
+					# og = 'none'
+					# altG.add_edge(id1, id2, source='blast',
+								  # OG=og, weight=weight)
+	# resolve repeats
+	d_degrees = altG.degree(weight='weight')
+	logger.info('species: {}'.format(sorted(sps)))
+	lines = []
+	sources = []
+	for cmpt in nx.connected_components(altG):
+		sg = altG.subgraph(cmpt)
+		grp = OrthoMCLGroupRecord(genes=cmpt)
+		sp_dict = grp.spdict
+		primary_genes = []
+		alter_genes = []
+		for sp in sorted(sps):
+			genes = sp_dict.get(sp, [])
+			g_pri = max(genes, key=lambda x: d_degrees[x]) if genes else '-'
+			g_alt = set(genes) - set([g_pri])
+			g_alt = [d_genes[x].raw_gene for x in g_alt]
+			g_alt = ','.join(g_alt) if g_alt else '-'
+			primary_genes += [g_pri]
+			alter_genes += [g_alt]
+		attrs = []
+		for pri_g1, pri_g2 in itertools.combinations(primary_genes, 2):
+			try:
+				attr0 = altG[pri_g1][pri_g2]
+				sources += [attr0['source'].split('-')[0]]
+				attr = '{source}:{OG}'.format(**attr0)
+				_sps = [d_genes[pri_g1].species, d_genes[pri_g2].species]
+				line = [pri_g1, pri_g2] + _sps + [attr0['source'], attr0['OG']]
+			#	print('\t'.join(map(str, line)), file=sys.stderr)
+			except KeyError:
+				attr = '-'
+			attrs += [attr]
+		idxes = [d_genes[g].index for g in primary_genes if g != '-']
+		gidx = round(1.0 * sum(idxes) / len(idxes), 2)
+		idxes = [d_genes[g].ichr for g in primary_genes if g != '-']
+		cidx = 1.0 * sum(idxes) / len(idxes)
+		primary_genes = [d_genes[g].raw_gene if g !=
+						 '-' else '-' for g in primary_genes]
+		line = [cidx, gidx] + primary_genes + alter_genes + attrs
+		lines += [line]
+	# title
+	col1 = col2 = sorted(sps)
+	col3 = ['{}-{}'.format(sp1, sp2)
+			for sp1, sp2 in itertools.combinations(sorted(sps), 2)]
+	line = ['']*2 + ['# primary alleles'] + ['']*(len(col1)-1) + ['# secondary alleles'] + ['']*(len(col2)-1) + \
+					['# sources of primary gene pairs'] + ['']*(len(col3)-1)
+	print('\t'.join(line), file=fout)
+	line = ['chrom', 'idx'] + col1 + col2 + col3
+	print('\t'.join(line), file=fout)
+	for line in sorted(lines):
+		print('\t'.join(map(str, line)), file=fout)
+	logger.info('source: {}'.format(Counter(sources)))
 
 
 def get_homologs(orthologs, outHomo):
@@ -3545,6 +3705,9 @@ def main():
 	elif subcmd == 'get_blocks':  # subset collinearity file based on block IDs
 		collinearity, block_ids = sys.argv[2:4]
 		get_blocks(collinearity, block_ids, fout=sys.stdout)
+	elif subcmd == 'retrieve_allele':
+		collinearity, ResultsDir, gff = sys.argv[2:5]
+		retrieve_allele(collinearity, ResultsDir, gff, **kargs)
 	else:
 		raise ValueError('Unknown sub command: {}'.format(subcmd))
 

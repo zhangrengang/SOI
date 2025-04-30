@@ -16,6 +16,7 @@
       - [dotplot](#dotplot)
    * [Other functions](#other-functions)
       - [Macro-synteny phylogeny](#Macro-synteny-phylogeny)
+	  - [Allele identification](#Allele-identification)
    * [Phylogenomics pipeline](#Phylogenomics-pipeline)
    * [Input formats](#input-formats)
    * [Output formats](#output-formats)
@@ -411,6 +412,8 @@ Usage examples: see [Quick Start](#Quick-Start).
 Other functions can be found in [SOI-tools](SOI-tools.md). Related functions can be requested by users via [issues](https://github.com/zhangrengang/SOI/issues).
 #### Macro-synteny phylogeny ####
 See [the function](SOI-tools.md#macro-synteny-phylogeny).
+#### Allele identification ####
+See [the function](SOI-tools.md#Allele-identification).
 
 ### Phylogenomics pipeline ###
 
