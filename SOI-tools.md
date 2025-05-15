@@ -27,13 +27,17 @@ For example, `CHR_Ae11-Ae15-Ca2-Ca7-Vv1_143_283.concat.treefile`, `Ae11-Ae15-Ca2
 
 #### Allele identification ####
 For diploid and polyploid assembly, we may aim to identify allele genes. As allele genes are not always syntenic (e.g., non-syntenic due to samll-scale inversion), we combine synteny and orthology to identify a full set of allele genes.
+
 After `soi filter` has identified orthologous synteny in the [example pipeline](https://github.com/zhangrengang/evolution_example), we run
-`
+```
 soi-syn retrieve_allele collinearity.ortho ../OrthoFinder/OrthoFinder/Results_*/ ../all_species_gene.gff sps="Panax_ginseng Panax_notoginseng" min_block=10 win_size=10 > allele.txt
-`
-`sps="Panax_ginseng Panax_notoginseng"` sets one or more target species or pseudo-species; species labels should be different for different subgenomes (label gene ID like `SP1|sgA.g1, SP1|sgB.g1`);
-`min_block=10` sets minimum length of syntenic blocks;
-`win_size=10` sets upstream and downstream 10 genes to retrieve orthologs using syntenic genes as anchors.
+```
+`sps="Panax_ginseng Panax_notoginseng"` sets one or more target species or pseudo-species (space seperated); 
+species labels need to be different for different subgenomes (label gene ID like `SP1|sgA.g1`, `SP1|sgB.g1`);
+
+`min_block=10` sets minimum length of syntenic blocks; increasing the value will result in more reliable alleles;
+
+`win_size=10` sets upstream and downstream 10 genes to retrieve orthologs using syntenic genes as anchors; increasing the value will retrieve more alleles.
 
 The output file is like:
 ```
@@ -55,7 +59,7 @@ chrom   idx     Panax_ginseng   Panax_notoginseng       Panax_ginseng   Panax_no
 ```
 The 3rd and 4th columns indicate allelic gene pairs. 
 The last column indicates the source of alleles; for example, `orthology:15422` means ortholog #15422, 
-`synteny-1:51` means from syntenic block #1 and ortholog #51; `synteny-1:None` means that it is not pre-inferred as an ortholog.
+`synteny-1:51` means it is from syntenic block #1 and ortholog #51; `synteny-1:None` means that it is not pre-inferred as an ortholog.
 The column number will extend for polyploids.
 
 #### Orthology format conversion ####

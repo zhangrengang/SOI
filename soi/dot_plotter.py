@@ -17,13 +17,33 @@ mpl.rcParams['pdf.fonttype'] = 42
 from .RunCmdsMP import logger
 from .WGDI import AK
 from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
-from .mcscan import Collinearity, Gff, XCollinearity
+from .mcscan import Collinearity, XGff, XCollinearity
+
+cmaps = {
+            'viridis', 'plasma', 'inferno', 'magma', 'cividis',
+            'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
+            'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
+            'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn',
+            'binary', 'gist_yarg', 'gist_gray', 'gray', 'bone', 'pink',
+            'spring', 'summer', 'autumn', 'winter', 'cool', 'Wistia',
+            'hot', 'afmhot', 'gist_heat', 'copper',
+            'PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu',
+            'RdYlBu', 'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic',
+            'berlin', 'managua', 'vanimo',
+            'twilight', 'twilight_shifted', 'hsv',
+            'Pastel1', 'Pastel2', 'Paired', 'Accent',
+            'Dark2', 'Set1', 'Set2', 'Set3',
+            'tab10', 'tab20', 'tab20b', 'tab20c',
+            'flag', 'prism', 'ocean', 'gist_earth', 'terrain', 'gist_stern',
+            'gnuplot', 'gnuplot2', 'CMRmap', 'cubehelix', 'brg',
+            'gist_rainbow', 'rainbow', 'jet', 'turbo', 'nipy_spectral',
+            'gist_ncar'}
 
 
 def dotplot_args(parser):
 	parser.add_argument('-s', metavar='FILE', type=str, required=True, nargs='+',
 						help="syntenic block file (*.collinearity, output of MCSCANX/WGDI)[required]")
-	parser.add_argument('-g', metavar='FILE', type=str, required=True,
+	parser.add_argument('-g', metavar='FILE', type=str, required=True, nargs='+',
 						help="gene annotation gff file (*.gff, one of MCSCANX/WGDI input)[required]")
 	parser.add_argument('-c', metavar='FILE', type=str, required=True,
 						help="chromosomes config file (*.ctl, same format as MCSCANX dotplotter)[required]")
@@ -99,8 +119,8 @@ def dotplot_args(parser):
 						  help="plot histogram or not [default=%(default)s]")
 	group_ks.add_argument('--max-ks', metavar='Ks', type=float, default=1,
 						  help="max Ks (x limit) [default=%(default)s]")
-	group_ks.add_argument('--ks-cmap', metavar='Ks', type=float, nargs='+', default=None,
-						  help="color map for Ks. [default=%(default)s]")
+	group_ks.add_argument('--ks-cmap', metavar='Ks', nargs='+', default=None, # type=float, 
+						  help="color map for Ks, format: `jet` or `0.2 0.6 1 ...`. [default=%(default)s]")
 	group_ks.add_argument('--ks-step', metavar='Ks', type=float, default=0.02,
 						  help="Ks step of histogram [default=%(default)s]")
 	group_ks.add_argument('--use-median', action='store_true', default=False,
@@ -327,7 +347,9 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			min_ks = min([v for v in Ks if v >= 0])
 		except ValueError:  # ValueError: min() arg is an empty sequence
 			min_ks = 0
-		if ks_cmap:
+		if ks_cmap and ks_cmap[0] in cmaps:
+			cmap = ks_cmap[0]
+		elif ks_cmap:
 			cmap = create_ks_map(ks_cmap, min_ks, max_ks)
 		else:
 			cmap = cm.jet
@@ -649,6 +671,7 @@ def create_ks_map(ks_map, min_ks, max_ks):
 	import numpy as np
 	from matplotlib import cm
 	from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+	ks_map = list(map(float, ks_map))
 	length = 256
 	maps = _norm_map(ks_map, min_ks, max_ks, length)
 	print(ks_map, min_ks, max_ks, maps)
@@ -683,7 +706,7 @@ def parse_gff(gff, chrs1, chrs2):
 	coord_graph1 = nx.Graph()
 	coord_graph2 = nx.Graph()
 	d_gff = {}
-	for line in Gff(gff):
+	for line in XGff(gff):
 		if not line.chrom in chrs:
 			continue
 		key = (line.species, line.chrom)

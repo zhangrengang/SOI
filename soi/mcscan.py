@@ -240,7 +240,7 @@ class XCollinearity:
 	def _parse(self):
 		if self.orthologs is not None:
 			ortholog_pairs = set(XOrthology(self.orthologs, **self.kargs))
-			logger.info('\t{} homologous pairs'.format(len(ortholog_pairs)))
+		#	logger.info('\t{} homologous pairs'.format(len(ortholog_pairs)))
 		logger.info('parsing synteny from {} collinearity files: {} ...'.format(
 			len(self.collinearities), self.collinearities[:3]))
 		nblock, ngene = 0, 0
@@ -328,8 +328,8 @@ class XOrthology:
 	def _parse(self):
 		'''yield Pair object'''
 		i = 0
+		logger.info('parsing orthology: {} ...'.format(self.orthologs))
 		for ortholog in self.orthologs:
-			logger.info('parsing orthology: {} ...'.format(ortholog))
 			if os.path.isdir(ortholog):
 				# SonicParanoid / OrthoFinder
 				parser = lazy_orthologs(ortholog)
@@ -968,21 +968,23 @@ class Collinearity():
 		genes = set([])
 		d_chr = {}
 		d_length = {}
-		for line in open(self.gff):
-			line = lazy_decode(line)
-			temp = line.rstrip().split('\t')
-			if not temp or line.startswith('#'):
-				continue
-			chr, gene, start, end = temp[:4]
-			if gene in genes:  # remove repeat
-				continue
-			genes.add(gene)
-			try:
-				strand = temp[4]
-			except IndexError:
-				strand = None
-			start, end = list(map(int, [start, end]))
-			g = Gene((gene, chr, start, end, strand))
+		for line in XGff(self.gff):
+			# line = lazy_decode(line)
+			# temp = line.rstrip().split('\t')
+			# if not temp or line.startswith('#'):
+				# continue
+			# chr, gene, start, end = temp[:4]
+			# if gene in genes:  # remove repeat
+				# continue
+			# genes.add(gene)
+			# try:
+				# strand = temp[4]
+			# except IndexError:
+				# strand = None
+			# start, end = list(map(int, [start, end]))
+			chr, gene, start, end, strand = \
+				line.chrom, line.gene, line.start, line.end, line.strand
+			g = line.Gene #((gene, chr, start, end, strand))
 			try:
 				d_chr[chr] += [g]
 			except KeyError:
@@ -1086,6 +1088,18 @@ def anchors2bed(collinearity, gff, chrmap, left_anchors, right_anchors, outbed=s
 	line = [anchor_chr.split('|', 1)[-1], g1_start-1, g1_end, id, anchor_sp, ]
 	line = list(map(str, line))
 	print('\t'.join(line), file=outbed)
+
+
+class XGff(XOrthology):
+	def __init__(self, gffs):
+		self.gffs = self._parse_list(gffs)
+	def __iter__(self):
+		return self._parse()
+	def _parse(self):
+		logger.info('parsing gff files: {} ...'.format(self.gffs))
+		for gff in self.gffs:
+			for line in Gff(gff):
+				yield line
 
 
 class Gff:
@@ -1853,6 +1867,7 @@ def parse_group(groups):
 
 def cluster_by_mcl(collinearities, orthologs=None, inflation=2,
 				   outgroup=None, ingroup=None, outpre='cluster'):
+	check_cmd('mcl')
 	ingroup = set(parse_group(ingroup))
 	outgroup = set(parse_group(outgroup))
 	logger.info('outgroup: {}'.format(outgroup))
@@ -1890,6 +1905,9 @@ awk '{{print "SOG"NR": "$0}}' > {output}'''.format(
 	nc = len([1 for line in open(cluster)])
 	logger.info('{} syntenic gene pairs reslut in {} SOGs'.format(np, nc))
 
+def check_cmd(cmd):
+	logger.info('checking `{}`'.format(cmd))
+	run_cmd(cmd, log=True, )
 
 def test_closest(collinearity, kaks, spsd, min_size=0):
 	ColinearGroups(collinearity, spsd, kaks=kaks,
