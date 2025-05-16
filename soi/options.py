@@ -214,7 +214,7 @@ def makeArgs():
 	# subcommands
 	subparsers = parser.add_subparsers(help='sub-command help')
 	parser_dot = subparsers.add_parser('dotplot',
-									   help='Generate colored dot plots')
+									   help='Generate Ks/OI-colored dot plots')
 	args_dotplot(parser_dot)
 	parser_flt = subparsers.add_parser('filter',
 									   help='Filter synteny with Orthology Index (standard output)')

@@ -212,14 +212,20 @@ class XCollinearity:
 		collinearities = []
 		if isinstance(_collinearities, str):  # file
 			return [_collinearities]
+		_unknown = []
 		for collinearity in _collinearities:
+			if not test_s(collinearity):
+				_unknown += [collinearity]
+				continue
 			# *.collinearity file
 			if lazy_decode(open(collinearity).read(1)) == '#':
 				collinearities += [collinearity]
 			else:  # list file
-				files, _unknown = [], []
+				files = []
 				i = 0
 				for line in open(collinearity):
+					if not line.strip():
+						continue
 					_file = line.strip().split()[0]
 					if _file:
 						i += 1
@@ -232,9 +238,13 @@ class XCollinearity:
 				elif len(files) == 0:
 					collinearities += [collinearity]
 				else:
-					logger.warn(
-						'Files empty or not exists: {}'.format(_unknown))
 					collinearities += files
+		if _unknown:
+			logger.warn(
+                        'Files empty or not exists: {}'.format(_unknown))
+		if len(collinearities) == 0:
+			logger.error('No collinearity file(s) are recognized. Please check the input.')
+			sys.exit()
 		return collinearities
 
 	def _parse(self):
