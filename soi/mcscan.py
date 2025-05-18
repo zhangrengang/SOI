@@ -2941,13 +2941,20 @@ nw_order - > {}'.format(rooted_treefile)
 		return cmds
 
 	def cat_genetrees(self, treefiles, genetrees, idmap=None, **kargs):
+		i = 0
 		with open(genetrees, 'w') as fout:
 			for iqtreefile in treefiles:
 				if not os.path.exists(iqtreefile):
-					logger.warn('{} not exists'.format(iqtreefile))
+					i += 1
+					if i < 10:
+						logger.warn('{} not exists'.format(iqtreefile))
+					elif i == 10:
+						logger.warn('...')
 					continue
 				newick = self.get_topology(iqtreefile, idmap=idmap, **kargs)
 				print(newick, file=fout)
+		if i > 0:
+			logger.warn('{} tree files missing'.format(i))
 
 	def phase_trees(self, xxchroms):
 		'''[('Cc7', 'Cs3', 'Cs8', 'Ns1', 'Ns2'), ('Cc2', 'Cs3', 'Cs9', 'Ns14', 'Ns18')]'''
@@ -3373,7 +3380,7 @@ class ToAstral(ColinearGroups):
 		nbin = 60 if self.onlyaln else 10
 		cmd_file = '{}/{}.cmds.list'.format(self.tmpdir, self.suffix)
 		run_job(cmd_file, cmd_list=cmd_list, tc_tasks=self.ncpu,
-				by_bin=nbin, fail_exit=False)
+				by_bin=nbin, fail_exit=False, ) #mode='local')
 
 		# cat genetrees
 		pepGenetrees = '{}.pep.mm{}.genetrees'.format(

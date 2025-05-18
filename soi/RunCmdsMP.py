@@ -41,7 +41,7 @@ class Grid(object):
 				 err_path=None, grid_opts='',
 				 cpu=1, mem='1g', template=None,
 				 tc_tasks=None, script=None,
-				 join_files=True, stdout=False):
+				 join_files=True, stdout=False, **kargs):
 		self.cmd_list = cmd_list
 		try:
 			self.grid = self.which_grid()
@@ -195,7 +195,7 @@ def run_tasks(cmd_list, tc_tasks=None, mode='grid', grid_opts='', cpu=1, mem='1g
 			for (stdout, stderr, status) in job_status:
 				if fout is not None:
 					print('>>STATUS:\t{}\n>>STDOUT:\n{}\n>>STDERR:\n{}'.format(
-						status, stdout.decode(), stderr.decode()), file=fout)
+						status, lazy_decode(stdout), lazy_decode(stderr)), file=fout)
 				exit_codes += [status]
 			if fout is not None:
 				fout.close()
@@ -216,6 +216,9 @@ def run_tasks(cmd_list, tc_tasks=None, mode='grid', grid_opts='', cpu=1, mem='1g
 	# if completed?
 	return len(uncmp)
 
+def lazy_decode(_str):
+	try: return _str.decode()
+	except AttributeError: return _str
 
 def avail_cpu(cpu):
 	cpu_count = len(os.sched_getaffinity(0))
@@ -299,7 +302,7 @@ def file2list(cmd_file, sep="\n"):
 	return [cmd for cmd in cmd_list if cmd.strip()]
 
 
-def run_cmd(cmd, log=False, logger=None, fail_exit=True):
+def run_cmd(cmd, log=False, logger=None, fail_exit=False, **kargs):
 	if log and logger is None:
 		logger = LOGGER
 	if logger is not None:
@@ -320,8 +323,8 @@ def run_cmd(cmd, log=False, logger=None, fail_exit=True):
 
 
 def _run_cmd(arg):
-	cmd, log, logger = arg
-	return run_cmd(cmd, log, logger)
+	cmd, log, logger, kargs = arg
+	return run_cmd(cmd, log, logger, **kargs)
 
 
 def default_processors(actual=None):
@@ -336,12 +339,13 @@ def default_processors(actual=None):
 		return available_cpus
 
 
-def pp_run(cmd_list, processors='autodetect'):
+def pp_run(cmd_list, processors='autodetect', **kargs):
 	'''use multiprocessing instead of pp'''
 	try:
-		return pool_run(cmd_list, processors)
-	except:
-		pass  # AssertionError: daemonic processes are not allowed to have children
+		return pool_run(cmd_list, processors, **kargs)
+	except Exception as e:
+		logger.warn('Swithing to pp, due to {}'.format(e))
+		#pass  # AssertionError: daemonic processes are not allowed to have children
 		# Nest of Pool
 	if processors is None:
 		processors = 'autodetect'
@@ -385,7 +389,7 @@ def pool_run(cmd_list, processors=8, log=True, logger=None, **kargs):
 		processors = int(processors)
 	except (TypeError, ValueError):
 		processors = len(os.sched_getaffinity(0))
-	iterable = ((cmd, log, logger) for cmd in cmd_list)
+	iterable = ((cmd, log, logger, kargs) for cmd in cmd_list)
 	return [returned for returned in pool_func(
 		_run_cmd, iterable, processors=processors, **kargs)]
 
@@ -567,7 +571,7 @@ def run_job(cmd_file=None, cmd_list=None, by_bin=1, tc_tasks=8, mode='grid',
 	cmd_list = get_cmd_list(cmd_file, cmd_cpd_file, cmd_sep=cmd_sep, cont=cont)
 	exit = run_tasks(cmd_list, tc_tasks=tc_tasks, mode=mode, grid_opts=grid_opts,
 					 retry=retry, script=script, out_path=out_path, cont=cont,
-					 completed=cmd_cpd_file, cmd_sep=cmd_sep, **kargs)
+					 completed=cmd_cpd_file, cmd_sep=cmd_sep, fail_exit=fail_exit, **kargs)
 	if fail_exit and not exit == 0:
 		raise ValueError(
 			'faild to run {}, see detail in {}'.format(cmd_file, out_path))
