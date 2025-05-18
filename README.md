@@ -82,7 +82,6 @@ diff Populus_trichocarpa-Salix_dunnii.collinearity.ortho Populus_trichocarpa-Sal
 **Note**: If you want to run the [full phylogenomic pipeline of SOI](https://github.com/zhangrengang/evolution_example/), 
 GENE ID is needed to label with SPECIES ID (e.g. `Angelica_sinensis|AS01G00001`) for compatibility.
 See [details how to prepare the data](https://github.com/zhangrengang/evolution_example/?tab=readme-ov-file#prepare-data).
-Unique CHROMOSOME ID is also required.
 
 ### Example output dot plots ###
 ![dotplots](example_data/mege_4dot.png)
@@ -541,7 +540,10 @@ Dc1,Dc2,Dc3,Dc4,Dc5,Dc6,Dc7,Dc8,Dc9				// x
 ```
 
 In summary, users may be not needed to preprare additional files for this tool. And other popular format can be supported upon request.
-But it is **important** to label GENE ID with SPECIES ID (e.g. `Angelica_sinensis|AS01G00001`) (see details in [evolution_example](https://github.com/zhangrengang/evolution_example/)).
+But it is **important** to label GENE ID with SPECIES ID (e.g. `Angelica_sinensis|AS01G00001`) (see details in [evolution_example](https://github.com/zhangrengang/evolution_example/)). 
+Unique CHROMOSOME ID is also required.
+It is the best to make all ID unique when preparing your data,
+so that many issues will be avoided, not only in `soi` but also in other tools.
 
 ### Output formats ###
 
