@@ -82,6 +82,7 @@ diff Populus_trichocarpa-Salix_dunnii.collinearity.ortho Populus_trichocarpa-Sal
 **Note**: If you want to run the [full phylogenomic pipeline of SOI](https://github.com/zhangrengang/evolution_example/), 
 GENE ID is needed to label with SPECIES ID (e.g. `Angelica_sinensis|AS01G00001`) for compatibility.
 See [details how to prepare the data](https://github.com/zhangrengang/evolution_example/?tab=readme-ov-file#prepare-data).
+Unique CHROMOSOME ID is also required.
 
 ### Example output dot plots ###
 ![dotplots](example_data/mege_4dot.png)
@@ -557,6 +558,6 @@ SOG3002: Angelica_sinensis|AS10G01791 Apium_graveolens|Ag1G00857 Apium_graveolen
 ```
 
 ## Citation ##
-Zhang R G, Shang H Y, Milne R I et. al. 
+Zhang RG, Shang HY, Milne RI et. al. 
 SOI: robust identification of orthologous synteny with the Orthology Index and broad applications in evolutionary genomics [J]. 
 *Nucleic. Acids. Res.*, 2025, 53 (7):gkaf320 [https://doi.org/10.1093/nar/gkaf320]
