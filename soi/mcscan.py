@@ -273,7 +273,7 @@ class XCollinearity:
 					rc.ortholog_pairs = ortholog_pairs
 				yield rc
 		logger.info(
-			'  {} collinearity blocks, {} collinearity genes'.format(nblock, ngene))
+			'  {} syntenic blocks, {} syntenic genes'.format(nblock, ngene))
 
 
 class Xpairs:
@@ -471,7 +471,7 @@ def retrieve_allele(collinearity, ResultsDir, gff, fout=sys.stdout, min_block=10
 			genes = sp_dict.get(sp, [])
 			g_pri = max(genes, key=lambda x: d_degrees[x]) if genes else '-'
 			g_alt = set(genes) - set([g_pri])
-			g_alt = [d_genes[x].raw_gene for x in g_alt]
+			g_alt = [d_genes[x].gene for x in g_alt]
 			g_alt = ','.join(g_alt) if g_alt else '-'
 			primary_genes += [g_pri]
 			alter_genes += [g_alt]
@@ -491,7 +491,7 @@ def retrieve_allele(collinearity, ResultsDir, gff, fout=sys.stdout, min_block=10
 		gidx = round(1.0 * sum(idxes) / len(idxes), 2)
 		idxes = [d_genes[g].ichr for g in primary_genes if g != '-']
 		cidx = 1.0 * sum(idxes) / len(idxes)
-		primary_genes = [d_genes[g].raw_gene if g !=
+		primary_genes = [d_genes[g].gene if g !=
 						 '-' else '-' for g in primary_genes]
 		line = [cidx, gidx] + primary_genes + alter_genes + attrs
 		lines += [line]
@@ -644,7 +644,7 @@ def divide(x, y):
 
 def collinearity_ratio(collinearity, chrmap, outMat, min_N=20):
 	'''collinearity ratio for heatmap'''
-	from creat_ctl import get_good_chrs, Chrs
+	from .creat_ctl import get_good_chrs, Chrs
 	d_chrs = {rc.chr: rc.geneN for rc in Chrs(chrmap)}
 	good_chrs = get_good_chrs(chrmap, min_genes=200)
 	good_chrs = set(good_chrs)
@@ -1172,7 +1172,7 @@ class Gff:
 
 	def to_wgdi(self, chrLst='chr.list', pep='pep.faa', cds='cds.fa',
 				indir='.', outdir='wgdi', species=None, split=True):
-		from creat_ctl import get_good_chrs
+		from .creat_ctl import get_good_chrs
 		self.gff = os.path.join(indir, self.gff)
 		chrLst = os.path.join(indir, chrLst)
 		pep = os.path.join(indir, pep)
@@ -1799,7 +1799,7 @@ class Chromosomes:
 		return sum([len(chr) for chr in self.chroms])
 
 	def sort(self):
-		from creat_ctl import sort_version
+		from .creat_ctl import sort_version
 		d = dict(list(zip(self.names, self.chroms)))
 		sorted_names = sort_version(self.names)
 		self.names = sorted_names
@@ -2205,7 +2205,7 @@ class ColinearGroups:
 		return G
 
 	def chr_subgraphs(self, min_tile=0.2, min_count=15):
-		from creat_ctl import sort_version
+		from .creat_ctl import sort_version
 		G = nx.Graph()
 		for sg in self.subgraphs(same_number=False, same_degree=False, max_missing=0):
 			chroms = [(gene2species(gene), self.d_gff[gene].chrom)
@@ -2366,7 +2366,7 @@ max_missing=0 does not allow any missing species.'''
 			yield sg
 
 	def to_ark(self, fout=sys.stdout, outfmt='grimm', min_genes=200, max_missing=0.2):
-		from creat_ctl import is_chr0, sort_version
+		from .creat_ctl import is_chr0, sort_version
 		logger.info('loading collinear graph')
 		d_idmap = {}
 		i = 0
@@ -2512,7 +2512,7 @@ max_missing=0 does not allow any missing species.'''
 
 	def get_trees(self):  # gene trees
 		'''Gene trees that perfectly matches the ploidy ratio.'''
-		from creat_ctl import sort_version
+		from .creat_ctl import sort_version
 		if not os.path.exists(self.tmpdir):
 			os.mkdir(self.tmpdir)
 		self.d_gff = d_gff = Gff(self.gff).get_genes()
