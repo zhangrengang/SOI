@@ -2923,10 +2923,9 @@ nw_order - > {}'.format(rooted_treefile)
 			self.cat_genetrees(iqtreefiles, genetrees,
 							   idmap=self.d_chroms, plain=False)
 			sptree = genetrees + '.astral'
-			cmd = '''mem=50g
-astral_root=~/bin/Astral-MP-5.14.5
-java -Xmx50g -D"java.library.path=$astral_root/lib" -jar $astral_root/astral.*.jar -i {} -o {}'''.format(
-				genetrees, sptree)
+			opts = '--root {}'.format(root) if root is not None else ''
+			cmd = 'astral-pro {} {} > {}'.format(
+				opts, genetrees, sptree)
 			cmds += [cmd]
 			if root is None:
 				cmd = 'nw_reroot {} '.format(sptree)
@@ -3073,7 +3072,7 @@ nw_order - > {}'.format(rooted_treefile)
 	def get_min_bootstrap(self, treefile):
 		tree = Phylo.read(treefile, 'newick')
 		bootraps = [clade.confidence for clade in tree.get_nonterminals()
-					if clade.confidence >= 0]
+					if clade.confidence and clade.confidence >= 0]
 		min_bs = min(bootraps) if bootraps else 0
 		return min_bs
 
