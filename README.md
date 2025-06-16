@@ -126,6 +126,17 @@ mamba activate OrthoIndex
 python3 setup.py install
 soi -h
 ```
+Sometimes, `OrthoIndex.yaml` may be failed due to conflicts. You can install the dependencies as below:
+```
+mamba install python=3.8.8 -y -n orthoindex 
+mamba install -y -n orthoindex biopython networkx lazy-property drmaa psutil matplotlib \
+							 mafft trimal 'iqtree>=2' newick_utils pal2nal mcl muscle \
+							 wgdi orthofinder aster
+mamba activate orthoindex
+python3 setup.py install
+soi -h
+```
+
 Alternatviely, the released version can be installed through [conda](https://anaconda.org/) or [mamba](https://github.com/mamba-org/mamba):
 ```
 mamba create -n OrthoIndex
