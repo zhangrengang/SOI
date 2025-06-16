@@ -30,7 +30,7 @@ jobs:
     - name: Install dependencies
     # install dependencies
       run: |
-        conda install mamba
+        conda install mamba -c conda-forge
         mamba env create -f OrthoIndex.yaml
 
 #        conda env create -f OrthoIndex.yaml
