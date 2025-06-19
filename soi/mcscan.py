@@ -161,6 +161,7 @@ class KaKsParser:
 
 	def _parse(self):
 		self.kargs['wgdi'] = True
+		i = 0
 		for line in open(self.kaks):
 			line = lazy_decode(line)
 			temp = line.rstrip().split()
@@ -179,7 +180,9 @@ class KaKsParser:
 				elif temp[1] == '4D_Sites':
 					self.kargs['fdtv'] = True
 					fmt = '4dtv'
-				logger.info('Ks file format is from `{}`'.format(fmt))
+				i += 1
+				if i > 1:
+					logger.info('Ks file format is from `{}`'.format(fmt))
 				continue
 			kaks = KaKs(temp, **self.kargs)
 			yield kaks
@@ -218,13 +221,15 @@ class XCollinearity:
 				_unknown += [collinearity]
 				continue
 			# *.collinearity file
-			if lazy_decode(open(collinearity).read(1)) == '#':
+			line1 = lazy_decode(open(collinearity).readline())
+			line1lst = line1.split('\t')
+			if line1[0] == '#' or len(line1lst) >=2:	# synteny or homomogy file
 				collinearities += [collinearity]
 			else:  # list file
 				files = []
 				i = 0
 				for line in open(collinearity):
-					if not line.strip():
+					if not line.strip() or line.strip().startswith('//'):
 						continue
 					_file = line.strip().split()[0]
 					if _file:
