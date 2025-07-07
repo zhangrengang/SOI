@@ -21,9 +21,11 @@ setup(
     include_package_data=True,
     scripts=[],
     entry_points={
-        'console_scripts': ['soi = soi.options:main',
-							'soi-syn = soi.mcscan:main',
-							'soi-orth = soi.OrthoFinder:main',
+        'console_scripts': [
+			'soi = soi.options:main',
+			'soi-syn = soi.mcscan:main',
+			'soi-orth = soi.OrthoFinder:main',
+			'soi-ctl = soi.creat_ctl:main',
         ],
     },
 )

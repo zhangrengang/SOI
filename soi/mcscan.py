@@ -1180,6 +1180,7 @@ class Gff:
 		from .creat_ctl import get_good_chrs
 		self.gff = os.path.join(indir, self.gff)
 		chrLst = os.path.join(indir, chrLst)
+		logger.info('extracting information from {}'.format([self.gff, chrLst]))
 		pep = os.path.join(indir, pep)
 		cds = os.path.join(indir, cds)
 
@@ -3612,6 +3613,7 @@ def count_genes(collinearity, sp1, sp2):
 
 def main():
 	import sys
+	print('CMD: {}'.format(' '.join(sys.argv)), file=sys.stderr)
 	subcmd = sys.argv[1]
 	kargs = parse_kargs(sys.argv)
 	# List all collinearity blocks.

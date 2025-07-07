@@ -96,7 +96,9 @@ def dotplot_args(parser):
 	group_dot.add_argument('--figsize', metavar='NUM', type=float, nargs='+', default=[15],
 						   help="figure size (width [height]) [default=%(default)s]")
 	group_dot.add_argument('--fontsize', metavar='NUM', type=float, default=10,
-						   help="font size of chromosome labels [default=%(default)s]")
+						   help="basic font size of labels [default=%(default)s]")
+	group_dot.add_argument('--cfont_scale', metavar='NUM', type=float, default=0.8,
+							help="scaling factor for font size of chromosome labels [default=%(default)s]")
 	group_dot.add_argument('--dotsize', metavar='NUM', type=float, default=1, dest='point_size',
 						   help="dot size [default=%(default)s]")
 
@@ -277,7 +279,8 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 				clip_ks=None, min_block=None, ks_step=0.02,
 				xlabels=None, ylabels=None, xpositions=None, ypositions=None,
 				xelines=None, yelines=None, xlim=None, ylim=None,
-				figsize=18, fontsize=10, point_size=0.8, xclines=None, yclines=None,
+				figsize=18, fontsize=10, cfont_scale=0.8, point_size=0.8, 
+				xclines=None, yclines=None,
 				plot_bin=None, output_hist=False,
 				xoffset=None, yoffset=None, xbars=None, ybars=None, gff=None,
 				gene_axis=None, xbarlab=True, ybarlab=True,
@@ -286,9 +289,10 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 				ploidy=False, ploidy_data=None, ortholog_graph=None,
 				of_color=False, homology=False, **kargs
 				):
-	xcsize = ycsize = fontsize  # chromosome label
-	xsize = ysize = fontsize * 2.5  # species label
-	labsize = fontsize *1.5 # lab size of plots
+	xcsize = ycsize = fontsize * cfont_scale  # chromosome labels
+	xsize = ysize = fontsize * 2.5	 # species labels
+	labsize = fontsize * 1.5	# x/y labels of b-d plots
+	lsize = fontsize * 1.7		# a-d labels
 	if xlabel is not None and xlabels is not None and remove_prefix:
 		logger.info('trying to remove the same prefix for X chromosome labels: {}...'.format(xlabels[:100]))
 		xlabels = _remove_prefix(xlabels)
@@ -432,7 +436,6 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	ax.spines['left'].set_color('none')
 	ax.spines['bottom'].set_color('none')
 
-	lsize = fontsize*1.7  # a-d label size
 	if number_plots and (ks_hist or ploidy):
 		label = '(a)'
 		plot_label(ax, label, fontsize=lsize)
@@ -590,7 +593,7 @@ def _histgram(ax, allKs, cmap=None, xlim=None, ylim=None, bins=100, normed=False
 	ax.set_xlim(0, xlim)
 	ax.set_ylim(0, ylim)
 	ax.set_xlabel(xlabel, fontsize=fontsize*1.2)  # Ks/OrthoIndex; fontsize
-	ax.set_ylabel(ylabel, fontsize=fontsize*0.9)
+	ax.set_ylabel(ylabel, fontsize=fontsize*0.9)	# y lab; fontsize
 	ax.minorticks_on()
 	cbar = plt.colorbar(ax=ax)
 	return xlim, ylim
@@ -819,6 +822,9 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 		j += 1
 		n += rc.N
 	logger.info('retained: {}/{} blocks, {}/{} genes'.format(j, i, n, m))
+	if n == 0:
+		logger.warn(
+            'No genes/blocks are retained. Check your files and parameters.')
 
 	if diagonal:
 		chrs1, chrs2 = diagonal_chroms(d_blocks2, chrs1, chrs2)
@@ -851,9 +857,9 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 			if not points:
 				continue
 			xblocks += [points]
-	if len(xblocks) == 0:
+	if n > 0 and len(xblocks) == 0:
 		logger.warn(
-			'No genes are retained or can be found in `Gff`. Check your files.')
+			'No genes can be found in `Gff`. Check your files.')
 	ksx = set(ksx)
 	if len(ksx) == 1:
 		logger.warn(
@@ -985,10 +991,12 @@ def _offset(chrs, d_length):
 def parse_ctl(ctl):
 	i = 0
 	chrs2 = []
+	lines = []
 	for line in open(ctl):
 		line = line.split('//')[0]
 		if not line:
 			continue
+		lines += [line]
 		i += 1
 		if i == 3:  # x
 			chrs1 = line.strip().strip(',').split(',')
@@ -997,7 +1005,17 @@ def parse_ctl(ctl):
 			_chrs2 = line.strip().strip(',').split(',')
 			chrs2 += list(map(strip_blank, _chrs2))
 	if i < 4:
-		raise ValueError('*.ctl file has without >= 4 lines')
+		try:
+			chrs1 = lines[0].strip().strip(',').split(',')
+			chrs1 = list(map(strip_blank, chrs1))
+			chrs2 = lines[1].strip().strip(',').split(',')
+			chrs2 = list(map(strip_blank, _chrs2))
+		except IndexError:
+			pass
+#			logger.error('failed to parse `{}`; please check the file'.format(ctl))
+#		raise ValueError('*.ctl file has without >= 4 lines')
+	if not chrs2:
+		chrs2 = chrs1
 	return chrs2, chrs1
 
 
