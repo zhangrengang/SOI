@@ -112,6 +112,8 @@ def get_good_chrs(inChrList, min_genes=200, min_ratio=0.8):
 			continue
 		n += geneN
 		good_chrs += [chr]
+	if N == 0:
+		raise ValueError('No genes detected in `{}`. Please check it'.format(inChrList))
 	ratio = 1.0* n /N
 	if ratio < min_ratio:
 		return get_good_chrs(inChrList, min_genes=min_genes-25,min_ratio=min_ratio)

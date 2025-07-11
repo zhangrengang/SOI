@@ -1120,7 +1120,7 @@ class XGff(XOrthology):
 class Gff:
 	'''Gff parser'''
 
-	def __init__(self, gff):
+	def __init__(self, gff, **kargs):
 		self.gff = gff
 
 	def __iter__(self):
@@ -1176,20 +1176,26 @@ class Gff:
 		return d_index
 
 	def to_wgdi(self, chrLst='chr.list', pep='pep.faa', cds='cds.fa',
-				indir='.', outdir='wgdi', species=None, split=True):
+				indir='.', outdir='wgdi', species=None, split=True, **kargs):
 		from .creat_ctl import get_good_chrs
 		self.gff = os.path.join(indir, self.gff)
 		chrLst = os.path.join(indir, chrLst)
-		logger.info('extracting information from {}'.format([self.gff, chrLst]))
+		logger.info('Extracting information from {}'.format([self.gff, chrLst]))
 		pep = os.path.join(indir, pep)
 		cds = os.path.join(indir, cds)
 
-		good_chrs = get_good_chrs(chrLst, min_genes=200)
+		d_genes = self.get_indexed_genes()
+		try: 
+			good_chrs = get_good_chrs(chrLst, min_genes=200)
+			logger.info('Extracted {} chromosomes from {}'.format(len(good_chrs), chrLst))
+		except Exception as e:
+			logger.warn('Failed to extract chromosomes from {}, because: {}. \
+All chromosomes or scaffolds will be used.'.format(chrLst, e))
+			good_chrs = self.d_length.keys()
 		d_pep = {rc.id: rc for rc in SeqIO.parse(pep, 'fasta')}
 		d_cds = {rc.id: rc for rc in SeqIO.parse(cds, 'fasta')}
 		mkdirs(outdir)
 		d_handle = {}
-		d_genes = self.get_indexed_genes()
 		if species is None:
 			species = self.species
 		else:
@@ -1221,7 +1227,7 @@ class Gff:
 		for (sp, chrom), (g_len, bp_len) in list(self.d_length2.items()):
 			if sp not in set(species):
 				continue
-			if chrom not in set(good_chrs):
+			if chrom not in set(good_chrs):	# only good chrs in *.lens file
 				continue
 			_, lens, _, _ = d_handle[sp]
 			line = (chrom, g_len, bp_len)
@@ -3719,11 +3725,12 @@ def main():
 		input, pep = sys.argv[2:4]
 		ToAstral(input, pep, **kargs).run()
 	elif subcmd == 'to_wgdi':
-		try:
-			gff, chrLst, pep, cds = sys.argv[2:6]
-		except:
-			gff, chrLst, pep, cds = 'all_species_gene.gff', 'chr.list', 'pep.faa', 'cds.fa'
-		Gff(gff).to_wgdi(chrLst, pep, cds, **kargs)
+#		try:
+#			gff, chrLst, pep, cds = sys.argv[2:6]
+#		except:
+#			gff, chrLst, pep, cds = 'all_species_gene.gff', 'chr.list', 'pep.faa', 'cds.fa'
+#		Gff(gff).to_wgdi(chrLst, pep, cds, **kargs)
+		Gff(**kargs).to_wgdi(**kargs)
 	elif subcmd == 'cr':  # collinearity ratio
 		collinearity, chrmap = sys.argv[2:4]
 		collinearity_ratio(collinearity, chrmap, outMat=sys.stdout, **kargs)
