@@ -105,9 +105,9 @@ def get_good_chrs(inChrList, min_genes=200, min_ratio=0.8):
 		if is_chr0(CHR) or is_chr0(chr, raw=False):
 			continue
 		N += geneN
-		pattern = '\w{1,2}\d+'
-		if not re.compile(pattern).match(chr):
-			continue
+#		pattern = '\w{1,2}\d+'
+#		if not re.compile(pattern).match(chr):
+#			continue
 		if geneN < min_genes:
 			continue
 		n += geneN

@@ -1120,7 +1120,7 @@ class XGff(XOrthology):
 class Gff:
 	'''Gff parser'''
 
-	def __init__(self, gff, **kargs):
+	def __init__(self, gff=None, **kargs):
 		self.gff = gff
 
 	def __iter__(self):
@@ -1176,8 +1176,9 @@ class Gff:
 		return d_index
 
 	def to_wgdi(self, chrLst='chr.list', pep='pep.faa', cds='cds.fa',
-				indir='.', outdir='wgdi', species=None, split=True, **kargs):
-		from .creat_ctl import get_good_chrs
+				indir='.', outdir='wgdi', species=None, split=True, 
+				min_genes=100, **kargs):
+		from .creat_ctl import get_good_chrs, sort_version
 		self.gff = os.path.join(indir, self.gff)
 		chrLst = os.path.join(indir, chrLst)
 		logger.info('Extracting information from {}'.format([self.gff, chrLst]))
@@ -1186,12 +1187,13 @@ class Gff:
 
 		d_genes = self.get_indexed_genes()
 		try: 
-			good_chrs = get_good_chrs(chrLst, min_genes=200)
+			good_chrs = get_good_chrs(chrLst, min_genes=min_genes)
 			logger.info('Extracted {} chromosomes from {}'.format(len(good_chrs), chrLst))
 		except Exception as e:
 			logger.warn('Failed to extract chromosomes from {}, because: {}. \
 All chromosomes or scaffolds will be used.'.format(chrLst, e))
-			good_chrs = self.d_length.keys()
+			good_chrs = [chrom for (sp, chrom), (bp_len, g_len) in self.d_length2.items() \
+							if g_len >=min_genes]
 		d_pep = {rc.id: rc for rc in SeqIO.parse(pep, 'fasta')}
 		d_cds = {rc.id: rc for rc in SeqIO.parse(cds, 'fasta')}
 		mkdirs(outdir)
@@ -1224,6 +1226,7 @@ All chromosomes or scaffolds will be used.'.format(chrLst, e))
 					line.strand, line.index+1, line.gene]
 			print('\t'.join(map(str, line)), file=gff)
 		# lens
+		d_chrs = {}
 		for (sp, chrom), (g_len, bp_len) in list(self.d_length2.items()):
 			if sp not in set(species):
 				continue
@@ -1232,6 +1235,19 @@ All chromosomes or scaffolds will be used.'.format(chrLst, e))
 			_, lens, _, _ = d_handle[sp]
 			line = (chrom, g_len, bp_len)
 			print('\t'.join(map(str, line)), file=lens)
+			try: d_chrs[sp] += [chrom]
+			except KeyError: d_chrs[sp] = [chrom]
+
+		def _filter_and_sort_chrs(chrs):
+			_chrs = sort_version([chrom for chrom in chrs if chrom in set(good_chrs)])
+			return ','.join(_chrs)
+		# ctl
+		for sp1, sp2 in itertools.combinations_with_replacement(species, 2):
+			outctl = '{}/{}-{}.ctl'.format(outdir, sp1, sp2)
+			chrs1 = _filter_and_sort_chrs(d_chrs[sp1])
+			chrs2 = _filter_and_sort_chrs(d_chrs[sp2])
+			with open(outctl, 'w') as f:
+				f.write('2000\n2000\n{}\n{}\n'.format(chrs1, chrs2))
 		# close files
 		for sp in species:
 			for hd in d_handle[sp]:
