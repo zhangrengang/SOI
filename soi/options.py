@@ -186,8 +186,8 @@ def args_phylo(parser):
 						dest='iqtree_opts',  metavar='STR',
 						help="IQ-TREE options. [default='%(default)s']")
 	parser.add_argument('-fast', default=False,
-                        dest='fast', action='store_true',
-                        help="Speedup IQ-TREE by restricting model set (JTT for PEP and GTR for CDS). \
+						dest='fast', action='store_true',
+						help="Speedup IQ-TREE by restricting model set (JTT for PEP and GTR for CDS). \
 [default: %(default)s]")
 	parser.add_argument('-p', '-ncpu', type=int, default=20,
 						dest='ncpu', metavar='INT',
@@ -211,6 +211,11 @@ def makeArgs():
 		formatter_class=argparse.RawDescriptionHelpFormatter,
 		description='Play with Orthology Index',
 	)
+	parser.add_argument(
+		'-v', '--version',
+		action='version',
+		version=version
+	)
 	# subcommands
 	subparsers = parser.add_subparsers(help='sub-command help')
 	parser_dot = subparsers.add_parser('dotplot',
@@ -231,6 +236,10 @@ def makeArgs():
 	parser_stats = subparsers.add_parser('stats',
 										 help='Make statistics of SOGs for phylogeny')
 	args_stats(parser_stats)
+
+	if len(sys.argv) == 1:
+		parser.print_help(sys.stderr) 
+		sys.exit(1) 
 	args = parser.parse_args()
 	return args
 
