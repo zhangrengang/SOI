@@ -29,7 +29,7 @@ cd orthoindex
 # install
 conda env create -f OrthoIndex.yaml
 conda activate OrthoIndex
-python3 setup.py install
+pip3 install .
 
 # test
 cd example_data/
@@ -124,7 +124,7 @@ cd orthoindex
 
 mamba env create -f OrthoIndex.yaml
 mamba activate OrthoIndex
-python3 setup.py install
+pip3 install .
 soi -h
 ```
 Sometimes, `OrthoIndex.yaml` may be failed due to conflicts. You can install the dependencies as below:
@@ -134,7 +134,7 @@ mamba install -y -n orthoindex biopython networkx lazy-property drmaa psutil mat
 			mafft trimal 'iqtree>=2' newick_utils pal2nal mcl muscle \
 			wgdi orthofinder aster
 mamba activate orthoindex
-python3 setup.py install
+pip3 install .
 soi -h
 ```
 

@@ -45,7 +45,7 @@ jobs:
         conda init
         cat /Users/runner/.bash_profile
         echo "==="
-        export PATH=/Users/runner/miniconda3/envs/OrthoIndex/bin:$PATH && python setup.py install
+        export PATH=/Users/runner/miniconda3/envs/OrthoIndex/bin:$PATH && pip install .
 
     - name: Test SOI
       run: |

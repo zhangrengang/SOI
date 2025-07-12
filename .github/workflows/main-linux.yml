@@ -51,7 +51,7 @@ jobs:
     - name: Install SOI
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       run: |
-        export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH && python setup.py install
+        export PATH=/usr/share/miniconda/envs/OrthoIndex/bin:$PATH && pip install .
 #      run: python setup.py install
     
     - name: Test SOI
