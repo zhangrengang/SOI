@@ -907,7 +907,8 @@ class OrthoFinder:
 		for _, _, temp in self.get_blast(sps=sps):
 			print('\t'.join(temp), file=fout)
 
-	def to_wgdi(self, sps=None, outdir='wgdi', split=True):
+	def to_wgdi(self, species=None, outdir='wgdi', split=True):
+		sps = parse_species(species)
 		d_handle = {}
 		for sp1, sp2, temp in self.get_blast(sps=sps):
 			if (sp1, sp2) in d_handle:
@@ -2623,11 +2624,12 @@ def main():
 			OFdir = sys.argv[2]
 		except IndexError:
 			OFdir = 'OrthoFinder/OrthoFinder/Results_*/'
-		try:
-			species = sys.argv[3]
-		except IndexError:
-			species = None
-		OrthoFinder(OFdir).to_wgdi(parse_species(species), **kargs)
+#		try:
+#			species = sys.argv[-1]
+#		except IndexError:
+#			species = None
+#		OrthoFinder(OFdir).to_wgdi(parse_species(species), **kargs)
+		OrthoFinder(OFdir).to_wgdi(**kargs)
 	elif subcommand == 'test_spd':
 		test_sonicparanoid()
 	else:
