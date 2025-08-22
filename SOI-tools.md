@@ -1,7 +1,7 @@
 
 #### Macro-synteny phylogeny ####
 Before run the pipeline:
-1. install the lasest verion of [SOI](https://github.com/zhangrengang/orthoindex#installation) by `python3 setup.py install`, 
+1. install the lasest verion of [SOI](https://github.com/zhangrengang/orthoindex#installation) by `pip3 install .`, 
 and have a check: `which soi-syn`;
 2. complete the [example pipeline](https://github.com/zhangrengang/evolution_example) to get the orthologous synteny file `collinearity.ortho`;
 3. prepare file `species.config` to set the expected subgenome numbers for the targeted species (TAB seperated):
@@ -33,7 +33,7 @@ After `soi filter` has identified orthologous synteny in the [example pipeline](
 soi-syn retrieve_allele collinearity.ortho ../OrthoFinder/OrthoFinder/Results_*/ ../all_species_gene.gff sps="Panax_ginseng Panax_notoginseng" min_block=10 win_size=10 > allele.txt
 ```
 `sps="Panax_ginseng Panax_notoginseng"` sets one or more target species or pseudo-species (space seperated); 
-species labels need to be different for different subgenomes (label gene ID like `SP1|sgA.g1`, `SP1|sgB.g1`);
+species labels need to be different for different subgenomes (label gene ID like `SP1|sgA.g1`, `SP2|sgB.g1`);
 
 `min_block=10` sets minimum length of syntenic blocks; increasing the value will result in more reliable alleles;
 
