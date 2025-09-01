@@ -58,7 +58,7 @@ def func_filter(**kargs):
 	from .mcscan import identify_orthologous_blocks
 	identify_orthologous_blocks(**kargs)
 
-
+#shang
 def args_cluster(parser):
 	parser.add_argument('-s', '-synteny', required=True,  type=str,  nargs='*',
 						dest='collinearities',  metavar='FILE',
@@ -81,11 +81,19 @@ This will use Orthology Index as weight for MCL [default=%(default)s]")
 	parser.add_argument('-prefix', type=str, default='cluster',
 						dest='outpre',
 						help="Output prefix [default=%(default)s]")
+	parser.add_argument('-m', '--method', type=str, default='mcl', choices=['mcl', 'comp'],
+            dest='method',help="Clustering method to use [default=%(default)s]")
 
-
+#shang
 def func_cluster(**kargs):
-	from .mcscan import cluster_by_mcl
-	cluster_by_mcl(**kargs)
+	# if 'method' in kargs, pop it (get method), else set default to 'mcl'
+	method = kargs.pop('method', 'mcl') if 'method' in kargs else 'mcl'
+	if method == 'comp':
+		from .mcscan import cluster_by_comp
+		cluster_by_comp(**kargs)
+	else:
+		from .mcscan import cluster_by_mcl
+		cluster_by_mcl(**kargs)
 
 
 def args_outgroup(parser):
