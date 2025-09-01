@@ -1,4 +1,4 @@
-name: OrthoIndex_test
+name: OrthoIndex
 channels:
   - conda-forge
   - bioconda
