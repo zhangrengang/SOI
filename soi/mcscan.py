@@ -10,6 +10,10 @@ from collections import Counter, OrderedDict
 import itertools
 from Bio import SeqIO, Phylo
 from lazy_property import LazyWritableProperty as lazyproperty
+#shang
+import igraph as ig
+from collections import defaultdict
+import pandas as pd
 
 from .OrthoFinder import catAln, format_id_for_iqtree, lazy_orthologs, \
 	OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder, SonicParanoid, \
@@ -1902,6 +1906,76 @@ def parse_group(groups):
 				xgroup += [group]
 	return xgroup
 
+#shang
+def cluster_by_comp(collinearities, orthologs=None,inflation=None,
+					outgroup=None, ingroup=None, outpre='cluster'):
+	ingroup = set(parse_group(ingroup))
+	outgroup = set(parse_group(outgroup))
+	logger.info('outgroup: {}'.format(outgroup))
+	logger.info('ingroup: {}'.format(ingroup))
+	network = '{}.network'.format(outpre)
+	# fout = open(network, 'w')
+	np=0
+	i, j, k = 0, 0, 0
+	all_genes = set()
+	gene_pairs = set()
+	node_to_index = {}
+	index_to_node = {}
+	g = ig.Graph()
+	for rc in XCollinearity(collinearities, orthologs=orthologs):
+		sp1, sp2 = rc.species
+		if sp1 == sp2:  # exclude paralogs
+			i += 1
+			continue
+		if sp1 in outgroup or sp2 in outgroup:  # exclude outgoup
+			j += 1
+			continue
+		if ingroup and not (sp1 in ingroup and sp2 in ingroup):  # only include ingroup
+			k += 1
+			continue
+		for g1, g2 in rc.pairs:
+			np += 1
+			line = [g1, g2]
+			for gene in [g1, g2]:
+				if gene not in all_genes:
+					all_genes.add(gene)
+					node_to_index[gene] = len(node_to_index)
+					index_to_node[len(index_to_node)] = gene
+					g.add_vertices(1)  # add a vertex
+					g.vs[len(node_to_index)-1]["name"] = gene # set vertex attribute 'name'
+			sorted_pair = tuple(sorted([g1, g2]))
+			if sorted_pair not in gene_pairs:
+				gene_pairs.add(sorted_pair)
+                # idx1 = node_to_index[g1]
+                # idx2 = node_to_index[g2]
+                # g.add_edges([(idx1, idx2)])
+			# if orthologs:
+				# line += [str(rc.oi)]
+			# fout.write('{}\n'.format('\t'.join(line)))
+	logger.info('Total genes: {}'.format(len(all_genes)))
+	logger.info('Total gene pairs: {}'.format(len(gene_pairs)))
+	logger.info('Graph nodes: {}'.format(g.vcount()))
+	edge_list = []
+	for gene1, gene2 in gene_pairs:
+		idx1 = node_to_index[gene1]
+		idx2 = node_to_index[gene2]
+		edge_list.append((idx1, idx2)) # add edge
+	g.add_edges(edge_list)
+	logger.info('Graph edges: {}'.format(g.ecount()))
+	# fout.close()
+	logger.info(
+		'excluded: {} paralogs, {} in outgroup, {} not in ingroup'.format(i, j, k))
+	cluster = '{}.comp'.format(outpre)
+	#components = g.connected_components() # used in igraph0.11.8 not used in 0.9.x
+	components = g.clusters(mode="weak")
+	with open(cluster, 'w') as f:
+		# Traverse each connected component (SOG)
+		for i, component in enumerate(components):
+			# Obtain the index of all nodes in this connected component
+			node_indices = component
+			# Convert the node index to the gene name
+			gene_names = [index_to_node[idx] for idx in node_indices]
+			f.write(f"SOG{i+1}: {' '.join(gene_names)}\n")
 
 def cluster_by_mcl(collinearities, orthologs=None, inflation=2,
 				   outgroup=None, ingroup=None, outpre='cluster'):
