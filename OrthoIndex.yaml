@@ -1,4 +1,4 @@
-name: OrthoIndex
+name: OrthoIndex_test
 channels:
   - conda-forge
   - bioconda
@@ -193,3 +193,4 @@ dependencies:
   - zipp=3.16.2
   - zlib=1.2.13
   - zstd=1.5.5
+  - python-igraph
