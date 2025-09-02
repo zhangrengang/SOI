@@ -1902,33 +1902,6 @@ def parse_group(groups):
 				xgroup += [group]
 	return xgroup
 
-#shang
-def awk_asort(items):
-    # use Linux awk asort
-    awk_script = '''
-BEGIN {
-    for(i=1; i<ARGC; i++) {
-        arr[i] = ARGV[i]
-    }
-    n = asort(arr)
-    for(i=1; i<=n; i++) {
-        print arr[i]
-    }
-    exit
-}
-'''    
-    process = subprocess.Popen(
-        ['awk', awk_script] + items,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    
-    output, error = process.communicate()
-    if error:
-        print("Error:", error)
-    return output.strip().split('\n')
-
 
 def cluster_by_mcl(collinearities, orthologs=None, inflation=2,method='mcl',
 				   outgroup=None, ingroup=None, outpre='cluster'):
