@@ -10,7 +10,7 @@ from collections import Counter, OrderedDict
 import itertools
 from Bio import SeqIO, Phylo
 from lazy_property import LazyWritableProperty as lazyproperty
-
+import subprocess
 from .OrthoFinder import catAln, format_id_for_iqtree, lazy_orthologs, \
 	OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder, SonicParanoid, \
 	parse_species
@@ -1902,8 +1902,7 @@ def parse_group(groups):
 				xgroup += [group]
 	return xgroup
 
-
-def cluster_by_mcl(collinearities, orthologs=None, inflation=2,
+def cluster_by_mcl(collinearities, orthologs=None, inflation=2,method='mcl',
 				   outgroup=None, ingroup=None, outpre='cluster'):
 	check_cmd('mcl')
 	ingroup = set(parse_group(ingroup))
@@ -1914,6 +1913,7 @@ def cluster_by_mcl(collinearities, orthologs=None, inflation=2,
 	fout = open(network, 'w')
 	np = 0
 	i, j, k = 0, 0, 0
+	G = nx.Graph()
 	for rc in XCollinearity(collinearities, orthologs=orthologs):
 		sp1, sp2 = rc.species
 		if sp1 == sp2:  # exclude paralogs
@@ -1925,6 +1925,7 @@ def cluster_by_mcl(collinearities, orthologs=None, inflation=2,
 		if ingroup and not (sp1 in ingroup and sp2 in ingroup):  # only include ingroup
 			k += 1
 			continue
+		G.add_edges_from(rc.pairs)
 		for g1, g2 in rc.pairs:
 			np += 1
 			line = [g1, g2]
@@ -1935,13 +1936,23 @@ def cluster_by_mcl(collinearities, orthologs=None, inflation=2,
 	logger.info(
 		'excluded: {} paralogs, {} in outgroup, {} not in ingroup'.format(i, j, k))
 	cluster = '{}.mcl'.format(outpre)
-	cmd = '''mcl {input} --abc -I {inflation} -o - -te {ncpu} | \
+	if method=='mcl':
+		cmd = '''mcl {input} --abc -I {inflation} -o - -te {ncpu} | \
 awk 'NF>1' | awk '{{split($0,a,"\\t");sl=asort(a);for (i=1;i<=sl;i++){{printf("%s ", a[i])}}; printf "\\n"}}' | \
 awk '{{print "SOG"NR": "$0}}' > {output}'''.format(
 		inflation=inflation, input=network, output=cluster, ncpu=10)
-	run_cmd(cmd, log=True, )
-	nc = len([1 for line in open(cluster)])
+		run_cmd(cmd, log=True, )
+		nc = len([1 for line in open(cluster)])
+	elif method=='comp':
+		with open(cluster, 'w') as f:
+			for i, component in enumerate(nx.connected_components(G),1):
+				if len(component) > 1:
+					#sorted_genes = awk_asort(list(component))
+					sorted_genes = sorted(list(component))
+					f.write("SOG{}: {}\n".format(i, ' '.join(sorted_genes)))
+		nc = len([1 for line in open(cluster)])
 	logger.info('{} syntenic gene pairs reslut in {} SOGs'.format(np, nc))
+
 
 def check_cmd(cmd):
 	logger.info('checking `{}`'.format(cmd))
