@@ -1902,6 +1902,7 @@ def parse_group(groups):
 				xgroup += [group]
 	return xgroup
 
+
 def cluster_by_mcl(collinearities, orthologs=None, inflation=2,method='mcl',
 				   outgroup=None, ingroup=None, outpre='cluster'):
 	check_cmd('mcl')
@@ -1910,7 +1911,8 @@ def cluster_by_mcl(collinearities, orthologs=None, inflation=2,method='mcl',
 	logger.info('outgroup: {}'.format(outgroup))
 	logger.info('ingroup: {}'.format(ingroup))
 	network = '{}.network'.format(outpre)
-	fout = open(network, 'w')
+	if method=='mcl': 
+		fout = open(network, 'w')
 	np = 0
 	i, j, k = 0, 0, 0
 	G = nx.Graph()
@@ -1925,14 +1927,17 @@ def cluster_by_mcl(collinearities, orthologs=None, inflation=2,method='mcl',
 		if ingroup and not (sp1 in ingroup and sp2 in ingroup):  # only include ingroup
 			k += 1
 			continue
-		G.add_edges_from(rc.pairs)
+		np += len(rc.pairs)
+		if method=='comp': # add_edges for comp and skip write network
+			G.add_edges_from(rc.pairs)
+			continue
 		for g1, g2 in rc.pairs:
-			np += 1
 			line = [g1, g2]
 			if orthologs:
 				line += [str(rc.oi)]
 			fout.write('{}\n'.format('\t'.join(line)))
-	fout.close()
+	if method=='mcl': 
+		fout.close()
 	logger.info(
 		'excluded: {} paralogs, {} in outgroup, {} not in ingroup'.format(i, j, k))
 	cluster = '{}.mcl'.format(outpre)
@@ -1950,9 +1955,8 @@ awk '{{print "SOG"NR": "$0}}' > {output}'''.format(
 					#sorted_genes = awk_asort(list(component))
 					sorted_genes = sorted(list(component))
 					f.write("SOG{}: {}\n".format(i, ' '.join(sorted_genes)))
-		nc = len([1 for line in open(cluster)])
+			nc = i
 	logger.info('{} syntenic gene pairs reslut in {} SOGs'.format(np, nc))
-
 
 def check_cmd(cmd):
 	logger.info('checking `{}`'.format(cmd))
