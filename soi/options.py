@@ -81,7 +81,9 @@ This will use Orthology Index as weight for MCL [default=%(default)s]")
 	parser.add_argument('-prefix', type=str, default='cluster',
 						dest='outpre',
 						help="Output prefix [default=%(default)s]")
-
+	parser.add_argument('-m','-method', type=str, default='mcl',
+						dest='method',
+						help="cluster method (mcl, comp) [default=%(default)s]")
 
 def func_cluster(**kargs):
 	from .mcscan import cluster_by_mcl
