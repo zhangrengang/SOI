@@ -10,7 +10,7 @@ from collections import Counter, OrderedDict
 import itertools
 from Bio import SeqIO, Phylo
 from lazy_property import LazyWritableProperty as lazyproperty
-import subprocess
+
 from .OrthoFinder import catAln, format_id_for_iqtree, lazy_orthologs, \
 	OrthoMCLGroup, OrthoMCLGroupRecord, OrthoFinder, SonicParanoid, \
 	parse_species
