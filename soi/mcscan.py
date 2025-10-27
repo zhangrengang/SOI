@@ -1120,7 +1120,7 @@ class XGff(XOrthology):
 class Gff:
 	'''Gff parser'''
 
-	def __init__(self, gff=None, **kargs):
+	def __init__(self, gff='all_species_gene.gff', **kargs):
 		self.gff = gff
 
 	def __iter__(self):
