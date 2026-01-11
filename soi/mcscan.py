@@ -3343,6 +3343,7 @@ class ToAstral(ColinearGroups):
 			f_pep = open(pepSeq, 'w')
 			f_cds = open(cdsSeq, 'w')
 			d_root = {}
+			d_cdsmissing = {}
 			for gene, sp in iters:
 				try:
 					rc = d_pep[gene]
@@ -3354,7 +3355,13 @@ class ToAstral(ColinearGroups):
 				d_idmap[rc.id] = sp
 				SeqIO.write(rc, f_pep, 'fasta')
 				if self.cds:
-					rc = d_cds[gene]
+					try:
+						rc = d_cds[gene]
+					except KeyError:
+						d_cdsmissing[sp] = d_cdsmissing.get(sp, 0) + 1
+						# no CDS seq, continue
+						logger.warn('{} not found in {}; skipped'.format(gene, self.cds))
+						continue
 					rc.id = format_id_for_iqtree(gene)
 					SeqIO.write(rc, f_cds, 'fasta')
 				if self.root and sp in set(self.root):
@@ -3408,6 +3415,15 @@ class ToAstral(ColinearGroups):
 			roots += [root]
 			cmds = ' && '.join(cmds)
 			cmd_list += [cmds]
+
+		# check if there are any missing sequences
+		has_missing_cds = any(count > 0 for count in d_cdsmissing.values())
+		if has_missing_cds:
+			print('Missing CDS sequence statistics by species:')
+			for sp, count in sorted(d_cdsmissing.items()):
+				if count > 0:  # print only species with missing sequences
+					print('{}: {} sequences missing'.format(sp, count))
+
 		logger.info('total {} groups, {} rooted'.format(i, j))
 		# prefer to rooted
 		pepTreefiles = [t for _, t in sorted(
