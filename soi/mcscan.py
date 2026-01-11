@@ -3263,7 +3263,7 @@ class ToAstral(ColinearGroups):
 					d_gene[sp] = [ngs]
 		xs = 'sc' if self.singlecopy else 'mc'
 		self.suffix = '{}.{}'.format(self.suffix, xs)
-		logger.info('{} taxa; {} -> {} genes'.format(len(self.species), rg, ng))
+		logger.info('{} taxa; {} -> {} orthogroups (OGs)'.format(len(self.species), rg, ng))
 		# taxa missing
 		step = 100//nbin
 		d_bin = {}
