@@ -18,6 +18,7 @@
       - [Macro-synteny phylogeny](#Macro-synteny-phylogeny)
 	  - [Allele identification](#Allele-identification)
    * [Phylogenomics pipeline](#Phylogenomics-pipeline)
+   * [Grid Computing](#Grid-Computing)
    * [Input formats](#input-formats)
    * [Output formats](#output-formats)
    * [Citation](#citation)
@@ -434,7 +435,7 @@ See [evolution_example](https://github.com/zhangrengang/evolution_example/) for 
 ### Grid Computing ###
 The `phylo` subcommand supports SGE (Sun Grid Engine) and SLURM for parallelizing gene tree reconstruction tasks. 
 However, it requires the DRMAA to be properly configured (see [DRMAA Python](https://github.com/pygridtools/drmaa-python)). 
-After `libdrmaa` installed, just set the DRMAA_LIBRARY_PATH environment variable, like:
+After `libdrmaa` is installed, just set the DRMAA_LIBRARY_PATH environment variable, like:
 ```
 export DRMAA_LIBRARY_PATH=/opt/gridengine/lib/lx-amd64/libdrmaa.so.1.0
 ```
