@@ -86,7 +86,7 @@ dependencies:
   - mmseqs2=14.7e284
   - mpi=1.0
   - munkres=1.1.4
-  - muscle=3.8.1551
+  - muscle=5.3
   - mysql-common=8.0.32
   - mysql-libs=8.0.32
   - ncurses=6.4

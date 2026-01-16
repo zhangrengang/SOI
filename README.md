@@ -431,6 +431,14 @@ See [the function](SOI-tools.md#Allele-identification).
 
 See [evolution_example](https://github.com/zhangrengang/evolution_example/) for a pipeline of phylogenomics analyses based on Orthology Index.
 
+### Grid Computing ###
+The `phylo` subcommand supports SGE (Sun Grid Engine) and SLURM for parallelizing gene tree reconstruction tasks. 
+However, it requires the DRMAA to be properly configured (see [DRMAA Python](https://github.com/pygridtools/drmaa-python)). 
+After `libdrmaa` installed, just set the DRMAA_LIBRARY_PATH environment variable, like:
+```
+export DRMAA_LIBRARY_PATH=/opt/gridengine/lib/lx-amd64/libdrmaa.so.1.0
+```
+
 ### Input formats ###
 
 #### Synteny format ####
