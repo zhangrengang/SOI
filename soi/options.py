@@ -123,7 +123,10 @@ def args_phylo_common(parser):
 	parser.add_argument('-fmt', type=str, default='orthomcl',
 						dest='source', choices=['orthomcl', 'orthofinder', 'mcscanx'],
 						help="Format of `-orthogroup` input. [default=%(default)s]")
-
+	parser.add_argument('-tree_tool', type=str, default='iqtree',
+						dest='tree_tool',  metavar='STR',
+						choices=['iqtree', 'fasttree'], 
+						help="Tree building tool: iqtree or fasttree. [default=%(default)s]")
 
 def args_stats(parser):
 	parser.add_argument('-og', '-orthogroup', required=True,  type=str,
