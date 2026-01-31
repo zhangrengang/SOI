@@ -3312,6 +3312,13 @@ class ToAstral(ColinearGroups):
 		fasttree_template = 'FastTree {} {} > {}.treefile 2> /dev/null'
 		treetool_template = {'iqtree':iqtree_template, 'fasttree':fasttree_template}
 		treetool_template = treetool_template[self.tree_tool]
+		iqtree_opts0 = ''  # ' -o {} '.format(root) if root else ''
+		if self.tree_tool == 'iqtree':
+			treecmd_cds = lambda aln: treetool_template.format(aln,iqtree_opts0 + (' -mset GTR ' if self.fast else ''))
+			treecmd_pep = lambda aln: treetool_template.format(aln,iqtree_opts0 + (' -mset JTT ' if self.fast else ''))
+		elif self.tree_tool == 'fasttree':
+			treecmd_cds = lambda aln: treetool_template.format('-gtr -nt', aln, aln)
+			treecmd_pep = lambda aln: treetool_template.format('', aln, aln)
 		reroot_template = 'mv {tree} {tree}.bk && nw_reroot -l {tree}.bk {root} | nw_order -c n - > {tree}'
 		aligner_template = {'mafft': mafft_template, 'muscle5': muscle5_template, 'muscle3': muscle3_template}
 		aligner_template = aligner_template[self.aligner]
@@ -3390,11 +3397,11 @@ class ToAstral(ColinearGroups):
 			cmds += [cmd]
 			iqtree_opts0 = ''  # ' -o {} '.format(root) if root else ''
 			if self.tree_tool == 'iqtree':
-				cdstreecmd = treetool_template.format(cdsTrim, iqtree_opts0 + ' -mset GTR ' if self.fast else iqtree_opts0)
-				peptreecmd = treetool_template.format(pepTrim, iqtree_opts0 + ' -mset JTT ' if self.fast else iqtree_opts0)
+				cdstreecmd = treecmd_cds(cdsTrim)
+				peptreecmd = treecmd_pep(pepTrim)
 			elif self.tree_tool == 'fasttree':
-				cdstreecmd = treetool_template.format('-gtr -nt', cdsTrim, cdsTrim)
-				peptreecmd = treetool_template.format('', pepTrim, pepTrim)
+				cdstreecmd = treecmd_cds(cdsTrim)
+				peptreecmd = treecmd_pep(pepTrim)
 			pep = True
 			if self.cds:
 				cmd = pal2nal_template.format(pepAln, cdsSeq, cdsAln)
