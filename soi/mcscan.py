@@ -3310,6 +3310,8 @@ class ToAstral(ColinearGroups):
 		iqtree_template = 'iqtree2 -redo -s {} %s -nt 1 {} > /dev/null' % (
 			self.iqtree_opts, )
 		fasttree_template = 'FastTree {} {} > {}.treefile 2> /dev/null'
+		treetool_template = {'iqtree':iqtree_template, 'fasttree':fasttree_template}
+		treetool_template = treetool_template[self.tree_tool]
 		reroot_template = 'mv {tree} {tree}.bk && nw_reroot -l {tree}.bk {root} | nw_order -c n - > {tree}'
 		aligner_template = {'mafft': mafft_template, 'muscle5': muscle5_template, 'muscle3': muscle3_template}
 		aligner_template = aligner_template[self.aligner]
@@ -3387,17 +3389,20 @@ class ToAstral(ColinearGroups):
 			cmd = aligner_template.format(pepSeq, pepAln)
 			cmds += [cmd]
 			iqtree_opts0 = ''  # ' -o {} '.format(root) if root else ''
+			if self.tree_tool == 'iqtree':
+				cdstreecmd = treetool_template.format(cdsTrim, iqtree_opts0 + ' -mset GTR ' if self.fast else iqtree_opts0)
+				peptreecmd = treetool_template.format(pepTrim, iqtree_opts0 + ' -mset JTT ' if self.fast else iqtree_opts0)
+			elif self.tree_tool == 'fasttree':
+				cdstreecmd = treetool_template.format('-gtr -nt', cdsTrim, cdsTrim)
+				peptreecmd = treetool_template.format('', pepTrim, pepTrim)
 			pep = True
 			if self.cds:
-				iqtree_opts = iqtree_opts0 + ' -mset GTR ' if self.fast else iqtree_opts0
 				cmd = pal2nal_template.format(pepAln, cdsSeq, cdsAln)
 				cmds += [cmd]
 				if not self.onlyaln:
 					cmd = trimal_template.format(cdsAln, cdsTrim)
 					cmds += [cmd]
-					cmd = iqtree_template.format(cdsTrim, iqtree_opts)
-					if self.tree_tool == 'fasttree':
-						cmd = fasttree_template.format('-gtr -nt', cdsTrim, cdsTrim)
+					cmd = cdstreecmd
 					cmds += [cmd]
 				if root:
 					cmd = reroot_template.format(tree=cdsTreefile, root=root)
@@ -3406,12 +3411,9 @@ class ToAstral(ColinearGroups):
 				cdsAlnfiles += [cdsTrim]
 				pep = True if self.both else False
 			if pep and not self.onlyaln:
-				iqtree_opts = iqtree_opts0 + ' -mset JTT ' if self.fast else iqtree_opts0
 				cmd = trimal_template.format(pepAln, pepTrim)
 				cmds += [cmd]
-				cmd = iqtree_template.format(pepTrim, iqtree_opts)
-				if self.tree_tool == 'fasttree':
-					cmd = fasttree_template.format('', pepTrim, pepTrim)
+				cmd = peptreecmd
 				cmds += [cmd]
 				if root:
 					cmd = reroot_template.format(tree=pepTreefile, root=root)
