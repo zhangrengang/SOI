@@ -3181,13 +3181,14 @@ def orthomcl_stats(source='orthomcl', **kargs):
 class ToAstral(ColinearGroups):
 	def __init__(self, input=None, pep=None, spsd=None, cds=None, tmpdir='tmp', root=None, both=True, suffix=None,
 				 ncpu=50, max_taxa_missing=0.5, max_mean_copies=10, max_copies=5, singlecopy=False, onlyaln=False,
-				 source=None, orthtype='orthologues', fast=False, concat=False, clean=False, overwrite=False,
+				 source=None, orthtype='orthologues', fast=False, concat=False, clean=False, overwrite=False,tree_tool='iqtree',
 				 aligner='muscle', trimal_opts='-automated1', iqtree_opts=''):
 		self.input = input
 		self.pep = pep
 		self.cds = cds
 		self.spsd = spsd
 		self.root = root.split() if isinstance(root, str) else root
+		self.tree_tool = tree_tool
 		self.both = both
 		self.ncpu = ncpu
 		self.tmpdir = tmpdir
@@ -3308,6 +3309,16 @@ class ToAstral(ColinearGroups):
 			self.trimal_opts, )
 		iqtree_template = 'iqtree2 -redo -s {} %s -nt 1 {} > /dev/null' % (
 			self.iqtree_opts, )
+		fasttree_template = 'FastTree {} {} > {}.treefile 2> /dev/null'
+		treetool_template = {'iqtree':iqtree_template, 'fasttree':fasttree_template}
+		treetool_template = treetool_template[self.tree_tool]
+		iqtree_opts0 = ''  # ' -o {} '.format(root) if root else ''
+		if self.tree_tool == 'iqtree':
+			treecmd_cds = lambda aln: treetool_template.format(aln,iqtree_opts0 + (' -mset GTR ' if self.fast else ''))
+			treecmd_pep = lambda aln: treetool_template.format(aln,iqtree_opts0 + (' -mset JTT ' if self.fast else ''))
+		elif self.tree_tool == 'fasttree':
+			treecmd_cds = lambda aln: treetool_template.format('-gtr -nt', aln, aln)
+			treecmd_pep = lambda aln: treetool_template.format('', aln, aln)
 		reroot_template = 'mv {tree} {tree}.bk && nw_reroot -l {tree}.bk {root} | nw_order -c n - > {tree}'
 		aligner_template = {'mafft': mafft_template, 'muscle5': muscle5_template, 'muscle3': muscle3_template}
 		aligner_template = aligner_template[self.aligner]
@@ -3320,6 +3331,7 @@ class ToAstral(ColinearGroups):
 		cmd_list = []
 		roots = []
 		i, j = 0, 0
+		d_cdsmissing = {}
 		for og in self.lazy_get_groups(orthtype=self.orthtype):
 			# compatible with single-copy, low-copy, and limited-copy
 			got_sp = [(sp, genes) for sp, genes in list(og.spdict.items())
@@ -3343,7 +3355,6 @@ class ToAstral(ColinearGroups):
 			f_pep = open(pepSeq, 'w')
 			f_cds = open(cdsSeq, 'w')
 			d_root = {}
-			d_cdsmissing = {}
 			for gene, sp in iters:
 				try:
 					rc = d_pep[gene]
@@ -3385,15 +3396,16 @@ class ToAstral(ColinearGroups):
 			cmd = aligner_template.format(pepSeq, pepAln)
 			cmds += [cmd]
 			iqtree_opts0 = ''  # ' -o {} '.format(root) if root else ''
+			cdstreecmd = treecmd_cds(cdsTrim)
+			peptreecmd = treecmd_pep(pepTrim)
 			pep = True
 			if self.cds:
-				iqtree_opts = iqtree_opts0 + ' -mset GTR ' if self.fast else iqtree_opts0
 				cmd = pal2nal_template.format(pepAln, cdsSeq, cdsAln)
 				cmds += [cmd]
 				if not self.onlyaln:
 					cmd = trimal_template.format(cdsAln, cdsTrim)
 					cmds += [cmd]
-					cmd = iqtree_template.format(cdsTrim, iqtree_opts)
+					cmd = cdstreecmd
 					cmds += [cmd]
 				if root:
 					cmd = reroot_template.format(tree=cdsTreefile, root=root)
@@ -3402,10 +3414,9 @@ class ToAstral(ColinearGroups):
 				cdsAlnfiles += [cdsTrim]
 				pep = True if self.both else False
 			if pep and not self.onlyaln:
-				iqtree_opts = iqtree_opts0 + ' -mset JTT ' if self.fast else iqtree_opts0
 				cmd = trimal_template.format(pepAln, pepTrim)
 				cmds += [cmd]
-				cmd = iqtree_template.format(pepTrim, iqtree_opts)
+				cmd = peptreecmd
 				cmds += [cmd]
 				if root:
 					cmd = reroot_template.format(tree=pepTreefile, root=root)
