@@ -3396,12 +3396,8 @@ class ToAstral(ColinearGroups):
 			cmd = aligner_template.format(pepSeq, pepAln)
 			cmds += [cmd]
 			iqtree_opts0 = ''  # ' -o {} '.format(root) if root else ''
-			if self.tree_tool == 'iqtree':
-				cdstreecmd = treecmd_cds(cdsTrim)
-				peptreecmd = treecmd_pep(pepTrim)
-			elif self.tree_tool == 'fasttree':
-				cdstreecmd = treecmd_cds(cdsTrim)
-				peptreecmd = treecmd_pep(pepTrim)
+			cdstreecmd = treecmd_cds(cdsTrim)
+			peptreecmd = treecmd_pep(pepTrim)
 			pep = True
 			if self.cds:
 				cmd = pal2nal_template.format(pepAln, cdsSeq, cdsAln)
