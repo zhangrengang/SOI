@@ -2986,10 +2986,10 @@ nw_order - > {}'.format(rooted_treefile)
 		i = 0
 		with open(genetrees, 'w') as fout:
 			for iqtreefile in treefiles:
-				if not os.path.exists(iqtreefile):
+				if not os.path.exists(iqtreefile) or os.path.getsize(iqtreefile) == 0:
 					i += 1
 					if i < 10:
-						logger.warn('{} not exists'.format(iqtreefile))
+						logger.warn('{} not exists or is empty'.format(iqtreefile))
 					elif i == 10:
 						logger.warn('...')
 					continue
