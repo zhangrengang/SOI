@@ -258,9 +258,10 @@ class XCollinearity:
 		#	logger.info('\t{} homologous pairs'.format(len(ortholog_pairs)))
 		logger.info('parsing synteny from {} collinearity files: {} ...'.format(
 			len(self.collinearities), self.collinearities[:3]))
+		d_gene = Collinearity(**self.kargs).d_gene
 		nblock, ngene = 0, 0
 		for collinearity in self.collinearities:
-			for rc in Collinearity(collinearity, **self.kargs):
+			for rc in Collinearity(collinearity, d_gene=d_gene, **self.kargs):
 				nblock += 1
 				ngene += rc.N
 				if self.orthologs is not None:
@@ -700,13 +701,16 @@ class Collinearity():
 	'''
 
 	def __init__(self, collinearity=None, gff=None, chrmap=None, kaks=None,
-				 homology=False, source=None, **ks_args):
+				 d_gene=None, homology=False, source=None, **ks_args):
 		self.collinearity = collinearity
 		self.gff = gff
 		self.chrmap = chrmap
 		self.kaks = kaks
 		self.d_kaks = self.parse_kaks(**ks_args)
-		self.d_gene = self.parse_gff()
+		if not d_gene:
+			self.d_gene = self.parse_gff()
+		else:
+			self.d_gene = d_gene
 		self.d_chr = self.map_chr()
 		self.homology = homology
 		self.source = source
