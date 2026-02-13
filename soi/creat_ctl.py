@@ -140,8 +140,8 @@ def is_chr0(chr, raw=True):	# not a ture chromosome
 #		print >>sys.stderr, chr, match.groups()
 	if match and match.groups()[0] == '0':	# chr0
 		return True
-	elif raw and re.compile(r'[MP]t', re.I).match(chr) and not re.compile(r'ptg', re.I).match(chr) :	# Mt
-		return True
+#	elif raw and re.compile(r'[MP]t', re.I).match(chr) and not re.compile(r'ptg', re.I).match(chr) :	# Mt
+#		return True
 	elif not re.compile(r'\d', re.I).search(chr):	# chrUn
 		return True
 	else:

@@ -361,7 +361,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		kXs += [None, None]  # points not plot
 		kYs += [None, None]
 		Ks += [0, max_ks]  # unify the scale
-		plt.scatter(kXs, kYs, marker=',', s=point_size, c=Ks, cmap=cmap, )
+		plt.scatter(kXs, kYs, marker=',', s=point_size, c=Ks, cmap=cmap, rasterized=True,)
 	if same_sp:
 		plt.plot((xmin, xmax), (ymin, ymax), ls='--',
 				 color="grey", linewidth=0.8)
@@ -504,7 +504,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	logger.info('Output figures: {}'.format(outplots))
 	logging.disable()
 	for outplot in outplots:
-		plt.savefig(outplot, bbox_inches='tight')
+		plt.savefig(outplot, bbox_inches='tight', dpi=400) # transparent=True
 
 	# x/y ~ Ks
 	if plot_bin:

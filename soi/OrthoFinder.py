@@ -1122,19 +1122,20 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(
 
 	def get_paralogs2(self, sps=None, sp=None, byName=True):
 		'''Retrieve paralogs from Orthologues/'''
-		if sp is not None:
+		if len(sps) == 1 and sp is None:
+			sp = sps[0]
+		if sp:
 			if not byName:
-				sp, = self.spId2Name(sp)
+				sp, = self.spId2Name([sp])
 			orthoFiles = glob.glob(
-				'{}/Orthologues/*{}*.tsv'.format(self.ResultsDir, sp))
-		elif sps is not None:
+				'{}/Orthologues/Orthologues_{}/*.tsv'.format(self.ResultsDir, sp))
+		elif sps:
 			orthoFiles = []
-			for sp in sps:
-				for sp1, sp2 in itertools.permutations(sps, 2):
-					if not byName:
-						sp1, sp2 = self.spId2Name(sp)
-					orthoFiles += ['{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(
-						self.ResultsDir, sp1, sp1, sp2)]
+			for sp1, sp2 in itertools.permutations(sps, 2):
+				if not byName:
+					sp1, sp2 = self.spId2Name(sp1, sp2)
+				orthoFiles += ['{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(
+					self.ResultsDir, sp1, sp1, sp2)]
 		else:
 			orthoFiles = self.Orthologues
 		para_pairs = set([])
@@ -2241,6 +2242,10 @@ def get_unique_logs(OFdir, outPrefix=''):
 		for g1, g2 in result.get_paralogs3():
 			print('\t'.join([g1, g2]), file=f)
 
+def get_paralogs2(OFdir, sps=None, out_para=sys.stdout):
+	result = OrthoFinder(OFdir)
+	for g1, g2 in result.get_paralogs2(sps=sps):
+		print('\t'.join([g1, g2]), file=out_para)
 
 def aln2beast(inALN, outNEX, partify=True):
 	import re
@@ -2398,10 +2403,14 @@ def main():
 			sp1, sp2 = None, None
 		outHomo = sys.stdout
 		get_orthologs(OFdir, outHomo, sp1=sp1, sp2=sp2)
-	elif subcommand == 'paralogs':
+	elif subcommand == 'paralogs1':
 		OFdir = sys.argv[2]
 		outHomo = sys.stdout
 		get_paralogs(OFdir, outHomo)
+	elif subcommand == 'paralogs': # 2
+		OFdir = sys.argv[2]
+		sps = sys.argv[3:]
+		get_paralogs2(OFdir, sps)
 	elif subcommand == 'uniqlogs':
 		OFdir = sys.argv[2]
 		get_unique_logs(OFdir)

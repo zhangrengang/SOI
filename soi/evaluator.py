@@ -42,7 +42,7 @@ def eval(collinearities, orthologs, gff, ref=None, pre=None):
         rcs.refcounts = np.array(
             sorted(collections.Counter(counts.values()).items()))
         d_rcs[spp] = rcs
-    outfig = 'test.png'
+    outfig = 'test_eval.png'
     plot_eval(d_rcs, outfig)
 
 

@@ -322,7 +322,11 @@ def evaluate_orthology(ref, qry):
 		precision, recall, f1_score))
 	line = [qry, precision, recall, f1_score]
 	print('\t'.join(map(str, line)))
-
+def substract_pairs(ref, qry, fout=sys.stdout):
+	ref_pairs = set(Xpairs(ref))
+	qry_pairs = set(Xpairs(qry))
+	for p in ref_pairs-qry_pairs:
+		p.write(fout)
 
 class XOrthology:
 	'''Lazy parsing orthology'''
@@ -1238,14 +1242,21 @@ All chromosomes or scaffolds will be used.'.format(chrLst, e))
 			try: d_chrs[sp] += [chrom]
 			except KeyError: d_chrs[sp] = [chrom]
 
+		for sp in species:
+			if sp not in d_chrs:
+				print('No good chromosomes found for {}'.format(sp), file=sys.stderr)
+
 		def _filter_and_sort_chrs(chrs):
 			_chrs = sort_version([chrom for chrom in chrs if chrom in set(good_chrs)])
 			return ','.join(_chrs)
 		# ctl
 		for sp1, sp2 in itertools.combinations_with_replacement(species, 2):
 			outctl = '{}/{}-{}.ctl'.format(outdir, sp1, sp2)
-			chrs1 = _filter_and_sort_chrs(d_chrs[sp1])
-			chrs2 = _filter_and_sort_chrs(d_chrs[sp2])
+			try: 
+				chrs1 = _filter_and_sort_chrs(d_chrs[sp1])
+				chrs2 = _filter_and_sort_chrs(d_chrs[sp2])
+			except KeyError as e:
+				continue
 			with open(outctl, 'w') as f:
 				f.write('2000\n2000\n{}\n{}\n'.format(chrs1, chrs2))
 		# close files
@@ -3793,6 +3804,10 @@ def main():
 	elif subcmd == 'eval_ortho':
 		ref, qry = sys.argv[2:4]
 		evaluate_orthology(ref, qry)
+
+	elif subcmd == 'substract':  # ref - qry
+		ref, qry = sys.argv[2:4]
+		substract_pairs(ref, qry)
 	elif subcmd == 'homologs':  # orthologs + paralogs
 		OFdir = sys.argv[2]
 		outHomo = sys.stdout
