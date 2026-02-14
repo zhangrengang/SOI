@@ -256,9 +256,11 @@ class XCollinearity:
 		if self.orthologs is not None:
 			ortholog_pairs = set(XOrthology(self.orthologs, **self.kargs))
 		#	logger.info('\t{} homologous pairs'.format(len(ortholog_pairs)))
+		common = Collinearity(**self.kargs).__dict__
+		
 		logger.info('parsing synteny from {} collinearity files: {} ...'.format(
 			len(self.collinearities), self.collinearities[:3]))
-		common = Collinearity(**self.kargs).__dict__
+#		print(common.keys())
 		nblock, ngene = 0, 0
 		for collinearity in self.collinearities:
 			for rc in Collinearity(collinearity, inherit=common, **self.kargs):
@@ -573,7 +575,7 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 			rd += 1
 			remove = True
 		# remove blocks by OI
-		elif not (min_ratio < rc.oi <= max_ratio):
+		elif not (min_ratio <= rc.oi <= max_ratio):  # inconsistent with dotplotter
 			ro += 1
 			remove = True
 		if remove:
@@ -601,11 +603,11 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 		for pair in rc.ortholog_pairs - removed_pairs:
 			pair.write(fout)
 	post_nao = len(rc.ortholog_pairs - removed_pairs)
-	for pair in rc.ortholog_pairs:
-		sp_pair = pair.species
-		if sp_pair not in d_sp_count:
-			continue
-		d_sp_count[sp_pair].pre_no += 1
+	if out_stats:
+		for pair in rc.ortholog_pairs:  # slow
+			sp_pair = pair.species
+			try :d_sp_count[sp_pair].pre_no += 1
+			except KeyError: continue
 	# summary
 	logger.info('Synteny: Pre-filter: {} blocks, {} pairs; \
 Post-filter: {} ({:.1%}) blocks, {} ({:.1%}) pairs.'.format(
@@ -614,7 +616,7 @@ Post-filter: {} ({:.1%}) blocks, {} ({:.1%}) pairs.'.format(
 Post-filter: {} ({:.1%}) syntenic pairs; {} pairs within removed blocks.'.format(
 		rc.ton, post_nso, 1.0*post_nso/rc.ton, rc.ton-post_nao))
 	logger.info('OrthoIndex: Pre-filter: {:.3f}; \
-Post-filter: {:.3f}; {:.3f} for removed blocks.'.format(
+Post-filter: {:.3f}; {:.3f} in removed blocks.'.format(
 		pre_total_oi/pre_ng, divide(total_oi, post_ng),
 		divide((pre_total_oi-total_oi), (pre_ng-post_ng))))
 

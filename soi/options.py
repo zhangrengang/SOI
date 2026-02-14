@@ -46,7 +46,7 @@ def args_filter(parser):
 	parser.add_argument('-d', '-min_dist',  type=int, default=None,
 						dest='min_dist',  metavar='INT',
 						help="Minimum distance to remove a tandem repeated block [default=%(default)s]")
-	parser.add_argument('-stat', default=None,
+	parser.add_argument('-stat', default=None, metavar='FILE',
 						dest='out_stats', type=str,
 						help="Output stats by species pairs. [default=%(default)s]")
 	parser.add_argument('-oo', default=False,

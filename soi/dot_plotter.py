@@ -808,7 +808,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 			d_blocks[(chr1, chr2)] += [(genes1, genes2, ks)]
 		except KeyError:
 			d_blocks[(chr1, chr2)] = [(genes1, genes2, ks)]
-		if chr1 in chrs2s and chr2 in chrs1s:  # same species
+		if chr1 in chrs2s and chr2 in chrs1s:  # same species, double blocks
 			try:
 				d_blocks[(chr2, chr1)] += [(genes2, genes1, ks)]
 			except KeyError:
@@ -857,6 +857,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 			if not points:
 				continue
 			xblocks += [points]
+
 	if n > 0 and len(xblocks) == 0:
 		logger.warn(
 			'No genes can be found in `Gff`. Check your files.')
