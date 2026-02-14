@@ -3,9 +3,13 @@ import os
 import argparse
 from .RunCmdsMP import logger
 from .__version__ import version
+import logging
+
+# 禁用 fontTools 的所有 INFO 级别日志
+logging.getLogger('fontTools').setLevel(logging.WARNING)
+
 
 bindir = os.path.dirname(os.path.realpath(__file__))
-
 
 def args_common(parser):
 	pass
@@ -21,6 +25,14 @@ def func_dotplot(**kargs):
 	from .dot_plotter import xmain as dot_plotter
 	dot_plotter(**kargs)
 
+def args_depth(parser):
+	from .ploidy_plotter import ploidy_args
+	args = ploidy_args(parser)
+	return dict(args=args)
+
+def func_depth(**kargs):
+	from .ploidy_plotter import xmain as ploidy_plotter
+	ploidy_plotter(**kargs)
 
 def args_filter(parser):
 	parser.add_argument('-s', '-synteny', required=True,  type=str,  nargs='*',
@@ -214,7 +226,7 @@ def func_phylo(**kargs):
 def makeArgs():
 	parser = argparse.ArgumentParser(
 		formatter_class=argparse.RawDescriptionHelpFormatter,
-		description='Play with Orthology Index',
+		description='Play with Orthology Index and orthologs synteny.',
 	)
 	parser.add_argument(
 		'-v', '--version',
@@ -224,23 +236,26 @@ def makeArgs():
 	# subcommands
 	subparsers = parser.add_subparsers(help='sub-command help')
 	parser_dot = subparsers.add_parser('dotplot',
-									   help='Generate Ks/OI-colored dot plots')
+									   help='Generate Ks/OI-colored dot plots.')
 	args_dotplot(parser_dot)
 	parser_flt = subparsers.add_parser('filter',
-									   help='Filter synteny with Orthology Index (standard output)')
+									   help='Filter synteny by Orthology Index.')
 	args_filter(parser_flt)
 	parser_clst = subparsers.add_parser('cluster',
-										help='Cluster syntenic orthogroups (SOGs)')
+										help='Cluster syntenic orthogroups (SOGs).')
 	args_cluster(parser_clst)
 	parser_ogrp = subparsers.add_parser('outgroup',
-										help='Add outgroups for SOGs from synteny')
+										help='Add outgroups for SOGs from synteny.')
 	args_outgroup(parser_ogrp)
 	parser_phylo = subparsers.add_parser('phylo',
-										 help='Build gene trees from SOGs')
+										 help='Build gene trees from SOGs.')
 	args_phylo(parser_phylo)
 	parser_stats = subparsers.add_parser('stats',
-										 help='Make statistics of SOGs for phylogeny')
+										 help='Make statistics of SOGs for phylogeny.')
 	args_stats(parser_stats)
+	parser_depth = subparsers.add_parser('depth',
+										 help='Bar plots for synteny depth')
+	args_depth(parser_depth)
 
 	if len(sys.argv) == 1:
 		parser.print_help(sys.stderr) 
@@ -256,6 +271,7 @@ FUNC = {
 	'outgroup': func_outgroup,
 	'phylo': func_phylo,
 	'stats': func_stats,
+	'depth': func_depth,
 }
 
 

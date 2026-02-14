@@ -496,7 +496,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		titles = [None]
 		_xlabel = 'Synteny depth (X / Y)' # 'Relative ploidy (x / y)'
 		plot_fold(ax, titles, coord_path2, coord_graph2, coord_graph1, ortholog_graph,
-				  xlabel=_xlabel, ylabel=None, fontsize=labsize*0.9, **kargs)
+				  xlabel=_xlabel, ylabel=None, fontsize=labsize*0.9, mode='a', **kargs)
 		if number_plots:
 			plot_label(ax, label, fontsize=lsize)
 	plt.subplots_adjust(hspace=0.35, wspace=0.3)
