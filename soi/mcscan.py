@@ -575,7 +575,7 @@ def identify_orthologous_blocks(collinearities=None, orthologs=None, fout=sys.st
 			rd += 1
 			remove = True
 		# remove blocks by OI
-		elif not (min_ratio <= rc.oi <= max_ratio):  # inconsistent with dotplotter
+		elif not (min_ratio < rc.oi <= max_ratio):  # inconsistent with dotplotter
 			ro += 1
 			remove = True
 		if remove:
