@@ -640,8 +640,8 @@ Post-filter: {:.3f}; {:.3f} in removed blocks.'.format(
 				 divide(self.retained_oi, self.post_ng)]
 		tp, fp = self.retained_oi, self.removed_oi,
 		tn, fn = self.pre_ng-self.post_ng, self.post_ng - self.retained_oi
-		recall = tp/(tp+fn)
-		precision = tp/(tp+fp)
+		recall = tp/(tp+fn) if tp+fn > 0 else None
+		precision = tp/(tp+fp) if tp+fp > 0 else None
 		line += [precision, recall]
 		print('\t'.join(map(str, line)), file=out_stats)
 	out_stats.close()

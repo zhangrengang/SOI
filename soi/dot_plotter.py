@@ -13,6 +13,7 @@ import matplotlib.cm as cm
 
 mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
+#mpl.rcParams['image.antialiased'] = False
 
 from .RunCmdsMP import logger
 from .WGDI import AK
@@ -99,7 +100,7 @@ def dotplot_args(parser):
 						   help="basic font size of labels [default=%(default)s]")
 	group_dot.add_argument('--cfont_scale', metavar='NUM', type=float, default=0.8,
 							help="scaling factor for font size of chromosome labels [default=%(default)s]")
-	group_dot.add_argument('--dotsize', metavar='NUM', type=float, default=1, dest='point_size',
+	group_dot.add_argument('--dotsize', metavar='NUM', type=float, default=5, dest='point_size',
 						   help="dot size [default=%(default)s]")
 
 	group_orth = parser.add_argument_group('Orthology Index filter/color',
@@ -346,6 +347,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	ymin, ymax = 0, ylim
 	xmin, xmax = 0, xlim
 
+	
 	if ks is not None:
 		try:
 			min_ks = min([v for v in Ks if v >= 0])
@@ -361,7 +363,9 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		kXs += [None, None]  # points not plot
 		kYs += [None, None]
 		Ks += [0, max_ks]  # unify the scale
-		plt.scatter(kXs, kYs, marker=',', s=point_size, c=Ks, cmap=cmap, rasterized=True,)
+		plt.scatter(kXs, kYs, marker=',', s=point_size, c=Ks, cmap=cmap, 
+			rasterized=True, edgecolors='none',linewidths=0,
+			)
 	if same_sp:
 		plt.plot((xmin, xmax), (ymin, ymax), ls='--',
 				 color="grey", linewidth=0.8)
@@ -504,7 +508,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	logger.info('Output figures: {}'.format(outplots))
 	logging.disable()
 	for outplot in outplots:
-		plt.savefig(outplot, bbox_inches='tight', dpi=400) # transparent=True
+		plt.savefig(outplot, bbox_inches='tight', dpi=400, transparent=True) # transparent=True
 
 	# x/y ~ Ks
 	if plot_bin:

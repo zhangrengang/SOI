@@ -932,7 +932,10 @@ class OrthoFinder:
 		if sps is None:
 			spIds = list(d_sp.values())
 		else:
-			spIds = [d_sp[sp] for sp in sps]
+			nofound = [sp for sp in sps if sp not in d_sp]
+			if nofound:
+				print('{} is not found'.format(nofound), file=sys.stderr)
+			spIds = [d_sp.get(sp) for sp in sps if sp in d_sp]
 		spIds = sorted(spIds)
 		for sp1, sp2 in itertools.product(spIds, spIds):
 			blast = '{}/Blast{}_{}.txt.gz'.format(

@@ -116,16 +116,17 @@ def plot_fold(collinearity, gff, ref, qry, **kargs):
 							**kargs)
 		data += [np.array(sorted(d_fold.items()))]
 		#print(sp, sorted(d_fold.items()))
-	return plot_bars(data, **kargs)
+	return plot_bars(data, ref=ref, **kargs)
 
 
 def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1, fontsize=10, 
 			  suptitle=None, max_ploidy=10, color='white', edgecolor='black',
 			  ylabel='Number of windows', xlabel='Synteny depth', 
-			  output_depth=None, mode='w', 
+			  output_depth=None, mode='w', ref=None,
 			  **kargs):
 	if output_depth:
-		save_depth_table(data, titles, output_depth=output_depth, mode=mode, max_ploidy=max_ploidy)
+		save_depth_table(data, titles, output_depth=output_depth, 
+			mode=mode, max_ploidy=max_ploidy, ref=ref)
 	if ax is None:
 		if nrow*ncol == 1:
 			ax = plt.subplot(111)
@@ -161,12 +162,12 @@ def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1, fontsize=10,
 			plt.savefig(outfig)
 	else:
 		return ax
-def save_depth_table(data, titles, output_depth=None, mode='w', max_ploidy=10):
+def save_depth_table(data, titles, ref=None, output_depth=None, mode='w', max_ploidy=10):
     """
     每行一个物种，列为不同深度 (1 to max_ploidy)
     """
     # 1. 构建表头: Species, 1, 2, 3, ..., 10+
-    header = ["Species"] + [str(i) for i in range(1, max_ploidy)] + [f"{max_ploidy}+"]
+    header = ['Reference', "Query"] + [str(i) for i in range(1, max_ploidy)] + [f"{max_ploidy}+"]
     
     rows = [header]
     
@@ -183,14 +184,14 @@ def save_depth_table(data, titles, output_depth=None, mode='w', max_ploidy=10):
                 counts[depth] += count
         
         # 构造当前行：物种名 + 各深度的计数
-        row = [species] + [str(counts[p]) for p in range(1, max_ploidy + 1)]
+        row = [str(ref), species] + [str(counts[p]) for p in range(1, max_ploidy + 1)]
         rows.append(row)
 
     # 3. 拼接为 TSV 文本
     output_text = "\n".join(["\t".join(row) for row in rows]) + "\n"
 
     # 4. 输出
-    if output_depth:
+    if output_depth and output_depth != 'stdout':
         with open(output_depth, mode=mode, encoding='utf-8') as f:
             f.write(output_text)
     else:
