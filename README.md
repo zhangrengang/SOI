@@ -14,6 +14,7 @@
       - [outgroup](#outgroup)
       - [phylo](#phylo)
       - [dotplot](#dotplot)
+      - [depth](#depth)
    * [Other functions](#other-functions)
       - [Macro-synteny phylogeny](#Macro-synteny-phylogeny)
 	  - [Allele identification](#Allele-identification)
