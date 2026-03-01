@@ -421,6 +421,46 @@ Plot Ks by bins:
 
 Usage examples: see [Quick Start](#Quick-Start).
 
+#### `depth` ####
+The subcommand `depth` enables visualization of synteny depth (window-based),
+with one genome as the reference.
+```
+$ soi depth -h
+usage: soi depth [-h] -s FILE [FILE ...] -g FILE [FILE ...] -r reference -q queries [queries ...] [-o STR] [--format figure file out format] [--nrow nrow] [--window_size INT]
+                 [--window_step INT] [--min_block INT] [--max_ploidy INT] [--max_distance INT] [--min_overlap FLOAT] [--output_depth FILE] [--color COLOR] [--edgecolor COLOR]
+
+options:
+  -h, --help            show this help message and exit
+  -s FILE [FILE ...]    syntenic block file (*.collinearity, output of MCSCANX/WGDI)[required]
+  -g FILE [FILE ...]    gene annotation gff file (*.gff, one of MCSCANX/WGDI input)[required]
+  -r reference, --ref reference
+                        reference species
+  -q queries [queries ...], --qry queries [queries ...]
+                        query species
+  -o STR, --output STR  the output file prefix.
+  --format figure file out format
+                        default=['pdf', 'png']
+  --nrow nrow           number of rows. default=None
+  --window_size INT     window_size. [default=50]
+  --window_step INT     window_step. [default=10]
+  --min_block INT       min genes for a block. [default=None]
+  --max_ploidy INT      upper limit for x axis. [default=10]
+  --max_distance INT    max distance from anchor genes. [default=20]
+  --min_overlap FLOAT   min overlap for covering a reference window. [default=0.4]
+  --output_depth FILE   output depth data to a file. [default=None]
+  --color COLOR         bar fill color. [default=None]
+  --edgecolor COLOR     bar edge color. [default=None]
+
+```
+Usage examples:
+```
+# specify multiple queries:
+soi depth -s collinearity.ortho -g ../all_species_gene.gff -r Vitis_vinifera -q Daucus_carota Angelica_sinensis Apium_graveolens
+
+# specify window size and step:
+soi depth -s collinearity.ortho -g ../all_species_gene.gff -r Vitis_vinifera -q Daucus_carota Angelica_sinensis Apium_graveolens --window_size 60 --window_step 1
+
+```
 ### Other functions ###
 Other functions can be found in [SOI-tools](SOI-tools.md). Related functions can be requested by users via [issues](https://github.com/zhangrengang/SOI/issues).
 #### Macro-synteny phylogeny ####
