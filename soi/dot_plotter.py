@@ -13,7 +13,6 @@ import matplotlib.cm as cm
 
 mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
-args = makeArgparse()
 
 from .RunCmdsMP import logger
 from .WGDI import AK
