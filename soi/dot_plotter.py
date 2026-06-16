@@ -92,8 +92,6 @@ def dotplot_args(parser):
 						   help="species for x axis; automatically uses all its chromosomes from GFF. [default=%(default)s]")
 	group_dot.add_argument('--ysp', metavar='SPECIES', type=str, default=None,
 						   help="species for y axis; automatically uses all its chromosomes from GFF. [default=%(default)s]")
-	group_dot.add_argument('--no-rasterize', action='store_false', dest='rasterize', default=True, help="disable rasterization for vector figures (larger file size). [default: rasterize=True]")
-	group_dot.add_argument('--sfont-scale', metavar='FLOAT', type=float, default=2.5, help="scale factor for species label font size. [default=%(default)s]")
 	group_dot.add_argument('--xlabel', type=str, default=None,
 						   help="x label (species) for dot plot (top). [default=%(default)s]")
 	group_dot.add_argument('--ylabel', type=str, default=None,
@@ -104,8 +102,10 @@ def dotplot_args(parser):
 						   help="basic font size of labels [default=%(default)s]")
 	group_dot.add_argument('--cfont_scale', metavar='NUM', type=float, default=0.8,
 							help="scaling factor for font size of chromosome labels [default=%(default)s]")
+	group_dot.add_argument('--sfont_scale', metavar='FLOAT', type=float, default=2.5, help="scale factor for species label font size. [default=%(default)s]")
 	group_dot.add_argument('--dotsize', metavar='NUM', type=float, default=5, dest='point_size',
 						   help="dot size [default=%(default)s]")
+	group_dot.add_argument('--no-rasterize', action='store_false', dest='rasterize', default=True, help="disable rasterization for vector figures (larger file size). [default: rasterize=True]")
 
 	group_anc = parser.add_argument_group('Ancestor / Subgenome',
 										   'ancestor/subgenome-based coloring and chromosome bars')
@@ -374,19 +374,24 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 				clip_ks=None, min_block=None, ks_step=0.02,
 				xlabels=None, ylabels=None, xpositions=None, ypositions=None,
 				xelines=None, yelines=None, xlim=None, ylim=None,
-				figsize=18, fontsize=10, cfont_scale=0.8, lfont_scale=1.5, point_size=0.8, 
+				figsize=18, fontsize=10, cfont_scale=0.8, sfont_scale=2.5, 
+				lfont_scale=1.5, point_size=0.8, 
 				xclines=None, yclines=None,
 				plot_bin=None, output_hist=False,
-		xoffset=None, yoffset=None, xbars=None, ybars=None, gff=None,
-		xanc=None, yanc=None, colorby_sg=None, colorby_anc=None,
-		bar_colorby_sg=False, sg_colors=None,
-		gene_axis=None, xbarlab=True, ybarlab=True,
+				xoffset=None, yoffset=None, xbars=None, ybars=None, gff=None,
+				xanc=None, yanc=None, colorby_sg=None, colorby_anc=None,
+				bar_colorby_sg=False, sg_colors=None,
+				gene_axis=None, xbarlab=True, ybarlab=True,
 				hist_ylim=None, xlabel=None, ylabel=None, remove_prefix=True,
 				number_plots=True, same_sp=False, cbar=False,
 				ploidy=False, ploidy_data=None, ortholog_graph=None,
 				of_color=False, homology=False, rasterize=True, **kargs
 				):
 	xcsize = ycsize = fontsize * cfont_scale  # chromosome labels
+	xsize = ysize = fontsize * sfont_scale	 # species labels
+	labsize = fontsize * lfont_scale	# x/y labels of b-d plots
+	lsize = fontsize * 1.7		# a-d labels
+
 	# resolve custom subgenome colors
 	sg_colors = sg_colors or _sg_colors
 	# warn if no dot coloring mode is active
@@ -403,9 +408,6 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			if anc_file:
 				_warn_sg_palette(anc_file, sg_colors)
 				break
-	xsize = ysize = fontsize * args.sfont_scale	 # species labels
-	labsize = fontsize * lfont_scale	# x/y labels of b-d plots
-	lsize = fontsize * 1.7		# a-d labels
 	ax_xbin = ax_ybin = None
 	if xlabel is not None and xlabels is not None and remove_prefix:
 		logger.info('trying to remove the same prefix for X chromosome labels: {}...'.format(xlabels[:100]))
