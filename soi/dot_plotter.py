@@ -336,7 +336,7 @@ def main(args):
 		prefix += '.diagonal'
 	if kaks and args.plot_dot:  # skip
 		outplots = [prefix + '.dot.' + fmt for fmt in args.format]
-		plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=None,
+		plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=None, rasterize=kargs.get("rasterize", True),
 					xlabels=chrs1, ylabels=chrs2,
 					xpositions=xpositions, ypositions=ypositions,
 					xelines=lines1, yelines=lines2,
@@ -356,7 +356,7 @@ def main(args):
 	outplots = [prefix + '.' + fmt for fmt in args.format]
 	ks = None if kaks is None and args.ofdir is None else True
 	# plot all
-	plot_blocks(blocks, outplots, ks=ks,
+	plot_blocks(blocks, outplots, ks=ks, rasterize=kargs.get("rasterize", True),
 				xlabels=chrs1, ylabels=chrs2, same_sp=same_sp,
 				xpositions=xpositions, ypositions=ypositions,
 				xelines=lines1, yelines=lines2,  # chromosome ends
@@ -382,7 +382,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 				hist_ylim=None, xlabel=None, ylabel=None, remove_prefix=True,
 				number_plots=True, same_sp=False, cbar=False,
 				ploidy=False, ploidy_data=None, ortholog_graph=None,
-				of_color=False, homology=False, **kargs
+				of_color=False, homology=False, rasterize=True, **kargs
 				):
 	xcsize = ycsize = fontsize * cfont_scale  # chromosome labels
 	# resolve custom subgenome colors
@@ -455,9 +455,9 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		kXs += Xs
 		kYs += Ys
 		if ks is None and colorby_sg is None and colorby_anc is None:
-			plt.plot(Xs, Ys, linewidth=1.5, rasterized=True)
+			plt.plot(Xs, Ys, linewidth=1.5, rasterized=rasterize)
 		else:
-			plt.plot(Xs, Ys, color="grey", ls='-', alpha=0.45, linewidth=0.55, rasterized=True)
+			plt.plot(Xs, Ys, color="grey", ls='-', alpha=0.45, linewidth=0.55, rasterized=rasterize)
 	ymin, ymax = 0, ylim
 	xmin, xmax = 0, xlim
 
@@ -478,7 +478,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		kYs += [None, None]
 		Ks += [0, max_ks]  # unify the scale
 		plt.scatter(kXs, kYs, marker=',', s=point_size, c=Ks, cmap=cmap,
-			rasterized=True, edgecolors='none',linewidths=0,
+			rasterized=rasterize, edgecolors='none',linewidths=0,
 			)
 	# colorby-sg / colorby-anc dot coloring
 	if colorby_sg is not None or colorby_anc is not None:
@@ -507,7 +507,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 				color_arr.append(c if c else 'lightgrey')
 			plt.scatter(kXs[:len(color_arr)], kYs[:len(color_arr)],
 				marker=',', s=point_size, c=color_arr,
-				rasterized=True, edgecolors='none', linewidths=0,
+				rasterized=rasterize, edgecolors='none', linewidths=0,
 				)
 	if same_sp:
 		plt.plot((xmin, xmax), (ymin, ymax), ls='--',
