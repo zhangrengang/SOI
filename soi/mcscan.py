@@ -3740,7 +3740,7 @@ def main():
 	# List all collinearity blocks.
 	if subcmd == 'list_blocks':
 		list_blocks(collinearity=sys.argv[2], outTsv=sys.stdout,
-					gff=sys.argv[3], kaks=sys.argv[4])
+					gff=sys.argv[3], **kargs)
 	# Classify gene pairs based on the classification of collinearity blocks.
 	elif subcmd == 'gene_class':
 		gene_class(collinearity=sys.argv[2],
