@@ -337,7 +337,7 @@ def main(args):
 		prefix += '.diagonal'
 	if kaks and args.plot_dot:  # skip
 		outplots = [prefix + '.dot.' + fmt for fmt in args.format]
-		plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=None, rasterize=kargs.get("rasterize", True),
+		plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=None, rasterize=args.rasterize,
 					xlabels=chrs1, ylabels=chrs2,
 					xpositions=xpositions, ypositions=ypositions,
 					xelines=lines1, yelines=lines2,
@@ -357,7 +357,7 @@ def main(args):
 	outplots = [prefix + '.' + fmt for fmt in args.format]
 	ks = None if kaks is None and args.ofdir is None else True
 	# plot all
-	plot_blocks(blocks, outplots, ks=ks, rasterize=kargs.get("rasterize", True),
+	plot_blocks(blocks, outplots, ks=ks, rasterize=args.rasterize,
 				xlabels=chrs1, ylabels=chrs2, same_sp=same_sp,
 				xpositions=xpositions, ypositions=ypositions,
 				xelines=lines1, yelines=lines2,  # chromosome ends
