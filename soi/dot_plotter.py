@@ -104,7 +104,7 @@ def dotplot_args(parser):
 	group_dot.add_argument('--cfont-scale', metavar='NUM', type=float, default=0.8,
 							help="scaling factor for font size of chromosome labels [default=%(default)s]")
 	group_dot.add_argument('--sfont-scale', metavar='FLOAT', type=float, default=2.5, help="scale factor for species label font size. [default=%(default)s]")
-	group_dot.add_argument('--font-family', metavar='STR', type=str, default='Arial', help="global font family. [default=%(default)s]")
+	group_dot.add_argument('--font', metavar='STR', type=str, default='Arial', help="global font family. [default=%(default)s]")
 	group_dot.add_argument('--dotsize', metavar='NUM', type=float, default=5, dest='point_size',
 						   help="dot size [default=%(default)s]")
 	group_dot.add_argument('--no-rasterize', action='store_false', dest='rasterize', default=True, help="disable rasterization for vector figures (larger file size). [default: rasterize=True]")
