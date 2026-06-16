@@ -92,6 +92,7 @@ def dotplot_args(parser):
 						   help="species for x axis; automatically uses all its chromosomes from GFF. [default=%(default)s]")
 	group_dot.add_argument('--ysp', metavar='SPECIES', type=str, default=None,
 						   help="species for y axis; automatically uses all its chromosomes from GFF. [default=%(default)s]")
+	group_dot.add_argument('--no-rasterize', action='store_false', dest='rasterize', default=True, help="disable rasterization for vector figures (larger file size). [default: rasterize=True]")
 	group_dot.add_argument('--xlabel', type=str, default=None,
 						   help="x label (species) for dot plot (top). [default=%(default)s]")
 	group_dot.add_argument('--ylabel', type=str, default=None,
