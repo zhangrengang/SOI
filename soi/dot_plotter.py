@@ -13,6 +13,7 @@ import matplotlib.cm as cm
 
 mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
+args = makeArgparse()
 
 from .RunCmdsMP import logger
 from .WGDI import AK
@@ -100,9 +101,10 @@ def dotplot_args(parser):
 						   help="figure size (width [height]) [default=%(default)s]")
 	group_dot.add_argument('--fontsize', metavar='NUM', type=float, default=10,
 						   help="basic font size of labels [default=%(default)s]")
-	group_dot.add_argument('--cfont_scale', metavar='NUM', type=float, default=0.8,
+	group_dot.add_argument('--cfont-scale', metavar='NUM', type=float, default=0.8,
 							help="scaling factor for font size of chromosome labels [default=%(default)s]")
-	group_dot.add_argument('--sfont_scale', metavar='FLOAT', type=float, default=2.5, help="scale factor for species label font size. [default=%(default)s]")
+	group_dot.add_argument('--sfont-scale', metavar='FLOAT', type=float, default=2.5, help="scale factor for species label font size. [default=%(default)s]")
+	group_dot.add_argument('--font-family', metavar='STR', type=str, default='Arial', help="global font family. [default=%(default)s]")
 	group_dot.add_argument('--dotsize', metavar='NUM', type=float, default=5, dest='point_size',
 						   help="dot size [default=%(default)s]")
 	group_dot.add_argument('--no-rasterize', action='store_false', dest='rasterize', default=True, help="disable rasterization for vector figures (larger file size). [default: rasterize=True]")
@@ -173,7 +175,7 @@ def dotplot_args(parser):
 						  help=argparse.SUPPRESS)  # "clip ks > max-ks. [default=%(default)s]")
 	group_ks.add_argument('--hist-ylim', type=float, default=None,
 						  help=argparse.SUPPRESS)  # "max y axis of Ks histgram. [default=%(default)s]")
-	group_ks.add_argument('--lfont_scale', metavar='NUM', type=float, default=1.5,
+	group_ks.add_argument('--lfont-scale', metavar='NUM', type=float, default=1.5,
                             help="scaling factor for font size of x/y labels of subplots b--d [default=%(default)s]")
 
 	group_ploidy = parser.add_argument_group('Ploidy plot',
@@ -374,8 +376,8 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 				clip_ks=None, min_block=None, ks_step=0.02,
 				xlabels=None, ylabels=None, xpositions=None, ypositions=None,
 				xelines=None, yelines=None, xlim=None, ylim=None,
-				figsize=18, fontsize=10, cfont_scale=0.8, sfont_scale=2.5, 
-				lfont_scale=1.5, point_size=0.8, 
+				figsize=18, fontsize=10, point_size=0.8, 
+				cfont_scale=0.8, sfont_scale=2.5, lfont_scale=1.5, 
 				xclines=None, yclines=None,
 				plot_bin=None, output_hist=False,
 				xoffset=None, yoffset=None, xbars=None, ybars=None, gff=None,
