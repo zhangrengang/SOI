@@ -566,7 +566,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		plt.text(x, y, _xlabel, horizontalalignment='center', verticalalignment='top',
 				 fontsize=xcsize)  # , rotation=30)
 	for x in [xmin, xmax]:
-		plt.vlines(x, ymin, ymax, color=chr_color, linewidth=1)
+		pass  # outermost vlines removed (spines draw frame)
 	# Y chromosome labels and lines
 	for _ylabel, yposition, yline in zip(ylabels, ypositions, yelines):
 		y = yline
@@ -575,7 +575,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 		plt.text(x, y, _ylabel, horizontalalignment='right', verticalalignment='center',
 				 fontsize=ycsize)  # rotation=30
 	for y in [ymin, ymax]:
-		plt.hlines(y, xmin, xmax, color=chr_color, linewidth=1)
+		pass  # outermost hlines removed (spines draw frame)
 	# arm lines
 	if xclines:
 		for xline in xclines:
@@ -591,10 +591,13 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	plt.ylim(ymin, ylim)
 	plt.xticks([])
 	plt.yticks([])
-	ax.spines['right'].set_color('none')
-	ax.spines['top'].set_color('none')
-	ax.spines['left'].set_color('none')
-	ax.spines['bottom'].set_color('none')
+	ax.spines['right'].set_color('black')
+	ax.spines['top'].set_color('black')
+	ax.spines['left'].set_color('black')
+	ax.spines['bottom'].set_color('black')
+	for spine in ax.spines.values():
+		spine.set_visible(True)
+		spine.set_linewidth(0.5)
 
 	# integrated x/y ~ Ks bin plots (before color bars and species labels)
 	# tlabel must be set first
