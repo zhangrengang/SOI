@@ -93,6 +93,7 @@ def dotplot_args(parser):
 	group_dot.add_argument('--ysp', metavar='SPECIES', type=str, default=None,
 						   help="species for y axis; automatically uses all its chromosomes from GFF. [default=%(default)s]")
 	group_dot.add_argument('--no-rasterize', action='store_false', dest='rasterize', default=True, help="disable rasterization for vector figures (larger file size). [default: rasterize=True]")
+	group_dot.add_argument('--sfont-scale', metavar='FLOAT', type=float, default=2.5, help="scale factor for species label font size. [default=%(default)s]")
 	group_dot.add_argument('--xlabel', type=str, default=None,
 						   help="x label (species) for dot plot (top). [default=%(default)s]")
 	group_dot.add_argument('--ylabel', type=str, default=None,
@@ -402,7 +403,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			if anc_file:
 				_warn_sg_palette(anc_file, sg_colors)
 				break
-	xsize = ysize = fontsize * 2.5	 # species labels
+	xsize = ysize = fontsize * args.sfont_scale	 # species labels
 	labsize = fontsize * lfont_scale	# x/y labels of b-d plots
 	lsize = fontsize * 1.7		# a-d labels
 	ax_xbin = ax_ybin = None
@@ -597,7 +598,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	ax.spines['bottom'].set_color('black')
 	for spine in ax.spines.values():
 		spine.set_visible(True)
-		spine.set_linewidth(0.5)
+		spine.set_linewidth(1.0)
 
 	# integrated x/y ~ Ks bin plots (before color bars and species labels)
 	# tlabel must be set first
