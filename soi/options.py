@@ -453,8 +453,8 @@ CMD_GROUPS = OrderedDict([
 		('cluster',  'Cluster orthologous synteny into syntenic orthogroups (SOGs).'),
 		('outgroup', 'Add outgroups to SOGs.'),
 		('detandem', 'Remove tandem duplicate genes from SOGs.'),
-		('hog',      'Split HOGs from SOGs using synteny and species tree.'),
-		('prune',     'Prune SOGs to single-copy per species based on HOGs.'),
+		('hog',      'Split Hierarchical Orthologous Groups (HOGs) from SOGs using synteny and species tree.'),
+		('prune',    'Prune SOGs to single-copy per species based on HOGs.'),
 	]),
 	('Phylogenomics', [
 		('phylo', 'Reconstruct gene trees from SOGs.'),
