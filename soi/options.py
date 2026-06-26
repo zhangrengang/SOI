@@ -35,6 +35,14 @@ def func_depth(**kargs):
 	from .ploidy_plotter import xmain as ploidy_plotter
 	ploidy_plotter(**kargs)
 
+def args_retention(parser):
+	from .retention_plotter import retention_args
+	retention_args(parser)
+
+def func_retention(**kargs):
+	from .retention_plotter import xmain
+	xmain(**kargs)
+
 def args_filter(parser):
 	parser.add_argument('-s', '-synteny', required=True,  type=str,  nargs='*',
 						dest='collinearities',  metavar='FILE',
@@ -436,6 +444,7 @@ CMD_GROUPS = OrderedDict([
 	('Visualization', [
 		('dotplot', 'Generate Ks/OI/subgenome/ancestor-colored dot plots with versatile functions.'),
 		('depth',   'Generate mutiple bar charts for synteny depth (indicator of relative ploidy).'),
+		('retention', 'Plot gene retention rate (syntenic/total) along chromosomes by sliding window.'),
 		('ksplot',  'Plot mutiple Ks distributions: histogram, density, and ridge plots.'),
 		('evaluate', 'Evaluate and compare synteny: synteny decay, fractionation rate, OI, and gene copy-number.'),
 	]),
@@ -460,7 +469,8 @@ CMD_GROUPS = OrderedDict([
 
 # args_* function lookup for grouped subparser creation
 _ARGS_FN = {
-	'dotplot': args_dotplot, 'depth': args_depth, 'ksplot': args_ksplot,
+	'dotplot': args_dotplot, 'depth': args_depth, 'retention': args_retention,
+	'ksplot': args_ksplot,
 	'evaluate': args_evaluate,
 	'filter': args_filter, 'cluster': args_cluster, 'outgroup': args_outgroup,
 	'hog': args_hog, 'detandem': args_detandem,
@@ -504,6 +514,7 @@ FUNC = {
 	'phylo': func_phylo,
 	'stats': func_stats,
 	'depth': func_depth,
+	'retention': func_retention,
 	'hog': func_hog,
 	'detandem': func_detandem,
 	'rak': func_rak,
