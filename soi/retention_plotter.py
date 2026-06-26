@@ -127,7 +127,7 @@ def main(args):
 
 	# Plot: one row per chromosome, one column; all query lines in same panel
 	n_chroms = len(plot_chroms)
-	figsize = (6, 2.2 * n_chroms)
+	figsize = (6, 1.2 * n_chroms)
 	fig, axes = plt.subplots(n_chroms, 1, figsize=figsize,
 							  sharex=False, sharey=True, squeeze=False)
 
@@ -152,7 +152,7 @@ def main(args):
 			positions = [p for p, _ in pts]
 			rates = [r for _, r in pts]
 			color = _PALETTE[qi % len(_PALETTE)]
-			ax.plot(positions, rates, color=color, linewidth=0.8, label=qry)
+			ax.step(positions, rates, color=color, linewidth=0.8, label=qry, where='mid')
 			ax.axhline(y=np.mean(rates), color=color, linewidth=0.5,
 						linestyle='--', alpha=0.6)
 		ax.set_ylim(0, ymax)
