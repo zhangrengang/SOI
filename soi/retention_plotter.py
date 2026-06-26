@@ -163,6 +163,7 @@ def main(args):
 	else:
 		legend_chrom = plot_chroms[0] if plot_chroms else None
 
+	handles, labels = [], []
 	for ci, chrom in enumerate(plot_chroms):
 		ax = axes[ci][0]
 		for qi, qry in enumerate(args.qry):
@@ -173,8 +174,11 @@ def main(args):
 			rates = [r for _, r in pts]
 			color = _PALETTE[qi % len(_PALETTE)]
 			label = '{} ({:.2f})'.format(qry, overall_rates.get(qry, 0))
-			ax.step(positions, rates, color=color, linewidth=0.8,
-					label=label, where='mid')
+			line, = ax.step(positions, rates, color=color, linewidth=0.8,
+							label=label, where='mid')
+			if ci == 0:
+				handles.append(line)
+				labels.append(label)
 		ax.set_ylim(0, ymax)
 		ax.minorticks_on()
 		ax.text(1.01, 0.5, chrom, transform=ax.transAxes, va='center',
@@ -182,11 +186,17 @@ def main(args):
 		ax.set_ylabel('Retention', fontsize=9)
 		ax.yaxis.set_major_locator(MaxNLocator(4))
 		ax.tick_params(labelsize=8)
-		if chrom == legend_chrom:
-			ax.legend(fontsize=7, loc='lower left', frameon=False,
-					  bbox_to_anchor=(0, 1.02), ncol=min(len(args.qry), 6))
 		if ci == n_chroms - 1:
 			ax.set_xlabel('Gene index', fontsize=9)
+
+	# Legend: inside subplot if few queries, outside right if many
+	if len(args.qry) <= 3:
+		_ax = axes[plot_chroms.index(legend_chrom)][0]
+		_ax.legend(fontsize=8, loc='upper right', frameon=False)
+	else:
+		fig.legend(handles, labels, fontsize=7, loc='center left',
+				   frameon=False, bbox_to_anchor=(1.01, 0.5))
+		fig.subplots_adjust(right=0.82)
 
 	fig.tight_layout(pad=0.8, h_pad=0.3)
 	for fmt in format:
