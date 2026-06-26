@@ -140,7 +140,7 @@ def main(args):
 
 	# Plot
 	n_chroms = len(plot_chroms)
-	figsize = (8, 1.2 * n_chroms)
+	figsize = (8, 0.8 * n_chroms)
 	fig, axes = plt.subplots(n_chroms, 1, figsize=figsize,
 							  sharex=True, sharey=True, squeeze=False)
 
