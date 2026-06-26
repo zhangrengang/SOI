@@ -294,12 +294,12 @@ class HOG:
 					pie.margin_left = 4
 					pie.margin_right = 4
 					if node.is_leaf():
-						etefaces.add_face_to_node(pie, node, column=0, position='aligned')
+						etefaces.add_face_to_node(pie, node, column=0) #, position='aligned')
 					else:
 						etefaces.add_face_to_node(pie, node, column=0, position='branch-right')
 			if node.is_leaf():
 				name_face = TextFace(node.name, fsize=10)
-				etefaces.add_face_to_node(name_face, node, column=1, position='aligned')
+				etefaces.add_face_to_node(name_face, node, column=1) #, position='aligned')
 			else:
 				name_face = TextFace(nid, fsize=7, fgcolor='#888888')
 				etefaces.add_face_to_node(name_face, node, column=0, position='branch-top')

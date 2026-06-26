@@ -109,10 +109,10 @@ class Grid(object):
 		jt.joinFiles = self.join_files
 		joblist = s.runBulkJobs(jt, 1, len(self.cmd_list), 1)
 		jobid = joblist[0].split('.')[0]
-		if self.grid == 'sge':
-			sub_info = '{} -t 1-{} {} -o {}'.format('qqsub', len(
-				self.cmd_list), self.grid_opts, self.out_path.strip(':'))
-			_qsub_log(jobid, self.work_dir, self.script, sub_info)
+#		if self.grid == 'sge':
+#			sub_info = '{} -t 1-{} {} -o {}'.format('qqsub', len(
+#				self.cmd_list), self.grid_opts, self.out_path.strip(':'))
+#			_qsub_log(jobid, self.work_dir, self.script, sub_info)
 		s.synchronize(joblist, drmaa.Session.TIMEOUT_WAIT_FOREVER, False)
 		logger.info('waiting for {} tasks'.format(len(joblist)))
 		for curjob in joblist:
