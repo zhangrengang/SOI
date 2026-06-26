@@ -19,8 +19,7 @@ from .RunCmdsMP import logger
 mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
 
-# Colour cycle for unlimited distinct colours
-_color_cycle = list(plt.cm.tab20.colors)  # 20 distinct colours
+from .colors import Colors as _get_colors
 
 
 def retention_args(parser):
@@ -163,6 +162,9 @@ def main(args):
 	else:
 		legend_chrom = plot_chroms[0] if plot_chroms else None
 
+	# Generate per-query colours
+	query_colors = _get_colors(len(args.qry)).to_hex()
+
 	for ci, chrom in enumerate(plot_chroms):
 		ax = axes[ci][0]
 		for qi, qry in enumerate(args.qry):
@@ -171,7 +173,7 @@ def main(args):
 				continue
 			positions = [p for p, _ in pts]
 			rates = [r for _, r in pts]
-			color = _color_cycle[qi % len(_color_cycle)]
+			color = query_colors[qi]
 			label = '{} ({:.2f})'.format(qry, overall_rates.get(qry, 0))
 			ax.step(positions, rates, color=color, linewidth=0.8,
 					label=label, where='mid')
