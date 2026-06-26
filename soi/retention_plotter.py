@@ -188,7 +188,7 @@ def main(args):
 		if ci == n_chroms - 1:
 			ax.set_xlabel('Gene index', fontsize=8)
 
-	fig.tight_layout(pad=1.0)
+	fig.tight_layout(pad=0.8, h_pad=0.3)
 	for fmt in format:
 		fpath = args.output + '.' + fmt
 		fig.savefig(fpath, dpi=150)
