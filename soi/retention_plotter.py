@@ -185,17 +185,24 @@ def main(args):
 		if ci == n_chroms - 1:
 			ax.set_xlabel('Gene index', fontsize=9)
 
-	# Legend: inside subplot if few queries, outside right if many
+	# Legend
 	fig.tight_layout(pad=0.8, h_pad=0.3)
 	if len(args.qry) <= 3:
 		_ax = axes[plot_chroms.index(legend_chrom)][0]
 		_ax.legend(fontsize=8, loc='upper right', frameon=False)
 	else:
-		fig.subplots_adjust(right=0.75)
-		_ax0 = axes[0][0]
-		fig.legend(*_ax0.get_legend_handles_labels(),
-				   fontsize=7, loc='center left',
-				   frameon=False, bbox_to_anchor=(1.0, 0.5))
+		# Reserve right-side space and place legend in figure coordinates
+		fig.subplots_adjust(right=0.78)
+		h, l = [], []
+		for ax in axes[:, 0]:
+			_h, _l = ax.get_legend_handles_labels()
+			if _h and not h:
+				h, l = _h, _l
+				break
+		if h:
+			fig.legend(h, l, fontsize=7, loc='center left',
+					   frameon=False, bbox_to_anchor=(0.98, 0.5),
+					   bbox_transform=fig.transFigure)
 
 	for fmt in format:
 		fpath = args.output + '.' + fmt
