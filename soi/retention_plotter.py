@@ -187,8 +187,11 @@ def main(args):
 		if ci == n_chroms - 1:
 			ax.set_xlabel('Gene index', fontsize=9)
 
-	# Legend
-	fig.tight_layout(pad=0.5, h_pad=0.0)
+	# Layout: manual subplots_adjust for tight control
+	if len(args.qry) <= 3:
+		fig.tight_layout(pad=0.5, h_pad=0.0)
+	else:
+		fig.subplots_adjust(left=0.08, right=0.65, top=0.98, bottom=0.05, hspace=0.0)
 	if len(args.qry) <= 3:
 		_ax = axes[plot_chroms.index(legend_chrom)][0]
 		_ax.legend(fontsize=8, loc='upper right', frameon=False)
