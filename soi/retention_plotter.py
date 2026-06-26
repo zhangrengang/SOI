@@ -1,24 +1,28 @@
 # coding: utf-8
 """retention: gene retention rate along chromosomes.
 
-Similar to depth (synteny depth / ploidy), but computes the proportion of
-reference genes that have syntenic orthologs in each query species, using
-sliding-window and per-chromosome line plots.
+Computes the proportion of reference genes that have syntenic orthologs
+in each query species, using sliding-window and per-chromosome line plots
+with multiple query species overlaid in different colours.
 """
 import sys
+import re
 import argparse
-from math import ceil
-from collections import OrderedDict
-import networkx as nx
+from collections import OrderedDict, Counter
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from .mcscan import XCollinearity, XGff
 from .RunCmdsMP import logger
+from . import __version__
 
 mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
+
+# Colour palette for multiple queries
+_PALETTE = ['#2166ac', '#b2182b', '#4daf4a', '#ff7f00', '#984ea3',
+			'#a65628', '#f781bf', '#999999', '#e41a1c', '#377eb8']
 
 
 def retention_args(parser):
@@ -48,6 +52,10 @@ def retention_args(parser):
 						help="Chromosomes to plot (default: all with >= min_genes)")
 	parser.add_argument('--min_genes', metavar='INT', type=int, default=200,
 						help="Minimum genes per chromosome to include [default=%(default)s]")
+	parser.add_argument('--count-duplicates', action='store_true', default=False,
+						dest='count_duplicates',
+						help="Count syntenic genes with multiplicity "
+							 "(for WGD query, retention may exceed 1)")
 	parser.add_argument('--min_same_block', type=int, default=25,
 						help=argparse.SUPPRESS)
 
@@ -65,20 +73,26 @@ def xmain(**kargs):
 
 
 def main(args):
-	# Normalize defaults
 	if args.output is None:
 		sps = [args.ref] + args.qry
 		short = [x[:2] for x in sps]
 		args.output = 'ret.' + '-'.join(short) + '_w' + str(args.window_size)
 	format = args.format if isinstance(args.format, list) else [args.format]
-	outfigs = [args.output + '.' + fmt for fmt in format]
 	logger.info('{} x {} species'.format(len(args.qry), args.ref))
 
-	# Load synteny -> syntenic gene pairs per query
+	# Load synteny -> syntenic gene counts per query
 	syn_genes = parse_collinearity(args.collinearity, args.ref, args.qry,
 									min_same_block=getattr(args, 'min_same_block', 25))
+	if not args.count_duplicates:
+		# Deduplicate: each ref gene counted once per query
+		syn_sets = {}
+		for qry, counter in syn_genes.items():
+			syn_sets[qry] = set(counter.keys())
+		syn_data = syn_sets
+	else:
+		syn_data = syn_genes
 
-	# Load GFF -> per-chromosome gene ordering for reference
+	# Load GFF
 	d_chrom_genes, d_chrom_paths = parse_gff(args.gff, args.ref)
 
 	# Optional gene filtering
@@ -86,7 +100,7 @@ def main(args):
 	exclude_set = _load_gene_list(args.exclude) if args.exclude else None
 
 	# Determine chromosomes
-	all_chroms = sorted(d_chrom_paths.keys())
+	all_chroms = sorted(d_chrom_paths.keys(), key=_sort_key)
 	if args.chrs:
 		plot_chroms = [c for c in args.chrs if c in d_chrom_paths]
 		if not plot_chroms:
@@ -98,55 +112,66 @@ def main(args):
 	logger.info('Chromosomes to plot: {} ({} total, min_genes={})'.format(
 		len(plot_chroms), len(all_chroms), args.min_genes))
 
-	# Sliding-window retention per query per chromosome
-	all_data = OrderedDict()  # qry -> {chrom -> [(pos, rate), ...]}
+	# Sliding-window retention: qry -> {chrom -> [(pos, rate), ...]}
+	all_data = OrderedDict()
 	for qry in args.qry:
-		syn_set = syn_genes.get(qry, set())
+		syn = syn_data.get(qry, set() if not args.count_duplicates else Counter())
 		chrom_data = OrderedDict()
 		for chrom in plot_chroms:
 			path = d_chrom_paths[chrom]
-			points = sliding_retention(path, syn_set, args.window_size,
-										args.window_step, include_set, exclude_set)
+			points = sliding_retention(path, syn, args.window_size,
+										args.window_step, include_set, exclude_set,
+										count_duplicates=args.count_duplicates)
 			if points:
 				chrom_data[chrom] = points
 		all_data[qry] = chrom_data
 
-	# Plot
-	n_species = len(args.qry)
+	# Plot: one row per chromosome, one column; all query lines in same panel
 	n_chroms = len(plot_chroms)
-	ncols = n_species
-	nrows = n_chroms
+	n_cols = max(1, int(np.ceil(np.sqrt(n_chroms))))
+	n_rows = int(np.ceil(n_chroms / n_cols))
 
-	figsize = (4 * ncols, 2.5 * nrows)
-	fig, axes = plt.subplots(nrows, ncols, figsize=figsize,
-							  sharex='col', sharey='row', squeeze=False)
+	figsize = (3.5 * n_cols, 2.5 * n_rows)
+	fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize,
+							  sharex=False, sharey=True, squeeze=False)
 
-	# Global y-max for shared scale
+	# Global y-max
 	ymax = 0
 	for qry in args.qry:
 		for chrom in plot_chroms:
 			pts = all_data.get(qry, {}).get(chrom, [])
 			if pts:
 				ymax = max(ymax, max(r for _, r in pts))
-	ymax = min(1.0, ymax * 1.05) if ymax > 0 else 1.0
+	if not args.count_duplicates:
+		ymax = min(1.0, ymax * 1.05) if ymax > 0 else 1.0
+	else:
+		ymax = ymax * 1.05 if ymax > 0 else 1.0
 
 	for ci, chrom in enumerate(plot_chroms):
+		row, col = ci // n_cols, ci % n_cols
+		ax = axes[row][col]
 		for qi, qry in enumerate(args.qry):
-			ax = axes[ci][qi]
 			pts = all_data.get(qry, {}).get(chrom, [])
-			if pts:
-				positions = [p for p, _ in pts]
-				rates = [r for _, r in pts]
-				ax.plot(positions, rates, color='#2166ac', linewidth=0.8)
-				ax.axhline(y=np.mean(rates), color='#b2182b', linewidth=0.5, linestyle='--')
-			ax.set_ylim(0, ymax)
-			ax.yaxis.set_major_locator(MaxNLocator(4))
-			if ci == 0:
-				ax.set_title(qry, fontsize=9)
-			if qi == 0:
-				ax.set_ylabel('{}\nRetention'.format(chrom), fontsize=8)
-			if ci == nrows - 1:
-				ax.set_xlabel('Gene index', fontsize=8)
+			if not pts:
+				continue
+			positions = [p for p, _ in pts]
+			rates = [r for _, r in pts]
+			color = _PALETTE[qi % len(_PALETTE)]
+			ax.plot(positions, rates, color=color, linewidth=0.8, label=qry)
+			ax.axhline(y=np.mean(rates), color=color, linewidth=0.5,
+						linestyle='--', alpha=0.6)
+		ax.set_ylim(0, ymax)
+		ax.set_title(chrom, fontsize=9)
+		ax.set_xlabel('Gene index', fontsize=8)
+		ax.set_ylabel('Retention', fontsize=8)
+		ax.yaxis.set_major_locator(MaxNLocator(4))
+		if ci == 0:
+			ax.legend(fontsize=7, loc='best', frameon=False)
+
+	# Hide unused subplots
+	for i in range(n_chroms, n_rows * n_cols):
+		row, col = i // n_cols, i % n_cols
+		axes[row][col].set_visible(False)
 
 	fig.tight_layout(pad=1.0)
 	for fmt in format:
@@ -155,22 +180,32 @@ def main(args):
 		logger.info('Saved {}'.format(fpath))
 	plt.close(fig)
 
-	# Per-block retention stats (denominator = all ref genes from GFF)
+	# Overall retention stats
 	all_ref_genes = set()
 	for chrom in d_chrom_paths:
 		all_ref_genes.update(d_chrom_paths[chrom])
-	block_stats = compute_block_retention(syn_genes, all_ref_genes, args.ref, args.qry,
-										  include_set, exclude_set)
+	if not args.count_duplicates:
+		block_stats = compute_block_retention(syn_data, all_ref_genes,
+											  args.ref, args.qry,
+											  include_set, exclude_set)
+	else:
+		block_stats = compute_block_retention_dup(syn_data, all_ref_genes,
+												   args.ref, args.qry,
+												   include_set, exclude_set)
 	stats_path = args.output + '.stats.tsv'
 	_save_block_stats(block_stats, stats_path)
 	logger.info('Saved {}'.format(stats_path))
 
 
+# ---------------------------------------------------------------------------
+#  parsing
+# ---------------------------------------------------------------------------
+
 def parse_collinearity(collinearity, ref, qry, min_same_block=25):
-	"""Return {qry_sp: set(ref_genes_with_synteny)}."""
+	"""Return {qry_sp: Counter(ref_gene -> multiplicity)}."""
 	d_syn = {}
 	for sp in qry:
-		d_syn[sp] = set()
+		d_syn[sp] = Counter()
 
 	qry_set = set(qry)
 	for rc in XCollinearity(collinearity):
@@ -179,15 +214,15 @@ def parse_collinearity(collinearity, ref, qry, min_same_block=25):
 		sp1, sp2 = rc.species
 		if sp1 == ref and sp2 in qry_set:
 			for g1, g2 in rc.pairs:
-				d_syn[sp2].add(g1)
+				d_syn[sp2][g1] += 1
 		elif sp2 == ref and sp1 in qry_set:
 			for g1, g2 in rc.pairs:
-				d_syn[sp1].add(g1)
+				d_syn[sp1][g1] += 1
 	return d_syn
 
 
 def parse_gff(gff, ref):
-	"""Return ({chrom: set(gene_names)}, {chrom: [gene_names_in_order]})."""
+	"""Return ({chrom: [(start, gene), ...]}, {chrom: [gene_names_in_order]})."""
 	d_genes = OrderedDict()
 	d_paths = OrderedDict()
 
@@ -207,12 +242,15 @@ def parse_gff(gff, ref):
 	return d_genes, d_paths
 
 
-def sliding_retention(path, syn_set, window_size, window_step,
-					   include_set=None, exclude_set=None):
+# ---------------------------------------------------------------------------
+#  sliding window
+# ---------------------------------------------------------------------------
+
+def sliding_retention(path, syn, window_size, window_step,
+					   include_set=None, exclude_set=None, count_duplicates=False):
 	"""Sliding window retention rate along a gene path.
 
-	Retention = |syntenic_genes_in_window| / |total_genes_in_window|.
-	Returns [(gene_index, rate), ...].
+	syn: set (dedup mode) or Counter (count-duplicates mode).
 	"""
 	points = []
 	for i in range(0, len(path), window_step):
@@ -235,35 +273,59 @@ def sliding_retention(path, syn_set, window_size, window_step,
 		if n_denom == 0:
 			continue
 
-		n_syn = sum(1 for g in denom_genes if g in syn_set)
+		if count_duplicates:
+			n_syn = sum(syn.get(g, 0) for g in denom_genes)
+		else:
+			n_syn = sum(1 for g in denom_genes if g in syn)
 		rate = n_syn / n_denom
 		pos = (start + end) // 2
 		points.append((pos, rate))
 	return points
 
 
-def compute_block_retention(syn_genes, all_ref_genes, ref, qry, include_set=None, exclude_set=None):
-	"""Compute overall retention: syntenic ref genes / all ref genes."""
+# ---------------------------------------------------------------------------
+#  overall stats
+# ---------------------------------------------------------------------------
+
+def compute_block_retention(syn_sets, all_ref_genes, ref, qry,
+							 include_set=None, exclude_set=None):
+	"""Overall retention: |syntenic| / |all| (dedup mode)."""
 	stats = []
 	for qry_sp in qry:
-		syn_g = syn_genes.get(qry_sp, set())
+		syn_g = syn_sets.get(qry_sp, set())
 		if include_set is not None:
 			all_g = all_ref_genes & include_set
-			syn_g = syn_g & include_set
 		elif exclude_set is not None:
 			all_g = all_ref_genes - exclude_set
-			syn_g = syn_g - exclude_set
 		else:
 			all_g = all_ref_genes
 		n_all = len(all_g)
-		n_syn = len(syn_g & all_g)  # only count syntenic genes that are also in the denominator
+		n_syn = len(syn_g & all_g)
+		rate = n_syn / n_all if n_all > 0 else 0
+		stats.append((ref, qry_sp, n_syn, n_all, rate))
+	return stats
+
+
+def compute_block_retention_dup(syn_counters, all_ref_genes, ref, qry,
+								 include_set=None, exclude_set=None):
+	"""Overall retention with multiplicity (count-duplicates mode)."""
+	stats = []
+	for qry_sp in qry:
+		counter = syn_counters.get(qry_sp, Counter())
+		if include_set is not None:
+			denom = all_ref_genes & include_set
+		elif exclude_set is not None:
+			denom = all_ref_genes - exclude_set
+		else:
+			denom = all_ref_genes
+		n_all = len(denom)
+		n_syn = sum(counter.get(g, 0) for g in denom)
 		rate = n_syn / n_all if n_all > 0 else 0
 		stats.append((ref, qry_sp, n_syn, n_all, rate))
 	return stats
 
 
 def _save_block_stats(stats, path):
-	"""Save per-block retention to TSV."""
 	with open(path, 'w') as fout:
 		fout.write('#ref\tqry\tsyntenic_genes\tall_genes\tretention\n')
 		for ref_sp, qry_sp, n_syn, n_all, rate in stats:
@@ -271,12 +333,26 @@ def _save_block_stats(stats, path):
 				ref_sp, qry_sp, n_syn, n_all, rate))
 
 
+# ---------------------------------------------------------------------------
+#  helpers
+# ---------------------------------------------------------------------------
+
 def _load_gene_list(path):
-	"""Load gene IDs from file, one per line."""
+	"""Load gene IDs: split by whitespace, then by comma (for embedded lists)."""
 	genes = set()
 	with open(path) as f:
 		for line in f:
 			line = line.strip()
-			if line and not line.startswith('#'):
-				genes.add(line)
+			if not line or line.startswith('#'):
+				continue
+			for token in line.split():
+				for gene in token.split(','):
+					gene = gene.strip()
+					if gene:
+						genes.add(gene)
 	return genes
+
+
+def _sort_key(name):
+	"""Natural sort key for chromosome names (e.g. Chr1, Chr2, Chr10)."""
+	return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', name)]
