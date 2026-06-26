@@ -177,10 +177,11 @@ def main(args):
 			label = '{} ({:.2f})'.format(qry, overall_rates.get(qry, 0))
 			ax.step(positions, rates, color=color, linewidth=0.8,
 					label=label, where='mid')
-			ax.axhline(y=np.mean(rates), color=color, linewidth=0.5,
-						linestyle='--', alpha=0.6)
+			# ax.axhline(y=np.mean(rates), color=color, linewidth=0.5,
+			# 			linestyle='--', alpha=0.6)
 		ax.set_ylim(0, ymax)
-		ax.set_title(chrom, fontsize=9)
+		ax.text(1.01, 0.5, chrom, transform=ax.transAxes, va='center',
+				fontsize=8, rotation=0)
 		ax.set_ylabel('Retention', fontsize=8)
 		ax.yaxis.set_major_locator(MaxNLocator(4))
 		if chrom == legend_chrom:
