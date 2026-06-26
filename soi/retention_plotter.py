@@ -183,7 +183,8 @@ def main(args):
 		ax.yaxis.set_major_locator(MaxNLocator(4))
 		ax.tick_params(labelsize=8)
 		if chrom == legend_chrom:
-			ax.legend(fontsize=8, loc='upper right', frameon=False)
+			ax.legend(fontsize=7, loc='lower left', frameon=False,
+					  bbox_to_anchor=(0, 1.02), ncol=min(len(args.qry), 6))
 		if ci == n_chroms - 1:
 			ax.set_xlabel('Gene index', fontsize=9)
 
