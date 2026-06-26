@@ -191,18 +191,11 @@ def main(args):
 		_ax = axes[plot_chroms.index(legend_chrom)][0]
 		_ax.legend(fontsize=8, loc='upper right', frameon=False)
 	else:
-		# Reserve right-side space and place legend in figure coordinates
-		fig.subplots_adjust(right=0.78)
-		h, l = [], []
-		for ax in axes[:, 0]:
-			_h, _l = ax.get_legend_handles_labels()
-			if _h and not h:
-				h, l = _h, _l
-				break
-		if h:
-			fig.legend(h, l, fontsize=7, loc='center left',
-					   frameon=False, bbox_to_anchor=(0.98, 0.5),
-					   bbox_transform=fig.transFigure)
+		# Reserve right-side space and put legend there
+		fig.subplots_adjust(right=0.65)
+		h, l = axes[0][0].get_legend_handles_labels()
+		fig.legend(h, l, fontsize=7, loc='right', frameon=False,
+				   bbox_to_anchor=(0.99, 0.5))
 
 	for fmt in format:
 		fpath = args.output + '.' + fmt
