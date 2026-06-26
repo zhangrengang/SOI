@@ -6,7 +6,6 @@ in each query species, using sliding-window and per-chromosome line plots
 with multiple query species overlaid in different colours.
 """
 import sys
-import re
 import argparse
 from collections import OrderedDict, Counter
 import numpy as np
@@ -14,8 +13,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from .mcscan import XCollinearity, XGff
+from .small_tools import sort_version
 from .RunCmdsMP import logger
-from . import __version__
 
 mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
@@ -84,7 +83,6 @@ def main(args):
 	syn_genes = parse_collinearity(args.collinearity, args.ref, args.qry,
 									min_same_block=getattr(args, 'min_same_block', 25))
 	if not args.count_duplicates:
-		# Deduplicate: each ref gene counted once per query
 		syn_sets = {}
 		for qry, counter in syn_genes.items():
 			syn_sets[qry] = set(counter.keys())
@@ -100,17 +98,18 @@ def main(args):
 	exclude_set = _load_gene_list(args.exclude) if args.exclude else None
 
 	# Determine chromosomes
-	all_chroms = sorted(d_chrom_paths.keys(), key=_sort_key)
 	if args.chrs:
+		# User-specified order, no sorting
 		plot_chroms = [c for c in args.chrs if c in d_chrom_paths]
 		if not plot_chroms:
 			logger.error('None of the specified chromosomes found in GFF')
 			sys.exit(1)
 	else:
-		plot_chroms = [c for c in all_chroms if len(d_chrom_paths[c]) >= args.min_genes]
+		candidates = [c for c in d_chrom_paths if len(d_chrom_paths[c]) >= args.min_genes]
+		plot_chroms = sort_version(candidates)
 
 	logger.info('Chromosomes to plot: {} ({} total, min_genes={})'.format(
-		len(plot_chroms), len(all_chroms), args.min_genes))
+		len(plot_chroms), len(d_chrom_paths), args.min_genes))
 
 	# Sliding-window retention: qry -> {chrom -> [(pos, rate), ...]}
 	all_data = OrderedDict()
@@ -128,11 +127,8 @@ def main(args):
 
 	# Plot: one row per chromosome, one column; all query lines in same panel
 	n_chroms = len(plot_chroms)
-	n_cols = max(1, int(np.ceil(np.sqrt(n_chroms))))
-	n_rows = int(np.ceil(n_chroms / n_cols))
-
-	figsize = (3.5 * n_cols, 2.5 * n_rows)
-	fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize,
+	figsize = (6, 2.2 * n_chroms)
+	fig, axes = plt.subplots(n_chroms, 1, figsize=figsize,
 							  sharex=False, sharey=True, squeeze=False)
 
 	# Global y-max
@@ -148,8 +144,7 @@ def main(args):
 		ymax = ymax * 1.05 if ymax > 0 else 1.0
 
 	for ci, chrom in enumerate(plot_chroms):
-		row, col = ci // n_cols, ci % n_cols
-		ax = axes[row][col]
+		ax = axes[ci][0]
 		for qi, qry in enumerate(args.qry):
 			pts = all_data.get(qry, {}).get(chrom, [])
 			if not pts:
@@ -162,16 +157,12 @@ def main(args):
 						linestyle='--', alpha=0.6)
 		ax.set_ylim(0, ymax)
 		ax.set_title(chrom, fontsize=9)
-		ax.set_xlabel('Gene index', fontsize=8)
 		ax.set_ylabel('Retention', fontsize=8)
 		ax.yaxis.set_major_locator(MaxNLocator(4))
 		if ci == 0:
 			ax.legend(fontsize=7, loc='best', frameon=False)
-
-	# Hide unused subplots
-	for i in range(n_chroms, n_rows * n_cols):
-		row, col = i // n_cols, i % n_cols
-		axes[row][col].set_visible(False)
+		if ci == n_chroms - 1:
+			ax.set_xlabel('Gene index', fontsize=8)
 
 	fig.tight_layout(pad=1.0)
 	for fmt in format:
@@ -261,7 +252,6 @@ def sliding_retention(path, syn, window_size, window_step,
 			continue
 		bin_genes = path[start:end]
 
-		# Filter denominator
 		if include_set is not None:
 			denom_genes = [g for g in bin_genes if g in include_set]
 		elif exclude_set is not None:
@@ -351,8 +341,3 @@ def _load_gene_list(path):
 					if gene:
 						genes.add(gene)
 	return genes
-
-
-def _sort_key(name):
-	"""Natural sort key for chromosome names (e.g. Chr1, Chr2, Chr10)."""
-	return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', name)]
