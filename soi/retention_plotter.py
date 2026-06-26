@@ -92,7 +92,6 @@ def main(args):
 	include_set = _load_gene_list(args.include) if args.include else None
 	exclude_set = _load_gene_list(args.exclude) if args.exclude else None
 
-	# Chromosome selection
 	if args.chrs:
 		plot_chroms = [c for c in args.chrs if c in d_chrom_paths]
 		if not plot_chroms:
@@ -104,7 +103,6 @@ def main(args):
 	logger.info('Chromosomes to plot: {} ({} total, min_genes={})'.format(
 		len(plot_chroms), len(d_chrom_paths), args.min_genes))
 
-	# Sliding window
 	all_data = OrderedDict()
 	for qry in args.qry:
 		syn = syn_data.get(qry, set() if not args.count_duplicates else Counter())
@@ -118,7 +116,7 @@ def main(args):
 				chrom_data[chrom] = points
 		all_data[qry] = chrom_data
 
-	# Overall retention per query (for legend label)
+	# Overall retention per query
 	all_ref_genes = set()
 	for chrom in d_chrom_paths.values():
 		all_ref_genes.update(chrom)
@@ -140,9 +138,9 @@ def main(args):
 			n_syn = sum(counter.get(g, 0) for g in denom_all)
 		overall_rates[qry] = n_syn / n_denom_all if n_denom_all > 0 else 0
 
-	# Plot: one row per chromosome, one column
+	# Plot
 	n_chroms = len(plot_chroms)
-	figsize = (6, 1.2 * n_chroms)
+	figsize = (8, 1.2 * n_chroms)
 	fig, axes = plt.subplots(n_chroms, 1, figsize=figsize,
 							  sharex=True, sharey=True, squeeze=False)
 
@@ -177,18 +175,17 @@ def main(args):
 			label = '{} ({:.2f})'.format(qry, overall_rates.get(qry, 0))
 			ax.step(positions, rates, color=color, linewidth=0.8,
 					label=label, where='mid')
-			# ax.axhline(y=np.mean(rates), color=color, linewidth=0.5,
-			# 			linestyle='--', alpha=0.6)
 		ax.set_ylim(0, ymax)
 		ax.minorticks_on()
 		ax.text(1.01, 0.5, chrom, transform=ax.transAxes, va='center',
-				fontsize=8, rotation=90)
-		ax.set_ylabel('Retention', fontsize=8)
+				fontsize=9, rotation=90)
+		ax.set_ylabel('Retention', fontsize=9)
 		ax.yaxis.set_major_locator(MaxNLocator(4))
+		ax.tick_params(labelsize=8)
 		if chrom == legend_chrom:
-			ax.legend(fontsize=7, loc='upper right', frameon=False)
+			ax.legend(fontsize=8, loc='upper right', frameon=False)
 		if ci == n_chroms - 1:
-			ax.set_xlabel('Gene index', fontsize=8)
+			ax.set_xlabel('Gene index', fontsize=9)
 
 	fig.tight_layout(pad=0.8, h_pad=0.3)
 	for fmt in format:
@@ -197,7 +194,7 @@ def main(args):
 		logger.info('Saved {}'.format(fpath))
 	plt.close(fig)
 
-	# Save overall retention stats
+	# Stats
 	stats_path = args.output + '.stats.tsv'
 	with open(stats_path, 'w') as fout:
 		fout.write('#ref\tqry\tsyntenic_genes\tall_genes\tretention\n')
@@ -245,10 +242,6 @@ def parse_gff(gff, ref):
 	return d_genes, d_paths
 
 
-# ---------------------------------------------------------------------------
-#  sliding window
-# ---------------------------------------------------------------------------
-
 def sliding_retention(path, syn, window_size, window_step,
 					   include_set=None, exclude_set=None, count_duplicates=False):
 	points = []
@@ -280,10 +273,6 @@ def sliding_retention(path, syn, window_size, window_step,
 		points.append((pos, rate))
 	return points
 
-
-# ---------------------------------------------------------------------------
-#  helpers
-# ---------------------------------------------------------------------------
 
 def _load_gene_list(path):
 	genes = set()
