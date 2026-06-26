@@ -129,19 +129,27 @@ def main(args):
 	n_chroms = len(plot_chroms)
 	figsize = (6, 1.2 * n_chroms)
 	fig, axes = plt.subplots(n_chroms, 1, figsize=figsize,
-							  sharex=False, sharey=True, squeeze=False)
+							  sharex=True, sharey=True, squeeze=False)
 
-	# Global y-max
+	# Global y-max and per-chromosome x-max for legend placement
 	ymax = 0
+	chrom_xmax = {}  # chrom -> max gene index
 	for qry in args.qry:
 		for chrom in plot_chroms:
 			pts = all_data.get(qry, {}).get(chrom, [])
 			if pts:
 				ymax = max(ymax, max(r for _, r in pts))
+				chrom_xmax[chrom] = max(chrom_xmax.get(chrom, 0), max(p for p, _ in pts))
 	if not args.count_duplicates:
 		ymax = min(1.0, ymax * 1.05) if ymax > 0 else 1.0
 	else:
 		ymax = ymax * 1.05 if ymax > 0 else 1.0
+
+	# Put legend on the chromosome with the shortest x-range (most empty space)
+	if chrom_xmax:
+		legend_chrom = min(chrom_xmax, key=lambda c: chrom_xmax[c])
+	else:
+		legend_chrom = plot_chroms[0] if plot_chroms else None
 
 	for ci, chrom in enumerate(plot_chroms):
 		ax = axes[ci][0]
@@ -159,8 +167,8 @@ def main(args):
 		ax.set_title(chrom, fontsize=9)
 		ax.set_ylabel('Retention', fontsize=8)
 		ax.yaxis.set_major_locator(MaxNLocator(4))
-		if ci == 0:
-			ax.legend(fontsize=7, loc='best', frameon=False)
+		if chrom == legend_chrom:
+			ax.legend(fontsize=7, loc='upper right', frameon=False)
 		if ci == n_chroms - 1:
 			ax.set_xlabel('Gene index', fontsize=8)
 
