@@ -20,7 +20,7 @@ mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
 
 # Colour cycle for unlimited distinct colours
-_color_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+_color_cycle = list(plt.cm.tab20.colors)  # 20 distinct colours
 
 
 def retention_args(parser):
