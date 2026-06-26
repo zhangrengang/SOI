@@ -19,8 +19,8 @@ from .RunCmdsMP import logger
 mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
 
-_PALETTE = ['#2166ac', '#b2182b', '#4daf4a', '#ff7f00', '#984ea3',
-			'#a65628', '#f781bf', '#999999', '#e41a1c', '#377eb8']
+# Colour cycle for unlimited distinct colours
+_color_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 
 def retention_args(parser):
@@ -171,7 +171,7 @@ def main(args):
 				continue
 			positions = [p for p, _ in pts]
 			rates = [r for _, r in pts]
-			color = _PALETTE[qi % len(_PALETTE)]
+			color = _color_cycle[qi % len(_color_cycle)]
 			label = '{} ({:.2f})'.format(qry, overall_rates.get(qry, 0))
 			ax.step(positions, rates, color=color, linewidth=0.8,
 					label=label, where='mid')
@@ -186,7 +186,7 @@ def main(args):
 			ax.set_xlabel('Gene index', fontsize=9)
 
 	# Legend
-	fig.tight_layout(pad=0.8, h_pad=0.3)
+	fig.tight_layout(pad=0.5, h_pad=0.0)
 	if len(args.qry) <= 3:
 		_ax = axes[plot_chroms.index(legend_chrom)][0]
 		_ax.legend(fontsize=8, loc='upper right', frameon=False)
