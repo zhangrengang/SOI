@@ -180,8 +180,9 @@ def main(args):
 			# ax.axhline(y=np.mean(rates), color=color, linewidth=0.5,
 			# 			linestyle='--', alpha=0.6)
 		ax.set_ylim(0, ymax)
+		ax.minorticks_on()
 		ax.text(1.01, 0.5, chrom, transform=ax.transAxes, va='center',
-				fontsize=8, rotation=0)
+				fontsize=8, rotation=90)
 		ax.set_ylabel('Retention', fontsize=8)
 		ax.yaxis.set_major_locator(MaxNLocator(4))
 		if chrom == legend_chrom:
