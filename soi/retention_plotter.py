@@ -163,7 +163,6 @@ def main(args):
 	else:
 		legend_chrom = plot_chroms[0] if plot_chroms else None
 
-	handles, labels = [], []
 	for ci, chrom in enumerate(plot_chroms):
 		ax = axes[ci][0]
 		for qi, qry in enumerate(args.qry):
@@ -174,11 +173,8 @@ def main(args):
 			rates = [r for _, r in pts]
 			color = _PALETTE[qi % len(_PALETTE)]
 			label = '{} ({:.2f})'.format(qry, overall_rates.get(qry, 0))
-			line, = ax.step(positions, rates, color=color, linewidth=0.8,
-							label=label, where='mid')
-			if ci == 0:
-				handles.append(line)
-				labels.append(label)
+			ax.step(positions, rates, color=color, linewidth=0.8,
+					label=label, where='mid')
 		ax.set_ylim(0, ymax)
 		ax.minorticks_on()
 		ax.text(1.01, 0.5, chrom, transform=ax.transAxes, va='center',
@@ -195,9 +191,11 @@ def main(args):
 		_ax = axes[plot_chroms.index(legend_chrom)][0]
 		_ax.legend(fontsize=8, loc='upper right', frameon=False)
 	else:
-		fig.subplots_adjust(right=0.82)
-		fig.legend(handles, labels, fontsize=7, loc='center left',
-				   frameon=False, bbox_to_anchor=(1.01, 0.5))
+		fig.subplots_adjust(right=0.75)
+		_ax0 = axes[0][0]
+		fig.legend(*_ax0.get_legend_handles_labels(),
+				   fontsize=7, loc='center left',
+				   frameon=False, bbox_to_anchor=(1.0, 0.5))
 
 	for fmt in format:
 		fpath = args.output + '.' + fmt
