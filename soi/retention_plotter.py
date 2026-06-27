@@ -127,7 +127,7 @@ def main(args):
 		denom_all = all_ref_genes
 	n_denom_all = len(denom_all)
 
-	overall_rates = {}
+	overall_stats = {}  # qry -> (n_syn, n_all, rate)
 	for qry in args.qry:
 		if not args.count_duplicates:
 			syn_g = syn_data.get(qry, set())
@@ -135,7 +135,8 @@ def main(args):
 		else:
 			counter = syn_data.get(qry, Counter())
 			n_syn = sum(counter.get(g, 0) for g in denom_all)
-		overall_rates[qry] = n_syn / n_denom_all if n_denom_all > 0 else 0
+		rate = n_syn / n_denom_all if n_denom_all > 0 else 0
+		overall_stats[qry] = (n_syn, n_denom_all, rate)
 
 	# Plot
 	n_chroms = len(plot_chroms)
@@ -174,7 +175,7 @@ def main(args):
 			positions = [p for p, _ in pts]
 			rates = [r for _, r in pts]
 			color = query_colors[qi]
-			label = '{} ({:.2f})'.format(qry, overall_rates.get(qry, 0))
+			label = '{} ({:.2f})'.format(qry, overall_stats[qry][2])
 			ax.step(positions, rates, color=color, linewidth=0.8,
 					label=label, where='mid')
 		ax.set_ylim(0, ymax)
@@ -213,8 +214,9 @@ def main(args):
 	with open(stats_path, 'w') as fout:
 		fout.write('#ref\tqry\tsyntenic_genes\tall_genes\tretention\n')
 		for qry in args.qry:
-			fout.write('{}\t{}\t.\t.\t{:.4f}\n'.format(
-				args.ref, qry, overall_rates[qry]))
+			n_syn, n_all, rate = overall_stats[qry]
+			fout.write('{}\t{}\t{}\t{}\t{:.4f}\n'.format(
+				args.ref, qry, n_syn, n_all, rate))
 	logger.info('Saved {}'.format(stats_path))
 
 
