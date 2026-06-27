@@ -127,6 +127,9 @@ def args_detandem(parser):
 						dest='tandem_dist', metavar='INT',
 						help='Maximum index distance for tandem duplication. '
 						'[default=%(default)s]')
+	parser.add_argument('--out-tandem', type=str, default=None,
+						dest='out_tandem', metavar='FILE',
+						help='Output tandem clusters (retained gene marked with *) [optional]')
 
 def func_detandem(**kargs):
 	from .detandem import Detandem
