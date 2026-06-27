@@ -122,7 +122,8 @@ def args_detandem(parser):
 						help='GFF annotation file. [required]')
 	parser.add_argument('-s', '-synteny', type=str, nargs='*', default=None,
 						dest='orthfiles', metavar='FILE',
-						help='Ortholog/Collinearity files. [optional]')
+						help='Ortholog/Collinearity files for selecting the '
+							 'gene with highest ortholog degree per cluster. [optional]')
 	parser.add_argument('-d', '-dist', type=int, default=200,
 						dest='tandem_dist', metavar='INT',
 						help='Maximum index distance for tandem duplication. '
