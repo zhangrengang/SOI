@@ -130,7 +130,7 @@ def args_detandem(parser):
 						'[default=%(default)s]')
 	parser.add_argument('--out-tandem', type=str, default=None,
 						dest='out_tandem', metavar='FILE',
-						help='Output tandem clusters (retained gene marked with *) [optional]')
+						help='Output tandem clusters (retained gene marked with *)')
 
 def func_detandem(**kargs):
 	from .detandem import Detandem
