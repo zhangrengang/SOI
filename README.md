@@ -296,10 +296,10 @@ histogram, density curve, and ridge plot.
 Usage examples:
 ```
 # histogram + density + ridge plots (default)
-soi ksplot --kaks wgdi_ks.tsv -o ks_plot
+soi ksplot --kaks wgdi_ks.tsv
 
 # histogram only, with custom max Ks
-soi ksplot --kaks wgdi_ks.tsv -o ks_hist -p hist --max-ks 1.5
+soi ksplot --kaks wgdi_ks.tsv -p hist --max-ks 1.5
 ```
 
 #### `evaluate` ####
