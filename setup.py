@@ -26,6 +26,7 @@ setup(
 			'soi-syn = soi.mcscan:main',
 			'soi-orth = soi.OrthoFinder:main',
 			'soi-ctl = soi.creat_ctl:main',
+			'soi-wgdi = soi.WGDI:main',
         ],
     },
 )
