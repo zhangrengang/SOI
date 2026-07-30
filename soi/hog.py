@@ -349,5 +349,65 @@ class HOGrecord:
 
 def main():
 	HOG(ogfile=sys.argv[1], orthfiles=sys.argv[2], sptreefile=sys.argv[3]).pipe()
+
+
+def iter_branch_paralogs(all_hogs, tree, nodes=None, species=None):
+	"""Yield paralogous gene pairs produced at each internal branch.
+
+	At an internal node N, a parent HOG (from N's parent) splits into multiple
+	child HOGs at N.  Genes of the same species distributed across different
+	child HOGs are paralogs from the branch leading to N.
+
+	Yields: (gene1, gene2, node_id, species, parent_hog_id)
+	"""
+	from itertools import combinations
+	all_nodes = list(tree.traverse(strategy="postorder"))
+	leaf_set = {n.name for n in all_nodes if n.is_leaf()}
+	node_set = set(nodes) if nodes else None
+	sp_set = set(species) if species else None
+
+	# node_id -> parent_hog_id -> [hog_rec, ...]
+	node_children = defaultdict(lambda: defaultdict(list))
+	for hog in all_hogs.values():
+		nid = hog["node_id"]
+		if nid in leaf_set:
+			continue
+		if node_set and nid not in node_set:
+			continue
+		pid = hog["parent"]
+		if not pid or pid == "Root":
+			continue
+		parent_hog = all_hogs.get(pid)
+		if not parent_hog:
+			continue
+		node_children[nid][pid].append(hog)
+
+	# Pre-group genes by species for each HOG
+	_hog_sp_genes = {}
+	def _get_sp_genes(hog_rec):
+		if hog_rec.hog_id not in _hog_sp_genes:
+			sg = defaultdict(list)
+			for g in hog_rec["genes"]:
+				sp = g.split('|')[0] if '|' in g else g.rsplit('_', 1)[0]
+				sg[sp].append(g)
+			_hog_sp_genes[hog_rec.hog_id] = dict(sg)
+		return _hog_sp_genes[hog_rec.hog_id]
+
+	for nid, parent_hogs in node_children.items():
+		for parent_hog_id, children in parent_hogs.items():
+			if len(children) < 2:
+				continue
+			# All pairs of child HOGs
+			for ci in range(len(children)):
+				sp_genes_i = _get_sp_genes(children[ci])
+				for cj in range(ci + 1, len(children)):
+					sp_genes_j = _get_sp_genes(children[cj])
+					common = set(sp_genes_i) & set(sp_genes_j)
+					if sp_set:
+						common &= sp_set
+					for sp in common:
+						for g1 in sp_genes_i[sp]:
+							for g2 in sp_genes_j[sp]:
+								yield (g1, g2, nid, sp, parent_hog_id)
 if __name__ == '__main__':
 	main()
