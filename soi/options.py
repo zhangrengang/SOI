@@ -100,14 +100,14 @@ def args_hog(parser):
 	parser.add_argument('-pre', '-prefix', type=str, default='HOGs',
 						dest='outpre', metavar='FILE',
 						help='Output prefix [default=%(default)s]')
-	parser.add_argument('--max-copies', type=int, default=5,
-						help='Max copy number to track in stats/plot [default=%(default)s]')
 	parser.add_argument('--out-stats', action='store_true', default=False,
 						help='Output copy-number statistics TSV (<prefix>.stats.tsv)')
 	parser.add_argument('--bar-plot', action='store_true', default=False,
 						help='Output bar chart of copy-number distribution (<prefix>.bar.pdf/.png)')
 	parser.add_argument('--tree-plot', action='store_true', default=False,
 						help='Output species tree with copy-number pie charts at nodes (<prefix>.tree.pdf/.png)')
+	parser.add_argument('--max-copies', type=int, default=5,
+                        help='Max copy number to track in stats/plot [default=%(default)s]')
 
 def func_hog(**kargs):
 	from .hog import xmain as hog_main
@@ -457,6 +457,8 @@ CMD_GROUPS = OrderedDict([
 		('cluster',  'Cluster orthologous synteny into syntenic orthogroups (SOGs).'),
 		('outgroup', 'Add outgroups to SOGs.'),
 		('detandem', 'Remove tandem duplicate genes from SOGs.'),
+	]),
+	('Hierarchical Orthologous Groups', [
 		('hog',      'Split Hierarchical Orthologous Groups (HOGs) from SOGs using synteny and species tree.'),
 		('prune',    'Prune SOGs to single-copy per species based on HOGs.'),
 	]),

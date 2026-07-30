@@ -9,18 +9,22 @@
       - [conda](#conda)
       - [Apptainer/Singularity](#apptainersingularity)
    * [Subcommands](#Subcommands)
-      - [filter](#filter)
-      - [cluster](#cluster)
-      - [outgroup](#outgroup)
-      - [phylo](#phylo)
-      - [dotplot](#dotplot)
-      - [depth](#depth)
-      - [retention](#retention)
-      - [ksplot](#ksplot)
-      - [evaluate](#evaluate)
-      - [detandem](#detandem)
-      - [hog](#hog)
-      - [prune](#prune)
+      * Visualization
+        - [dotplot](#dotplot)
+        - [depth](#depth)
+        - [retention](#retention)
+        - [ksplot](#ksplot)
+        - [evaluate](#evaluate)
+      * Syntenic Orthogroups
+        - [filter](#filter)
+        - [cluster](#cluster)
+        - [outgroup](#outgroup)
+        - [detandem](#detandem)
+      * Hierarchical Orthologous Groups
+        - [hog](#hog)
+        - [prune](#prune)
+      * Phylogenomics
+        - [phylo](#phylo)
    * [Other functions](#other-functions)
       - [Macro-synteny phylogeny](#Macro-synteny-phylogeny)
 	  - [Allele identification](#Allele-identification)
@@ -167,73 +171,7 @@ The image can be found [here](https://cloud.sylabs.io/library/shang-hongyun/coll
 
 ## Subcommands ##
 
-#### `filter` ####
-The subcommand `filter` filters orthologous blocks with a default minimum index of 0.6:
-
-Usage examples:
-```
-# from outputs of WGDI and OrthoFinder
-soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ > collinearity.ortho
-
-# from outputs of MCscanX and OrthoMCL
-soi filter -s mcscanx/*.collinearity -o pairs/orthologs.txt > collinearity.ortho
-
-# from a list file and decrease the cutoff
-ls wgdi/*.collinearity > collinearity.list
-soi filter -s collinearity.list -o OrthoFinder/OrthoFinder/Result*/ -c 0.5 > collinearity.ortho
-
-# filter a out-paralogous peak
-soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -c 0.05 -upper 0.4 > collinearity.para
-
-# remove intra-species, tandem repeat-derived synteny (in-paralogous)
-soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -gff all_species_gene.gff -d 200 > collinearity.homo
-
-# It can also distinguish in-paralogous from out-paralogous synteny split by a given speciation event, 
-# if we provide in-paralogs instead of orthologs
-soi filter -s wgdi/SP1-SP1.collinearity -o inparalogs.pairs > collinearity.inpara
-
-```
-#### `cluster` ####
-The subcommand 'cluster' groups orthologous syntenic genes into syntenic orthogroups (SOGs), through constructing an orthologous syntenic graph 
-and applying the Markov Cluster (MCL) algorithm to perform graph clustering and break weak links. 
-
-Usage examples:
-```
-# all species to include
-soi cluster -s collinearity.ortho -prefix cluster
-
-# exclude outgroup species that do not share the INGROUP-specific WGD event
-soi cluster -s collinearity.ortho -outgroup XXX YYY
-```
-The defualt output file is `cluster.mcl`, with the orthogroup format of legacy OrthoMCL.
-
-#### `outgroup` ####
-The subcommand 'outgroup' retrieves syntenic orthologs from outgroups that lack WGDs shared with ingroups. 
-
-Usage examples:
-```
-# If outgroups are excluded in the last `cluster` step:
-soi outgroup -s collinearity.ortho -og cluster.mcl -outgroup XXX YYY > cluster.mcl.plus
-```
-
-#### `phylo` ####
-The subcommand ‘phylo’ reconstructs multi-copy or single-copy gene trees, 
-by aligning protein sequences with MAFFT v7.481 (Standley and Katoh 2013), 
-converting protein alignment to codon alignment with PAL2NAL v14 (Suyama et al. 2006), 
-trimming alignments with trimAl v1.2 (Capella-Gutierrez et al. 2009) (parameter: -automated1) 
-and reconstructing maximum-likelihood trees with IQ-TREE v2.2.0.3 (Minh et al. 2020). 
-
-Usage examples:
-```
-# output multi-copy gene trees of both protein and CDS(-both); rooted with grape (-root)
-soi phylo -og cluster.mcl.plus -pep pep.faa -cds cds.fa -both -root Vitis_vinifera -pre mc-sog -p 80
-
-# output single-copy gene trees (-sc) and concatenated alignments (-concat) of both protein and CDS (-both); rooted with grape (-root)
-soi phylo -og cluster.mcl.plus -pep pep.faa -cds cds.fa -both -root Vitis_vinifera -pre sc-sog -sc -concat -p 80
-
-# output multi-copy gene trees of protein, allowing up to 50% taxa missing
-soi phylo -og cluster.mcl.plus -pep pep.faa -mm 0.5
-```
+### Visualization ###
 
 #### `dotplot` ####
 The subcommand `dotplot` enables visualization and evaluation of synteny, 
@@ -348,6 +286,57 @@ soi evaluate -s collinearity.ortho -o orthologs.txt -g all.gff -r Vitis_vinifera
 
 ```
 
+### Syntenic Orthogroups ###
+
+#### `filter` ####
+The subcommand `filter` filters orthologous blocks with a default minimum index of 0.6:
+
+Usage examples:
+```
+# from outputs of WGDI and OrthoFinder
+soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ > collinearity.ortho
+
+# from outputs of MCscanX and OrthoMCL
+soi filter -s mcscanx/*.collinearity -o pairs/orthologs.txt > collinearity.ortho
+
+# from a list file and decrease the cutoff
+ls wgdi/*.collinearity > collinearity.list
+soi filter -s collinearity.list -o OrthoFinder/OrthoFinder/Result*/ -c 0.5 > collinearity.ortho
+
+# filter a out-paralogous peak
+soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -c 0.05 -upper 0.4 > collinearity.para
+
+# remove intra-species, tandem repeat-derived synteny (in-paralogous)
+soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -gff all_species_gene.gff -d 200 > collinearity.homo
+
+# It can also distinguish in-paralogous from out-paralogous synteny split by a given speciation event, 
+# if we provide in-paralogs instead of orthologs
+soi filter -s wgdi/SP1-SP1.collinearity -o inparalogs.pairs > collinearity.inpara
+
+```
+#### `cluster` ####
+The subcommand 'cluster' groups orthologous syntenic genes into syntenic orthogroups (SOGs), through constructing an orthologous syntenic graph 
+and applying the Markov Cluster (MCL) algorithm to perform graph clustering and break weak links. 
+
+Usage examples:
+```
+# all species to include
+soi cluster -s collinearity.ortho -prefix cluster
+
+# exclude outgroup species that do not share the INGROUP-specific WGD event
+soi cluster -s collinearity.ortho -outgroup XXX YYY
+```
+The defualt output file is `cluster.mcl`, with the orthogroup format of legacy OrthoMCL.
+
+#### `outgroup` ####
+The subcommand 'outgroup' retrieves syntenic orthologs from outgroups that lack WGDs shared with ingroups. 
+
+Usage examples:
+```
+# If outgroups are excluded in the last `cluster` step:
+soi outgroup -s collinearity.ortho -og cluster.mcl -outgroup XXX YYY > cluster.mcl.plus
+```
+
 #### `detandem` ####
 The subcommand `detandem` removes tandem duplicate genes from orthogroups.
 Tandem duplicates are defined as genes on the same chromosome whose index difference
@@ -366,6 +355,8 @@ soi detandem -og cluster.mcl -g all_species_gene.gff -d 100 > cluster.mcl.detand
 # with synteny files for smarter gene retention
 soi detandem -og cluster.mcl -g all_species_gene.gff -s collinearity.ortho > cluster.mcl.detandem
 ```
+
+### Hierarchical Orthologous Groups ###
 
 #### `hog` ####
 The subcommand `hog` splits orthogroups into Hierarchical Orthologous Groups (HOGs)
@@ -409,6 +400,27 @@ Usage examples:
 ```
 # basic pruning
 soi prune -og cluster.mcl -s collinearity.ortho -t species.tree -o cluster.sc.mcl
+```
+
+### Phylogenomics ###
+
+#### `phylo` ####
+The subcommand ‘phylo’ reconstructs multi-copy or single-copy gene trees, 
+by aligning protein sequences with MAFFT v7.481 (Standley and Katoh 2013), 
+converting protein alignment to codon alignment with PAL2NAL v14 (Suyama et al. 2006), 
+trimming alignments with trimAl v1.2 (Capella-Gutierrez et al. 2009) (parameter: -automated1) 
+and reconstructing maximum-likelihood trees with IQ-TREE v2.2.0.3 (Minh et al. 2020). 
+
+Usage examples:
+```
+# output multi-copy gene trees of both protein and CDS(-both); rooted with grape (-root)
+soi phylo -og cluster.mcl.plus -pep pep.faa -cds cds.fa -both -root Vitis_vinifera -pre mc-sog -p 80
+
+# output single-copy gene trees (-sc) and concatenated alignments (-concat) of both protein and CDS (-both); rooted with grape (-root)
+soi phylo -og cluster.mcl.plus -pep pep.faa -cds cds.fa -both -root Vitis_vinifera -pre sc-sog -sc -concat -p 80
+
+# output multi-copy gene trees of protein, allowing up to 50% taxa missing
+soi phylo -og cluster.mcl.plus -pep pep.faa -mm 0.5
 ```
 
 ### Other functions ###
@@ -616,6 +628,11 @@ SOG100.N3.hog1	SOG100	N3	SOG100.N5.hog0	Sp1|G002
 Columns: `HOG` (unique HOG ID), `OG` (source orthogroup), `Tree_Node` (species tree node), `Parent` (parent HOG or "Root" if at root), `Genes` (space-separated gene IDs).
 
 ## Citation ##
-Zhang RG, Shang HY, Milne RI et. al. 
+If you use `soi`, please cite:
+> Zhang RG, Shang HY, Milne RI et. al. 
 SOI: robust identification of orthologous synteny with the Orthology Index and broad applications in evolutionary genomics [J]. 
 *Nucleic. Acids. Res.*, 2025, 53 (7):gkaf320 [https://doi.org/10.1093/nar/gkaf320]
+
+If you use `soi depth`, please cite:
+> Zhang RG, Lysak MA, Shang HY et. al. Orthologous synteny provides robust structural evidence for the ancestral angiosperm ε-WGD [J]. 
+*Mol. Plant.*, 2026 [https://doi.org/10.1016/j.molp.2026.06.006]
