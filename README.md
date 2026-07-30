@@ -15,6 +15,7 @@
       - [phylo](#phylo)
       - [dotplot](#dotplot)
       - [depth](#depth)
+      - [retention](#retention)
       - [ksplot](#ksplot)
       - [evaluate](#evaluate)
       - [detandem](#detandem)
@@ -288,6 +289,37 @@ soi depth -s collinearity.ortho -g ../all_species_gene.gff -r Vitis_vinifera -q 
 
 ```
 
+#### `retention` ####
+The subcommand `retention` computes gene retention rate (syntenic genes / total genes)
+along chromosomes of a reference genome using a sliding window, comparing multiple
+query species overlaid in different colours.
+
+Usage examples:
+```
+# basic: one reference vs multiple queries
+soi retention -s collinearity.ortho -g all.gff -r Vitis_vinifera -q Daucus_carota Angelica_sinensis
+
+# custom window size and step
+soi retention -s collinearity.ortho -g all.gff -r Vitis_vinifera -q Daucus_carota Angelica_sinensis --window_size 100 --window_step 5
+
+# restrict denominator to a subset of genes (e.g. only protein-coding)
+soi retention -s collinearity.ortho -g all.gff -r Vitis_vinifera -q Daucus_carota --include coding_genes.txt
+
+# exclude certain genes from denominator (e.g. TEs)
+soi retention -s collinearity.ortho -g all.gff -r Vitis_vinifera -q Daucus_carota --exclude te_genes.txt
+
+# plot specific chromosomes only
+soi retention -s collinearity.ortho -g all.gff -r Vitis_vinifera -q Daucus_carota --chrs Chr1 Chr2 Chr3
+
+# count duplicates (for WGD query species, retention may exceed 1)
+soi retention -s collinearity.ortho -g all.gff -r Vitis_vinifera -q Daucus_carota --count-duplicates
+
+```
+
+The output is a single-column step plot (one row per chromosome) with shared y-axis.
+Multiple query species are overlaid in different colours with a legend showing overall
+retention rate per species.  A stats file (`<prefix>.stats.tsv`) lists per-query
+syntenic gene count, total gene count, and overall retention.
 
 #### `ksplot` ####
 The subcommand `ksplot` plots Ks distributions with three visualization types:
