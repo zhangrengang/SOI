@@ -112,6 +112,22 @@ def args_hog(parser):
 def func_hog(**kargs):
 	from .hog import xmain as hog_main
 	hog_main(**kargs)
+def args_paralog(parser):
+	_add_shared_hog_args(parser)
+	parser.add_argument('--nodes', metavar='NODE', nargs='+', type=str, default=None,
+					dest='nodes',
+					help='Tree nodes to report paralogs for (default: all)')
+	parser.add_argument('--species', metavar='SPECIES', nargs='+', type=str, default=None,
+					dest='species',
+					help='Species to report paralogs for (default: all)')
+	parser.add_argument('-o', '--output', type=str,
+					dest='output', metavar='FILE', default=None,
+					help='Output file path [default: stdout]')
+
+def func_paralog(**kargs):
+	from .paralog import xmain as paralog_main
+	paralog_main(**kargs)
+
 
 def args_detandem(parser):
 	parser.add_argument('-og', '-orthogroup', required=True, type=str,
@@ -460,6 +476,7 @@ CMD_GROUPS = OrderedDict([
 	]),
 	('Hierarchical Orthologous Groups', [
 		('hog',      'Split Hierarchical Orthologous Groups (HOGs) from SOGs using synteny and species tree.'),
+		('paralog',  'Output paralogous gene pairs from HOGs.'),
 		('prune',    'Prune SOGs to single-copy per species based on HOGs.'),
 	]),
 	('Phylogenomics', [
@@ -480,6 +497,7 @@ _ARGS_FN = {
 	'evaluate': args_evaluate,
 	'filter': args_filter, 'cluster': args_cluster, 'outgroup': args_outgroup,
 	'hog': args_hog, 'detandem': args_detandem,
+	'paralog': args_paralog,
 	'prune': args_prune,
 	'phylo': args_phylo, 'stats': args_stats,
 	'rak': args_rak, 'sim': args_sim,
@@ -528,6 +546,7 @@ FUNC = {
 	'rakeval': func_rakeval,
 	'ksplot': func_ksplot,
 	'evaluate': func_evaluate,
+	'paralog': func_paralog,
 	'prune': func_prune,
 }
 
