@@ -29,6 +29,7 @@ class Paralog:
 		logger.info('Loaded {} HOGs'.format(len(all_hogs)))
 
 		fout = open(self.output, 'w') if self.output else sys.stdout
+		fout.write('#gene1	gene2	node	species	HOG_id\n')
 		count = 0
 		for hog_id, hog_rec in all_hogs.items():
 			node_id = hog_rec['node_id']
