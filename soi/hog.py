@@ -207,31 +207,24 @@ class HOG:
 			internal_groups[nid][pid].append(hog)
 
 		# --- Leaf species ---
-		# Each gene appears in HOGs from leaf to root.  Keep only the
-		# deepest (most specific) HOG per (species, gene) to avoid
-		# counting the same gene multiple times across hierarchy levels.
-		node_depth = {}
-		for node in self.tree.traverse("preorder"):
-			if node.is_root():
-				depth = 0
-			else:
-				depth = node_depth[node.up.name] + 1
-			node_depth[node.name] = depth
-
-		sp_gene_best = {}  # (sp, gene) -> (depth, hog_id)
-		for hog in self.all_hogs.values():
-			for sp in hog["species"]:
-				for g in hog["genes"]:
-					if not g.startswith(sp):
-						continue
-					d = node_depth.get(hog["node_id"], 0)
-					key = (sp, g)
-					if key not in sp_gene_best or d > sp_gene_best[key][0]:
-						sp_gene_best[key] = (d, hog["hog_id"])
+		# Only use HOGs at the immediate parent node of each species.
+		# Genes appearing only at higher nodes (e.g. ginseng in N6)
+		# are not counted — those duplications belong to deeper branches.
+		leaf_parent = {}
+		for leaf in all_nodes:
+			if leaf.is_leaf() and leaf.up:
+				leaf_parent[leaf.name] = leaf.up.name
 
 		leaf_groups = defaultdict(lambda: defaultdict(list))
-		for (sp, g), (d, hog_id) in sp_gene_best.items():
-			leaf_groups[sp][hog_id].append(g)
+		for hog in self.all_hogs.values():
+			for sp in hog["species"]:
+				if sp not in leaf_parent:
+					continue
+				if hog["node_id"] != leaf_parent[sp]:
+					continue
+				sp_genes = [g for g in hog["genes"] if g.startswith(sp)]
+				if sp_genes:
+					leaf_groups[sp][hog["hog_id"]].extend(sp_genes)
 
 		return internal_groups, leaf_groups
 
