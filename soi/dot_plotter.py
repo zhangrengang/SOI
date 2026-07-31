@@ -186,7 +186,10 @@ def dotplot_args(parser):
 	group_bin = parser.add_argument_group(
 		'Plot Ks by bins', 'options to plot binned Ks')
 	group_bin.add_argument('--plot-bin', action='store_true', default=False,
-						   help="plot binned Ks. [default=%(default)s]")
+					   help="plot binned Ks. [default=%(default)s]")
+
+	parser.add_argument('--swap', action='store_true', default=False,
+						help="swap x/y axes and labels")
 
 
 def _resolve_chrs(xchrs):
@@ -302,6 +305,16 @@ def main(args):
 		chrs2 = _resolve_sp(args.ysp, gff)
 	if not chrs1 or not chrs2:
 		sys.exit('Error: need -c, (--xchrs + --ychrs), or (--xsp + --ysp)')
+	if args.swap:
+		chrs1, chrs2 = chrs2, chrs1
+		args.xlabel, args.ylabel = args.ylabel, args.xlabel
+		args.xanc, args.yanc = args.yanc, args.xanc
+		args.xbars, args.ybars = args.ybars, args.xbars
+		args.xbarlab, args.ybarlab = args.ybarlab, args.xbarlab
+		if args.colorby_sg:
+			args.colorby_sg = 'y' if args.colorby_sg == 'x' else 'x'
+		if args.colorby_anc:
+			args.colorby_anc = 'y' if args.colorby_anc == 'x' else 'x'
 	same_sp = True if chrs1 == chrs2 else False
 	blocks, lines1, lines2, ortholog_graph, chrs1, chrs2, d_offset1, d_offset2 = \
 		parse_collinearity(
