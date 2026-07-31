@@ -15,7 +15,7 @@ def xmain(**kargs):
 	
 class HOG:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "HOGs",
-		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, min_child_species=1, **kargs):
+		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, min_child_species=1, cross_speciation=False, drop_no_cross=False, **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
@@ -23,6 +23,8 @@ class HOG:
 		self.noparalog = not paralog
 		self.max_copies = max_copies
 		self.min_child_species = min_child_species
+		self.cross_speciation = cross_speciation
+		self.drop_no_cross = drop_no_cross
 		self.out_stats = outpre + '.stats.tsv' if out_stats else None
 		self.bar_plot = outpre + '.bar' if bar_plot else None
 		self.tree_plot = outpre + '.tree' if tree_plot else None
@@ -30,6 +32,13 @@ class HOG:
 		logger.info(f'Reading and Numbering species tree from {self.sptreefile}')
 		self.tree = sptree = number_nodes(self.sptreefile)
 		self.species = sptree.get_leaf_names()
+
+		# precompute child species sets for cross-speciation check
+		node_child_species = {}
+		if self.cross_speciation or self.drop_no_cross:
+			for node in sptree.traverse():
+				if not node.is_leaf():
+					node_child_species[node.name] = [set(c.get_leaf_names()) for c in node.get_children()]
 		
 		logger.info(f'Loading orthologs from {self.orthfiles}')
 		graph = ColinearGroups(self.orthfiles, spsd=self.species, 
@@ -54,24 +63,37 @@ class HOG:
 					continue
 				node_id = node.name
 				node_species = set(node.get_leaf_names())
-
-				if not node_species & og_species:
+				subset_species = node_species & og_species
+				if not subset_species:
 					continue
 
 				subset_genes = []
-				for sp in node_species & og_species:
+				for sp in subset_species:
 					subset_genes.extend(og_spdict[sp])
 
 				if not subset_genes:
 					continue
 
-				hog_subgraph = subgraph.subgraph(subset_genes)
-				connected_components = list(nx.connected_components(hog_subgraph))
+				# cross-speciation: genes must span all child branches of this node
+				do_split = True
+				if not node.is_leaf() and (self.cross_speciation or self.drop_no_cross):
+					child_sps = node_child_species[node_id]
+					crosses = all(subset_species & cs for cs in child_sps)
+					if not crosses:
+						if self.drop_no_cross:
+							continue
+						do_split = False
+
+				if do_split:
+					hog_subgraph = subgraph.subgraph(subset_genes)
+					connected_components = list(nx.connected_components(hog_subgraph))
+				else:
+					connected_components = [set(subset_genes)]
 				connected_components.sort(key=lambda comp: min(comp))
 				for idx, cc_genes in enumerate(connected_components):
 					# species actually present in this connected component
 					cc_species = [sp for sp in og_spdict
-								  if sp in node_species and set(og_spdict[sp]) & cc_genes]
+								  if sp in subset_species and set(og_spdict[sp]) & cc_genes]
 					# filter orphan HOGs: internal node with genes from < min_child_species species
 					if not node.is_leaf() and self.min_child_species > 1:
 						if len(cc_species) < self.min_child_species:

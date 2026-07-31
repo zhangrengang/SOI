@@ -96,6 +96,12 @@ def _add_shared_hog_args(parser):
 	parser.add_argument('--min-child-species', type=int, default=1,
 						dest='min_child_species', metavar='INT',
 						help='Minimum number of species in a child HOG for it to be retained [default=%(default)s]')
+	parser.add_argument('--cross-speciation', action='store_true', default=False,
+						dest='cross_speciation',
+						help='Merge child HOGs whose genes do not span all child branches of this node')
+	parser.add_argument('--drop-no-cross', action='store_true', default=False,
+						dest='drop_no_cross',
+						help='Drop (instead of merge) HOGs whose genes do not span all child branches')
 
 
 def args_hog(parser):
