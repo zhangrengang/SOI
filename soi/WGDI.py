@@ -669,6 +669,8 @@ class Alignment:
         d_idmap = {}
         d_pep = seq2dict(pep)
         d_cds = seq2dict(cds)
+        logger.info('Loaded {} pep, {} cds sequences'.format(
+            len(d_pep), len(d_cds)))
         cdsTreefiles, cdsAlnfiles = [], []
         cmd_list = []
         i = 0
@@ -722,6 +724,8 @@ class Alignment:
             cmds = ' && '.join(cmds)
             cmd_list += [cmds]
 
+        logger.info('Filtered {} total SGs -> {} kept (min_genes>=4, max_missing<={})'.format(
+            i, len(cdsAlnfiles), max_missing))
         nbin = 10
         ncpu = 50
         cmd_file = '{}/{}.cmds.list'.format(self.tmpdir, 'cds')
