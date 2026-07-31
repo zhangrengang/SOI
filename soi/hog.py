@@ -3,6 +3,7 @@ import re
 import numpy as np
 import networkx as nx
 from collections import defaultdict, Counter
+from itertools import combinations
 
 from .OrthoFinder import OrthoMCLGroup
 from .mcscan import ColinearGroups
@@ -138,73 +139,102 @@ class HOG:
 			row = [hog_id, og_id, node_id, parent_id, gene_str]
 			fout.write("\t".join(row) + "\n")
 
-	def compute_copy_stats(self):
-		"""Compute per-node copy-number distribution.
+	# ------------------------------------------------------------------
+	#  shared branch-level grouping
+	# ------------------------------------------------------------------
 
-		Internal nodes: incoming child HOG count per parent HOG.
-		  For node N, group child HOGs at N by their parent (at N's parent),
-		  then aggregate: how many parent HOGs produce 1,2,3... children at N.
-		  This measures the duplication on the branch leading INTO N.
-		Leaf species:   HOG -> number of gene copies from that species.
-		Returns (leaf_data, internal_data, node_names) where each data is
-		list of np.array([[copies, hog_count], ...]) sorted postorder."""
-		sptree = self.tree
-		all_nodes = list(sptree.traverse(strategy="postorder"))
+	def _group_hogs_by_branch(self):
+		"""Group HOGs by branch for downstream aggregation.
+
+		Internal nodes: for each node N, group child HOGs by their parent
+		  HOG (the HOG at N's parent).  Each parent->children group
+		  represents a duplication event on the branch leading into N.
+
+		Leaf nodes: for each species, group its genes by HOG.
+		  Multiple genes of the same species in the same HOG indicate
+		  within-species paralogy.
+
+		Returns:
+		  internal_groups: {node_id: {parent_hog_id: [child_hog_records]}}
+		  leaf_groups:     {species: {hog_id: [genes_of_that_species]}}
+		"""
+		all_nodes = list(self.tree.traverse(strategy="postorder"))
 		leaf_set = {n.name for n in all_nodes if n.is_leaf()}
 		internal_set = {n.name for n in all_nodes if not n.is_leaf()}
-		max_c = self.max_copies
 
-		# --- Internal nodes: incoming children per parent HOG ---
-		# node_id -> parent_hog_id -> child_count at this node
-		node_incoming = defaultdict(lambda: defaultdict(int))
+		# --- Internal nodes ---
+		internal_groups = defaultdict(lambda: defaultdict(list))
 		for hog in self.all_hogs.values():
 			nid = hog["node_id"]
 			if nid not in internal_set:
 				continue
 			pid = hog["parent"]
-			if pid and pid != "Root":
-				parent_hog = self.all_hogs.get(pid)
-				if parent_hog:
-					node_incoming[nid][pid] += 1
+			if not pid or pid == "Root":
+				continue
+			parent_hog = self.all_hogs.get(pid)
+			if not parent_hog:
+				continue
+			internal_groups[nid][pid].append(hog)
 
+		# --- Leaf species ---
+		leaf_groups = defaultdict(lambda: defaultdict(list))
+		for hog in self.all_hogs.values():
+			for sp in hog["species"]:
+				sp_genes = [g for g in hog["genes"] if g.startswith(sp)]
+				if sp_genes:
+					leaf_groups[sp][hog["hog_id"]].extend(sp_genes)
+
+		return internal_groups, leaf_groups
+
+	# ------------------------------------------------------------------
+	#  copy-number statistics (uses _group_hogs_by_branch)
+	# ------------------------------------------------------------------
+
+	def compute_copy_stats(self):
+		"""Compute per-node copy-number distribution.
+
+		Internal nodes: child count per parent HOG → distribution.
+		Leaf species:   gene copies per HOG → distribution.
+
+		Returns (leaf_data, internal_data, node_names).
+		"""
+		internal_groups, leaf_groups = self._group_hogs_by_branch()
+		all_nodes = list(self.tree.traverse(strategy="postorder"))
+		leaf_set = {n.name for n in all_nodes if n.is_leaf()}
+		max_c = self.max_copies
+
+		# Internal
 		internal_data = []
 		internal_names = []
 		for node in all_nodes:
 			nid = node.name
 			if nid in leaf_set:
 				continue
-			pcounts = node_incoming.get(nid, {})
+			pcounts = internal_groups.get(nid, {})
 			if not pcounts:
 				continue
 			dist = Counter()
-			for cnt in pcounts.values():
-				c = min(cnt, max_c)
+			for children in pcounts.values():
+				c = min(len(children), max_c)
 				dist[c] += 1
 			arr = np.array(sorted(dist.items()), dtype=int)
 			if len(arr):
 				internal_data.append(arr)
 				internal_names.append(nid)
 
-		# --- Leaf species: count gene copies per HOG per species ---
-		leaf_sp_counts = defaultdict(lambda: defaultdict(int))
-		for hog in self.all_hogs.values():
-			for sp in hog["species"]:
-				cnt = sum(1 for g in hog["genes"] if g.startswith(sp))
-				if cnt > 0:
-					leaf_sp_counts[sp][hog["hog_id"]] = cnt
-
+		# Leaf
 		leaf_data = []
 		leaf_names = []
 		for node in all_nodes:
 			if not node.is_leaf():
 				continue
 			sp = node.name
-			sp_hog_genes = leaf_sp_counts.get(sp, {})
+			sp_hog_genes = leaf_groups.get(sp, {})
 			if not sp_hog_genes:
 				continue
 			dist = Counter()
-			for cnt in sp_hog_genes.values():
-				c = min(cnt, max_c)
+			for genes in sp_hog_genes.values():
+				c = min(len(genes), max_c)
 				dist[c] += 1
 			arr = np.array(sorted(dist.items()), dtype=int)
 			if len(arr):
@@ -212,6 +242,65 @@ class HOG:
 				leaf_names.append(sp)
 
 		return leaf_data, internal_data, leaf_names + internal_names
+
+	# ------------------------------------------------------------------
+	#  branch paralog iterator
+	# ------------------------------------------------------------------
+
+	def iter_branch_paralogs(self, nodes=None, species=None):
+		"""Yield paralogous gene pairs produced at each branch.
+
+		Internal nodes: sibling child HOGs (same parent) → gene pairs
+		  across different child HOGs for the same species.
+
+		Leaf species: genes of the same species within the same HOG
+		  → pairwise paralogs.
+
+		Yields: (gene1, gene2, node_id, species, hog_id)
+		"""
+		internal_groups, leaf_groups = self._group_hogs_by_branch()
+		node_set = set(nodes) if nodes else None
+		sp_set = set(species) if species else None
+
+		# Helper: group genes by species for a list of HOG records
+		_hog_sp_genes = {}
+		def _get_sp_genes(hog_rec):
+			if hog_rec.hog_id not in _hog_sp_genes:
+				sg = defaultdict(list)
+				for g in hog_rec["genes"]:
+					sp = g.split('|')[0] if '|' in g else g.rsplit('_', 1)[0]
+					sg[sp].append(g)
+				_hog_sp_genes[hog_rec.hog_id] = dict(sg)
+			return _hog_sp_genes[hog_rec.hog_id]
+
+		# --- Internal nodes: cross-child-HOG paralogs ---
+		for nid, parent_hogs in internal_groups.items():
+			if node_set and nid not in node_set:
+				continue
+			for parent_hog_id, children in parent_hogs.items():
+				if len(children) < 2:
+					continue
+				for ci in range(len(children)):
+					sp_genes_i = _get_sp_genes(children[ci])
+					for cj in range(ci + 1, len(children)):
+						sp_genes_j = _get_sp_genes(children[cj])
+						common = set(sp_genes_i) & set(sp_genes_j)
+						if sp_set:
+							common &= sp_set
+						for sp in common:
+							for g1 in sp_genes_i[sp]:
+								for g2 in sp_genes_j[sp]:
+									yield (g1, g2, nid, sp, parent_hog_id)
+
+		# --- Leaf species: within-HOG paralogs ---
+		for sp, hog_genes in leaf_groups.items():
+			if sp_set and sp not in sp_set:
+				continue
+			for hog_id, genes in hog_genes.items():
+				if len(genes) < 2:
+					continue
+				for g1, g2 in combinations(sorted(set(genes)), 2):
+					yield (g1, g2, sp, sp, hog_id)
 
 	def write_stats_table(self, leaf_data, internal_data, node_names):
 		"""Write TSV like save_depth_table: rows = nodes, cols = copy numbers."""
@@ -349,65 +438,5 @@ class HOGrecord:
 
 def main():
 	HOG(ogfile=sys.argv[1], orthfiles=sys.argv[2], sptreefile=sys.argv[3]).pipe()
-
-
-def iter_branch_paralogs(all_hogs, tree, nodes=None, species=None):
-	"""Yield paralogous gene pairs produced at each internal branch.
-
-	At an internal node N, a parent HOG (from N's parent) splits into multiple
-	child HOGs at N.  Genes of the same species distributed across different
-	child HOGs are paralogs from the branch leading to N.
-
-	Yields: (gene1, gene2, node_id, species, parent_hog_id)
-	"""
-	from itertools import combinations
-	all_nodes = list(tree.traverse(strategy="postorder"))
-	leaf_set = {n.name for n in all_nodes if n.is_leaf()}
-	node_set = set(nodes) if nodes else None
-	sp_set = set(species) if species else None
-
-	# node_id -> parent_hog_id -> [hog_rec, ...]
-	node_children = defaultdict(lambda: defaultdict(list))
-	for hog in all_hogs.values():
-		nid = hog["node_id"]
-		if nid in leaf_set:
-			continue
-		if node_set and nid not in node_set:
-			continue
-		pid = hog["parent"]
-		if not pid or pid == "Root":
-			continue
-		parent_hog = all_hogs.get(pid)
-		if not parent_hog:
-			continue
-		node_children[nid][pid].append(hog)
-
-	# Pre-group genes by species for each HOG
-	_hog_sp_genes = {}
-	def _get_sp_genes(hog_rec):
-		if hog_rec.hog_id not in _hog_sp_genes:
-			sg = defaultdict(list)
-			for g in hog_rec["genes"]:
-				sp = g.split('|')[0] if '|' in g else g.rsplit('_', 1)[0]
-				sg[sp].append(g)
-			_hog_sp_genes[hog_rec.hog_id] = dict(sg)
-		return _hog_sp_genes[hog_rec.hog_id]
-
-	for nid, parent_hogs in node_children.items():
-		for parent_hog_id, children in parent_hogs.items():
-			if len(children) < 2:
-				continue
-			# All pairs of child HOGs
-			for ci in range(len(children)):
-				sp_genes_i = _get_sp_genes(children[ci])
-				for cj in range(ci + 1, len(children)):
-					sp_genes_j = _get_sp_genes(children[cj])
-					common = set(sp_genes_i) & set(sp_genes_j)
-					if sp_set:
-						common &= sp_set
-					for sp in common:
-						for g1 in sp_genes_i[sp]:
-							for g2 in sp_genes_j[sp]:
-								yield (g1, g2, nid, sp, parent_hog_id)
 if __name__ == '__main__':
 	main()

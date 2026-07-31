@@ -2,11 +2,12 @@
 """
 paralog: output paralogous gene pairs produced at each branch from HOGs.
 
-At an internal node, a parent HOG splits into child HOGs.  Genes of the same
-species in different child HOGs are paralogs produced on that branch.
+Internal nodes: sibling child HOGs (same parent) → genes of the same species
+  across different child HOGs are paralogs on that branch.
+Leaf species: genes of the same species within the same HOG → paralogs.
 """
 import sys
-from .hog import HOG, iter_branch_paralogs
+from .hog import HOG
 from .RunCmdsMP import logger
 
 
@@ -24,14 +25,14 @@ class Paralog:
 	def run(self):
 		hog = HOG(ogfile=self.ogfile, orthfiles=self.orthfiles,
 				  sptreefile=self.sptreefile, paralog=self.paralog)
-		all_hogs = hog.pipe(write_tsv=False)
-		logger.info('Loaded {} HOGs'.format(len(all_hogs)))
+		hog.pipe(write_tsv=False)
+		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
 
 		fout = open(self.output, 'w') if self.output else sys.stdout
 		fout.write('#gene1\tgene2\tnode\tspecies\tHOG_id\n')
 		count = 0
-		for g1, g2, node_id, sp, hog_id in iter_branch_paralogs(
-				all_hogs, hog.tree, self.nodes, self.species):
+		for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
+				self.nodes, self.species):
 			fout.write('{}\t{}\t{}\t{}\t{}\n'.format(
 				g1, g2, node_id, sp, hog_id))
 			count += 1
