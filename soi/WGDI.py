@@ -649,8 +649,8 @@ class Alignment:
                     print('\t'.join(line), file=fout)
 
     def genetrees(self, pep, cds=None, outdir='genetrees', genetrees='sg.genetrees',
-                  alignments='sg.alignments'):
-        self.trimal_opts, self.iqtree_opts = '-automated1', '-mset GTR'
+                  alignments='sg.alignments', max_missing=0.5):
+        self.trimal_opts, self.iqtree_opts = '-gappyout', '-mset GTR'
         mafft_template = '. ~/.bashrc; mafft --auto {} > {} 2> /dev/null'
         pal2nal_template = 'pal2nal.pl -output fasta {} {} > {}'
         trimal_template = 'trimal %s -in {} -out {} > /dev/null' % (
@@ -670,6 +670,8 @@ class Alignment:
             i += 1
             genes = [g for g in line.genes if g is not None]
             if len(genes) < 4:
+                continue
+            if line.missing_rate > max_missing:
                 continue
             ogid = 'XG{}'.format(i)
             pepSeq = '{}/{}.pep'.format(self.tmpdir, ogid)
@@ -717,9 +719,13 @@ class Alignment:
         nbin = 10
         ncpu = 50
         cmd_file = '{}/{}.cmds.list'.format(self.tmpdir, 'cds')
+        run_job(cmd_file, cmd_list=cmd_list, tc_tasks=ncpu, by_bin=nbin,
+                fail_exit=False)
         treefiles = cdsTreefiles
         ColinearGroups().cat_genetrees(treefiles, genetrees, idmap=d_idmap,
                                        plain=False, format_confidence='%d')
+        with open(alignments, 'w') as fout:
+            catAln(cdsAlnfiles, fout, idmap=d_idmap)
     def win_trees(self, pep, gff, win_size=50, win_step=10, min_ratio=0.7,
                   min_seqs=4, tmpdir='tmp', exclude_ref=False, **kargs):
         mkdirs(tmpdir)
