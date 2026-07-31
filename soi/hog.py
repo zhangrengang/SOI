@@ -163,7 +163,12 @@ class HOG:
 			hog_id = hog["hog_id"]
 			og_id = hog["og_id"]
 			node_id = hog["node_id"]
-			parent_id = hog["parent"] if hog["parent"] is not None else "Root"
+			if hog["parent"] is not None:
+				parent_id = hog["parent"]
+			elif node_id == self.tree.name:
+				parent_id = "Root"
+			else:
+				parent_id = "None"
 			gene_str = " ".join(sorted(hog["genes"]))
 
 			row = [hog_id, og_id, node_id, parent_id, gene_str]
