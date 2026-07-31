@@ -70,10 +70,11 @@ class HOG:
 				connected_components = list(nx.connected_components(hog_subgraph))
 				connected_components.sort(key=lambda comp: min(comp))
 				for idx, cc_genes in enumerate(connected_components):
+					# species actually present in this connected component
+					cc_species = sorted({gene2sp[g] for g in cc_genes})
 					# filter orphan HOGs: internal node with genes from < min_child_species species
 					if not node.is_leaf() and self.min_child_species > 1:
-						n_cc_species = len({gene2sp[g] for g in cc_genes})
-						if n_cc_species < self.min_child_species:
+						if len(cc_species) < self.min_child_species:
 							continue
 					hog_id = f"{og_id}.{node_id}.{prefix}{idx}"
 
@@ -82,7 +83,7 @@ class HOG:
 						og_id=og_id,
 						node_id=node_id,
 						genes=list(cc_genes),
-						species=[sp for sp in og_spdict if sp in node_species],
+						species=cc_species,
 						parent=None,
 						children=[]
 					)
