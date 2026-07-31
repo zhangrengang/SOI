@@ -45,7 +45,6 @@ class HOG:
 			og_species = set(og.species)
 			og_id = og.ogid
 			og_spdict = og.spdict
-			gene2sp = {g: sp for sp, gs in og_spdict.items() for g in gs}
 			subgraph = graph.subgraph(og_genes).copy()
 
 			node_to_hogs = defaultdict(list)
@@ -71,7 +70,8 @@ class HOG:
 				connected_components.sort(key=lambda comp: min(comp))
 				for idx, cc_genes in enumerate(connected_components):
 					# species actually present in this connected component
-					cc_species = sorted({gene2sp[g] for g in cc_genes})
+					cc_species = [sp for sp in og_spdict
+								  if sp in node_species and set(og_spdict[sp]) & cc_genes]
 					# filter orphan HOGs: internal node with genes from < min_child_species species
 					if not node.is_leaf() and self.min_child_species > 1:
 						if len(cc_species) < self.min_child_species:
