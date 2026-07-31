@@ -15,13 +15,14 @@ def xmain(**kargs):
 	
 class HOG:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "HOGs",
-		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, **kargs):
+		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, min_child_species=1, **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
 		self.outtsv = outpre + '.tsv'
 		self.noparalog = not paralog
 		self.max_copies = max_copies
+		self.min_child_species = min_child_species
 		self.out_stats = outpre + '.stats.tsv' if out_stats else None
 		self.bar_plot = outpre + '.bar' if bar_plot else None
 		self.tree_plot = outpre + '.tree' if tree_plot else None
@@ -44,6 +45,7 @@ class HOG:
 			og_species = set(og.species)
 			og_id = og.ogid
 			og_spdict = og.spdict
+			gene2sp = {g: sp for sp, gs in og_spdict.items() for g in gs}
 			subgraph = graph.subgraph(og_genes).copy()
 
 			node_to_hogs = defaultdict(list)
@@ -68,6 +70,11 @@ class HOG:
 				connected_components = list(nx.connected_components(hog_subgraph))
 				connected_components.sort(key=lambda comp: min(comp))
 				for idx, cc_genes in enumerate(connected_components):
+					# filter orphan HOGs: internal node with genes from < min_child_species species
+					if not node.is_leaf() and self.min_child_species > 1:
+						n_cc_species = len({gene2sp[g] for g in cc_genes})
+						if n_cc_species < self.min_child_species:
+							continue
 					hog_id = f"{og_id}.{node_id}.{prefix}{idx}"
 
 					hog = HOGrecord(

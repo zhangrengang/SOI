@@ -93,6 +93,9 @@ def _add_shared_hog_args(parser):
 	parser.add_argument('-paralog', action='store_true', default=False,
 						dest='paralog',
 						help='Include paralogs [default: False]')
+	parser.add_argument('--min-child-species', type=int, default=1,
+						dest='min_child_species', metavar='INT',
+						help='Minimum number of species in a child HOG for it to be retained [default=%(default)s]')
 
 
 def args_hog(parser):
