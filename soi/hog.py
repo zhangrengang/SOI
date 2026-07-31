@@ -177,12 +177,31 @@ class HOG:
 			internal_groups[nid][pid].append(hog)
 
 		# --- Leaf species ---
-		leaf_groups = defaultdict(lambda: defaultdict(list))
+		# Each gene appears in HOGs from leaf to root.  Keep only the
+		# deepest (most specific) HOG per (species, gene) to avoid
+		# counting the same gene multiple times across hierarchy levels.
+		node_depth = {}
+		for node in self.tree.traverse("preorder"):
+			if node.is_root():
+				depth = 0
+			else:
+				depth = node_depth[node.up.name] + 1
+			node_depth[node.name] = depth
+
+		sp_gene_best = {}  # (sp, gene) -> (depth, hog_id)
 		for hog in self.all_hogs.values():
 			for sp in hog["species"]:
-				sp_genes = [g for g in hog["genes"] if g.startswith(sp)]
-				if sp_genes:
-					leaf_groups[sp][hog["hog_id"]].extend(sp_genes)
+				for g in hog["genes"]:
+					if not g.startswith(sp):
+						continue
+					d = node_depth.get(hog["node_id"], 0)
+					key = (sp, g)
+					if key not in sp_gene_best or d > sp_gene_best[key][0]:
+						sp_gene_best[key] = (d, hog["hog_id"])
+
+		leaf_groups = defaultdict(lambda: defaultdict(list))
+		for (sp, g), (d, hog_id) in sp_gene_best.items():
+			leaf_groups[sp][hog_id].append(g)
 
 		return internal_groups, leaf_groups
 
