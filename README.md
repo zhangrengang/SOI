@@ -392,7 +392,7 @@ Output files:
 
 Filter options (shared with `prune` and `paralog`):
 - `--min-child-species N` — skip child HOGs with fewer than N species (default: 1).  Useful for suppressing orphan single-species HOGs that inflate Multi% at branches without WGD.
-- `--cross-speciation` — merge child HOGs whose genes do not span all child branches of the current node.
+- `--cross-speciation` — do not split child HOGs when the genes at a node do not span all child branches.  **Note:** genes that fail to cross the speciation boundary are inherently ambiguous — keeping them unsplit can shift duplication signal from a parent branch to a child branch (or vice versa).
 - `--drop-no-cross` — drop (instead of merge) entire nodes whose genes do not span all child branches.  **Note:** this can break the HOG parent-child chain: a HOG at node N may have its parent dropped at N's parent, leaving `Parent` as a dead reference and causing internal nodes' copy-number statistics and paralog detection to miss these edges.  Use with caution.
 
 #### `prune` ####

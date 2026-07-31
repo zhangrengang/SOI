@@ -13,18 +13,17 @@ from .RunCmdsMP import logger
 
 class Paralog:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None,
-				 paralog=False, nodes=None, species=None, output=None):
+				 nodes=None, species=None, output=None, **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
-		self.paralog = paralog
 		self.nodes = nodes
 		self.species = species
 		self.output = output
-
+		self.kargs = kargs
 	def run(self):
 		hog = HOG(ogfile=self.ogfile, orthfiles=self.orthfiles,
-				  sptreefile=self.sptreefile, paralog=self.paralog)
+				  sptreefile=self.sptreefile, **self.kargs)
 		hog.pipe(write_tsv=False)
 		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
 
