@@ -390,6 +390,11 @@ Output files:
 - `HOGs.bar.pdf/.png` — multi-panel bar chart of the distribution
 - `HOGs.tree.pdf/.png` — species tree with pie charts at each node
 
+Filter options (shared with `prune` and `paralog`):
+- `--min-child-species N` — skip child HOGs with fewer than N species (default: 1).  Useful for suppressing orphan single-species HOGs that inflate Multi% at branches without WGD.
+- `--cross-speciation` — merge child HOGs whose genes do not span all child branches of the current node.
+- `--drop-no-cross` — drop (instead of merge) entire nodes whose genes do not span all child branches.  **Note:** this can break the HOG parent-child chain: a HOG at node N may have its parent dropped at N's parent, leaving `Parent` as a dead reference and causing internal nodes' copy-number statistics and paralog detection to miss these edges.  Use with caution.
+
 #### `prune` ####
 The subcommand `prune` purifies orthogroups (OGs) to single-copy per species,
 guided by Hierarchical Orthologous Group (HOG) information.
