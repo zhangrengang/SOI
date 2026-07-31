@@ -394,7 +394,10 @@ class Alignment:
         self.indice = self.parse_indice(indice)  # cut columns
         if idmap is None and colnames is not None:
             idmap = colnames
-        self.idmap = self.parse_idmap(idmap)  # idx - name * unique ID
+        try:
+            self.idmap = self.parse_idmap(idmap)  # idx - name * unique ID
+        except:
+            self.idmap = None
         self.colnames = self.parse_colnames(colnames)  # names    * repeat allowed
 
     def __iter__(self):
@@ -649,7 +652,10 @@ class Alignment:
                     print('\t'.join(line), file=fout)
 
     def genetrees(self, pep, cds=None, outdir='genetrees', genetrees='sg.genetrees',
-                  alignments='sg.alignments', max_missing=0.5):
+                  prefix=None, alignments='sg.alignments', max_missing=0.5):
+        if prefix:
+            genetrees = f'{prefix}.genetrees'
+            alignments = f'{prefix}.alignments'
         self.trimal_opts, self.iqtree_opts = '-gappyout', '-mset GTR'
         mafft_template = '. ~/.bashrc; mafft --auto {} > {} 2> /dev/null'
         pal2nal_template = 'pal2nal.pl -output fasta {} {} > {}'
