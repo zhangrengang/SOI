@@ -652,7 +652,7 @@ class Alignment:
                     print('\t'.join(line), file=fout)
 
     def genetrees(self, pep, cds=None, outdir='genetrees', genetrees='sg.genetrees',
-                  prefix=None, alignments='sg.alignments', max_missing=0.5):
+                  prefix=None, alignments='sg.alignments', max_missing=0.5, **kargs):
         if prefix:
             genetrees = f'{prefix}.genetrees'
             alignments = f'{prefix}.alignments'
@@ -932,7 +932,7 @@ def main():
         Alignment(alignment, **kargs).get_high_loss(**kargs)
     elif subcmd == 'genetrees':
         pep, cds = sys.argv[3:5]
-        Alignment(alignment, **kargs).genetrees(pep, cds)
+        Alignment(alignment, **kargs).genetrees(pep, cds, **kargs)
     elif subcmd == 'plot_ak':
         akfile = sys.argv[2]
         AK(akfile).plot(**kargs)

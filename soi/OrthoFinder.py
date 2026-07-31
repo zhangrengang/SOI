@@ -81,7 +81,8 @@ def catAln(inALNs, outALN, allow_missing=True, idmap=None):
 					d_seqs[sp] = [seq]
 	xlens = ','.join(map(str, lens))
 	names = ','.join(names)
-	logger.warn('{} alignment files missing'.format(nm))
+	if nm > 0:
+		logger.warn('{} alignment files missing'.format(nm))
 	description = 'taxa:{} genes:{} sites:{} blocks:{} names:{}'.format(
 		ntax, len(lens), sum(lens), xlens, names)
 	logger.info('Concatenating {} genes of {} taxa ({} sites)'.format(
