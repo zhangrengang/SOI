@@ -14,30 +14,7 @@ from .RunCmdsMP import logger
 
 
 # ---------------------------------------------------------------------------
-#  shared: write paralog pairs + group by branch
-# ---------------------------------------------------------------------------
-
-def _write_paralogs_and_group(hog, fpath, nodes, species):
-	"""Write paralog pairs to TSV and group by branch.
-
-	Returns {branch: set of canonical (g1,g2)} and total count.
-	"""
-	branch_pairs = defaultdict(set)
-	with open(fpath, 'w') as fout:
-		fout.write('#gene1\tgene2\tnode\tspecies\tHOG_id\n')
-		count = 0
-		for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
-				nodes, species):
-			fout.write('{}\t{}\t{}\t{}\t{}\n'.format(
-				g1, g2, node_id, sp, hog_id))
-			pair = (g1, g2) if g1 < g2 else (g2, g1)
-			branch_pairs[node_id].add(pair)
-			count += 1
-	return branch_pairs, count
-
-
-# ---------------------------------------------------------------------------
-#  paralog output (used directly in --no-index, and internally by indexer)
+#  paralog output (used directly or by indexer)
 # ---------------------------------------------------------------------------
 
 class Paralog:
@@ -52,17 +29,31 @@ class Paralog:
 		self.kargs = kargs
 
 	def run(self):
-		"""Load HOGs, write paralog TSV, return {branch: frozenset(pairs)}."""
+		"""Load HOGs, write paralog TSV, return {branch: frozenset(pairs)}, root_name."""
 		hog = HOG(ogfile=self.ogfile, orthfiles=self.orthfiles,
 				  sptreefile=self.sptreefile, **self.kargs)
 		hog.pipe(write_tsv=False)
 		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
 
 		fpath = self.prefix + '.paralog.tsv'
-		branch_pairs, count = _write_paralogs_and_group(
-			hog, fpath, self.nodes, self.species)
+		branch_pairs, count = self._write_and_group(hog, fpath)
 		logger.info('Output {} paralog pairs to {}'.format(count, fpath))
 		return {b: frozenset(ps) for b, ps in branch_pairs.items()}, hog.tree.name
+
+	def _write_and_group(self, hog, fpath):
+		"""Write paralog TSV, return {branch: set of canonical (g1,g2)}, count."""
+		branch_pairs = defaultdict(set)
+		with open(fpath, 'w') as fout:
+			fout.write('#gene1\tgene2\tnode\tspecies\tHOG_id\n')
+			count = 0
+			for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
+					self.nodes, self.species):
+				fout.write('{}\t{}\t{}\t{}\t{}\n'.format(
+					g1, g2, node_id, sp, hog_id))
+				pair = (g1, g2) if g1 < g2 else (g2, g1)
+				branch_pairs[node_id].add(pair)
+				count += 1
+		return branch_pairs, count
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +202,7 @@ def _is_tandem(rc, d_gene, min_dist):
 def xmain(**kargs):
 	no_index = kargs.pop('no_index', False)
 	if no_index:
-		kargs.pop('output', None)  # ignore deprecated -o
+		kargs.pop('output', None)
 		Paralog(**kargs).run()
 	else:
 		indexer = ParalogIndexer(**kargs)
