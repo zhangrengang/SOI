@@ -140,8 +140,10 @@ class ParalogIndexer:
 					best_pi = pi
 					best_branch = branch
 
+			if best_pi == 0.0:
+				continue  # no paralog signal — not our business
 			if best_pi < threshold:
-				best_branch = root
+				best_branch = root  # weak signal — fallback to root
 
 			# store data immediately — rc is a shared mutable object
 			assigned[best_branch].append(
