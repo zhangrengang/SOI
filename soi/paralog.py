@@ -95,11 +95,11 @@ class ParalogIndexer:
 		self._branch_pairs, self._root_branch = paralog.run()
 
 	def _compute_pi(self, block_pairs, branch_pairs):
-		"""Compute Paralogue Index = |intersection| / |block_pairs|."""
+		"""Return (PI, n_intersect) for Paralogue Index."""
 		if not block_pairs:
-			return 0.0
+			return 0.0, 0
 		common = sum(1 for p in block_pairs if p in branch_pairs)
-		return common / len(block_pairs)
+		return common / len(block_pairs), common
 
 	def _canonical_pair(self, g1, g2):
 		return (g1, g2) if g1 < g2 else (g2, g1)
@@ -132,18 +132,20 @@ class ParalogIndexer:
 
 			best_branch = root
 			best_pi = 0.0
+			best_nparalog = 0
 			for branch, bp_set in self._branch_pairs.items():
-				pi = self._compute_pi(block_pairs, bp_set)
+				pi, n_paralog = self._compute_pi(block_pairs, bp_set)
 				if pi > best_pi:
 					best_pi = pi
+					best_nparalog = n_paralog
 					best_branch = branch
 
 			if best_pi < threshold:
 				best_branch = root
 
+			# store data immediately — rc is a shared mutable object
 			assigned[best_branch].append(
-				(rc.block, rc.species1, rc.species2, rc.N, best_pi))
-
+				(rc.block, rc.species1, rc.N, best_nparalog, best_pi))
 		logger.info('Assigned blocks to {} branches'.format(len(assigned)))
 		return assigned
 
@@ -152,15 +154,14 @@ class ParalogIndexer:
 		fpath = self.prefix + '.index.stats.tsv'
 		stats = defaultdict(lambda: [0, 0, 0, 0.0])
 		for branch, items in assigned.items():
-			for block, sp1, sp2, N, pi in items:
-				for sp in (sp1, sp2):
-					if sp is None:
-						continue
-					s = stats[(branch, sp)]
-					s[0] += 1
-					s[1] += N
-					s[2] += int(pi * N)
-					s[3] += pi
+			for block, sp, N, n_paralog, pi in items:
+				if sp is None:
+					continue
+				s = stats[(branch, sp)]
+				s[0] += 1
+				s[1] += N
+				s[2] += n_paralog
+				s[3] += pi
 
 		with open(fpath, 'w') as fout:
 			fout.write('#branch\tspecies\tblocks\tgene_pairs\tparalog_pairs\tmean_PI\n')
@@ -175,7 +176,7 @@ class ParalogIndexer:
 		for branch, items in assigned.items():
 			fpath = '{}.index.{}.blocks'.format(self.prefix, branch)
 			with open(fpath, 'w') as fout:
-				for block, sp1, sp2, N, pi in items:
+				for block, sp, N, n_paralog, pi in items:
 					fout.write(block)
 		logger.info('Block files written for {} branches'.format(len(assigned)))
 
