@@ -22,6 +22,7 @@
         - [detandem](#detandem)
       * Hierarchical Orthologous Groups
         - [hog](#hog)
+        - [paralog](#paralog)
         - [prune](#prune)
       * Phylogenomics
         - [phylo](#phylo)
@@ -389,6 +390,45 @@ Output files:
 - `HOGs.stats.tsv` — per-node copy-number distribution (columns: 1, 2, 3, ..., N+, Multi%)
 - `HOGs.bar.pdf/.png` — multi-panel bar chart of the distribution
 - `HOGs.tree.pdf/.png` — species tree with pie charts at each node
+
+#### `paralog` ####
+The subcommand `paralog` outputs HOG-based paralogous gene pairs per branch
+and classifies synteny blocks by branch-specific paralog content (Paralogue Index, PI).
+
+Usage examples:
+```
+# basic: output paralog pairs per branch
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree -pre paralog
+
+# include paralogs from leaf-species HOGs
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree -pre paralog -paralog
+
+# classify synteny blocks by branch paralog content (default mode)
+# uses -ss (self-synteny, default same as -s) for block assignment
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
+    -ss collinearity.ortho -pre paralog
+
+# with PI cutoff and minimum block size
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
+    -ss collinearity.ortho -pre paralog --pi-cutoff 0.1 -n 4
+
+# filter by specific branches or species
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
+    -pre paralog --nodes N1 N10 --species Arabidopsis_thaliana
+
+# raw paralog output only (disable index mode)
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
+    --no-index -pre paralog
+```
+
+Output files:
+- `<prefix>.paralog.tsv` — paralog pairs (gene1, gene2, node, species, HOG_id)
+- `<prefix>.stats.tsv` — per-branch per-species block statistics (blocks, gene_pairs, paralog_pairs, mean_PI)
+- `<prefix>.{branch}.blocks` — synteny blocks assigned to each branch
+
+Index mode (default): for each self-synteny block, compute PI = (paralog pairs / gene pairs)
+per branch and assign to the branch with the highest PI.  Blocks with PI below --pi-cutoff
+(0.05) fall back to the root node.
 
 Filter options (shared with `prune` and `paralog`):
 - `--min-child-species N` — skip child HOGs with fewer than N species (default: 1).  Useful for suppressing orphan single-species HOGs that inflate Multi% at branches without WGD.
