@@ -151,7 +151,7 @@ class ParalogIndexer:
 
 	def write_stats(self, assigned):
 		"""Write per-branch per-species statistics TSV."""
-		fpath = self.prefix + '.index.stats.tsv'
+		fpath = self.prefix + '.stats.tsv'
 		stats = defaultdict(lambda: [0, 0, 0, 0.0])
 		for branch, items in assigned.items():
 			for block, sp, N, n_paralog, pi in items:
@@ -174,7 +174,7 @@ class ParalogIndexer:
 	def write_blocks(self, assigned):
 		"""Write assigned blocks per branch."""
 		for branch, items in assigned.items():
-			fpath = '{}.index.{}.blocks'.format(self.prefix, branch)
+			fpath = '{}.{}.blocks'.format(self.prefix, branch)
 			with open(fpath, 'w') as fout:
 				for block, sp, N, n_paralog, pi in items:
 					fout.write(block)
