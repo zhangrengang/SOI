@@ -129,6 +129,9 @@ class ParalogIndexer:
 		for rc in self._filter_tandem(XCollinearity(self.self_synteny)):
 			if rc.N < self.min_n:
 				continue
+			if rc.species1 != rc.species2:
+				continue  # only self-synteny blocks have paralog signal
+
 			# canonical pairs from block
 			block_pairs = [self._canonical_pair(g1, g2) for g1, g2 in rc.pairs]
 
@@ -140,10 +143,8 @@ class ParalogIndexer:
 					best_pi = pi
 					best_branch = branch
 
-			if best_pi == 0.0:
-				continue  # no paralog signal — not our business
 			if best_pi < threshold:
-				best_branch = root  # weak signal — fallback to root
+				best_branch = root
 
 			# store data immediately — rc is a shared mutable object
 			assigned[best_branch].append(
