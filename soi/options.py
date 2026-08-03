@@ -144,9 +144,10 @@ def args_paralog(parser):
 	parser.add_argument('-d', '-min_dist', type=int, default=None,
 						dest='min_dist', metavar='INT',
 						help='Minimum distance to remove a tandem repeated block [default=None]')
-	parser.add_argument('--pi-threshold', type=float, default=0.05,
-						dest='pi_threshold', metavar='FLOAT',
-						help='Minimum PI to assign a block to a branch [default=%(default)s]')
+	parser.add_argument('--pi-cutoff', type=float, default=0.05,
+						dest='pi_cutoff', metavar='FLOAT',
+						help='Minimum Paralogue Index (PI = paralog_pairs / block_gene_pairs) '
+							 'to assign a block to a branch [default=%(default)s]')
 	parser.add_argument('--no-index', action='store_true', default=False,
 						dest='no_index',
 						help='Disable paralog indexing, output raw paralog pairs')

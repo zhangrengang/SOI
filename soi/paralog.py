@@ -65,7 +65,7 @@ class ParalogIndexer:
 
 	def __init__(self, ogfile, orthfiles, sptreefile,
 				 self_synteny=None, min_n=0, gff=None, min_dist=None,
-				 pi_threshold=0.05, nodes=None, species=None,
+				 pi_cutoff=0.05, nodes=None, species=None,
 				 prefix='paralog_index', **hog_kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
@@ -74,7 +74,7 @@ class ParalogIndexer:
 		self.min_n = min_n
 		self.gff = gff
 		self.min_dist = min_dist
-		self.pi_threshold = pi_threshold
+		self.pi_cutoff = pi_cutoff
 		self.nodes = nodes
 		self.species = species
 		self.prefix = prefix
@@ -119,7 +119,7 @@ class ParalogIndexer:
 		"""Assign blocks to branches, return {branch: [(block, sp1, sp2, N, pi), ...]}."""
 		self._load_branch_pairs()
 		assigned = defaultdict(list)
-		threshold = self.pi_threshold
+		threshold = self.pi_cutoff
 		root = self._root_branch
 
 		for rc in self._filter_tandem(XCollinearity(self.self_synteny)):
