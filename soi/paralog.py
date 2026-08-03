@@ -14,6 +14,29 @@ from .RunCmdsMP import logger
 
 
 # ---------------------------------------------------------------------------
+#  shared: write paralog pairs + group by branch
+# ---------------------------------------------------------------------------
+
+def _write_paralogs_and_group(hog, fpath, nodes, species):
+	"""Write paralog pairs to TSV, return {branch: {canonical_pairs}} and count.
+
+	Returns (branch_pairs: {node_id: set of (g1,g2)}, count: int).
+	"""
+	branch_pairs = defaultdict(set)
+	with open(fpath, 'w') as fout:
+		fout.write('#gene1\tgene2\tnode\tspecies\tHOG_id\n')
+		count = 0
+		for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
+				nodes, species):
+			fout.write('{}\t{}\t{}\t{}\t{}\n'.format(
+				g1, g2, node_id, sp, hog_id))
+			pair = (g1, g2) if g1 < g2 else (g2, g1)
+			branch_pairs[node_id].add(pair)
+			count += 1
+	return branch_pairs, count
+
+
+# ---------------------------------------------------------------------------
 #  pure paralog output (--no-index)
 # ---------------------------------------------------------------------------
 
@@ -35,15 +58,7 @@ class Paralog:
 		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
 
 		fpath = self.prefix + '.paralog.tsv'
-		with open(fpath, 'w') as fout:
-			fout.write('#gene1	gene2	node	species	HOG_id\n')
-			count = 0
-			for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
-					self.nodes, self.species):
-				fout.write('{}	{}	{}	{}	{}\n'.format(
-					g1, g2, node_id, sp, hog_id))
-				count += 1
-
+		_, count = _write_paralogs_and_group(hog, fpath, self.nodes, self.species)
 		logger.info('Output {} paralog pairs to {}'.format(count, fpath))
 
 
@@ -84,23 +99,15 @@ class ParalogIndexer:
 		hog.pipe(write_tsv=False)
 		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
 
-		branch_pairs = defaultdict(set)
-		fparalog = self.prefix + '.paralog.tsv'
-		with open(fparalog, 'w') as fout:
-			fout.write('#gene1	gene2	node	species	HOG_id\n')
-			for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
-					self.nodes, self.species):
-				fout.write('{}	{}	{}	{}	{}\n'.format(
-					g1, g2, node_id, sp, hog_id))
-				# canonical order for set membership
-				pair = (g1, g2) if g1 < g2 else (g2, g1)
-				branch_pairs[node_id].add(pair)
+		fpath = self.prefix + '.paralog.tsv'
+		branch_pairs, count = _write_paralogs_and_group(
+			hog, fpath, self.nodes, self.species)
 
 		self._branch_pairs = {b: frozenset(ps) for b, ps in branch_pairs.items()}
 		self._root_branch = hog.tree.name
-		logger.info('Loaded paralog pairs for {} branches'.format(
-			len(self._branch_pairs)))
-		logger.info('Paralog pairs written to {}'.format(fparalog))
+		logger.info('Loaded paralog pairs for {} branches ({} pairs)'.format(
+			len(self._branch_pairs), count))
+		logger.info('Paralog pairs written to {}'.format(fpath))
 
 	def _compute_pi(self, block_pairs, branch_pairs):
 		"""Compute Paralogue Index = |intersection| / |block_pairs|."""
@@ -113,7 +120,7 @@ class ParalogIndexer:
 		return (g1, g2) if g1 < g2 else (g2, g1)
 
 	def _filter_tandem(self, blocks):
-		"""Remove tandem blocks if -d is set. Lazy: only load GFF if needed."""
+		"""Remove tandem blocks if -d is set.  Lazy: load GFF on first call."""
 		if not self.min_dist or not self.gff:
 			yield from blocks
 			return
@@ -136,7 +143,6 @@ class ParalogIndexer:
 			if rc.species1 != rc.species2:
 				continue  # only self-synteny blocks have paralog signal
 
-			# canonical pairs from block
 			block_pairs = [self._canonical_pair(g1, g2) for g1, g2 in rc.pairs]
 
 			best_branch = root
@@ -160,7 +166,6 @@ class ParalogIndexer:
 	def write_stats(self, assigned):
 		"""Write per-branch per-species statistics TSV."""
 		fpath = self.prefix + '.index.stats.tsv'
-		# (branch, sp) -> [blocks, total_genes, paralog_pairs, sum_pi]
 		stats = defaultdict(lambda: [0, 0, 0, 0.0])
 		for branch, items in assigned.items():
 			for block, sp1, sp2, N, pi in items:
