@@ -124,14 +124,35 @@ def func_hog(**kargs):
 def args_paralog(parser):
 	_add_shared_hog_args(parser)
 	parser.add_argument('--nodes', metavar='NODE', nargs='+', type=str, default=None,
-					dest='nodes',
-					help='Tree nodes to report paralogs for (default: all)')
+						dest='nodes',
+						help='Tree nodes to report paralogs for (default: all)')
 	parser.add_argument('--species', metavar='SPECIES', nargs='+', type=str, default=None,
-					dest='species',
-					help='Species to report paralogs for (default: all)')
+						dest='species',
+						help='Species to report paralogs for (default: all)')
+	parser.add_argument('-pre', '-prefix', type=str,
+						dest='prefix', metavar='PREFIX', default='paralog_index',
+						help='Output prefix [default=%(default)s]')
 	parser.add_argument('-o', '--output', type=str,
-					dest='output', metavar='FILE', default=None,
-					help='Output file path [default: stdout]')
+						dest='output', metavar='FILE', default=None,
+						help='Output file path (no-index mode) [default: stdout]')
+	parser.add_argument('-ss', '--self-synteny', type=str, nargs='+', default=None,
+						dest='self_synteny', metavar='FILE',
+						help='Synteny file for paralog indexing (default: same as -s)')
+	parser.add_argument('-n', '-min_n', type=int, default=0,
+						dest='min_n', metavar='INT',
+						help='Minimum gene number in a block [default=%(default)s]')
+	parser.add_argument('-g', '-gff', type=str,
+						dest='gff', metavar='FILE',
+						help='Gff file. [required for `-d`]')
+	parser.add_argument('-d', '-min_dist', type=int, default=None,
+						dest='min_dist', metavar='INT',
+						help='Minimum distance to remove a tandem repeated block [default=None]')
+	parser.add_argument('--pi-threshold', type=float, default=0.05,
+						dest='pi_threshold', metavar='FLOAT',
+						help='Minimum PI to assign a block to a branch [default=%(default)s]')
+	parser.add_argument('--no-index', action='store_true', default=False,
+						dest='no_index',
+						help='Disable paralog indexing, output raw paralog pairs')
 
 def func_paralog(**kargs):
 	from .paralog import xmain as paralog_main
