@@ -7,7 +7,6 @@ Internal nodes: sibling child HOGs (same parent) -> genes of the same species
   across different child HOGs are paralogs on that branch.
 Leaf species: genes of the same species within the same HOG -> paralogs.
 """
-import sys
 from collections import defaultdict, Counter
 from .hog import HOG
 from .mcscan import XCollinearity, Gff
@@ -20,13 +19,13 @@ from .RunCmdsMP import logger
 
 class Paralog:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None,
-				 nodes=None, species=None, output=None, **kargs):
+				 nodes=None, species=None, prefix='paralog', **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
 		self.nodes = nodes
 		self.species = species
-		self.output = output
+		self.prefix = prefix
 		self.kargs = kargs
 
 	def run(self):
@@ -35,18 +34,17 @@ class Paralog:
 		hog.pipe(write_tsv=False)
 		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
 
-		fout = open(self.output, 'w') if self.output else sys.stdout
-		fout.write('#gene1\tgene2\tnode\tspecies\tHOG_id\n')
-		count = 0
-		for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
-				self.nodes, self.species):
-			fout.write('{}\t{}\t{}\t{}\t{}\n'.format(
-				g1, g2, node_id, sp, hog_id))
-			count += 1
+		fpath = self.prefix + '.paralog.tsv'
+		with open(fpath, 'w') as fout:
+			fout.write('#gene1	gene2	node	species	HOG_id\n')
+			count = 0
+			for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
+					self.nodes, self.species):
+				fout.write('{}	{}	{}	{}	{}\n'.format(
+					g1, g2, node_id, sp, hog_id))
+				count += 1
 
-		if self.output:
-			fout.close()
-		logger.info('Output {} paralog pairs'.format(count))
+		logger.info('Output {} paralog pairs to {}'.format(count, fpath))
 
 
 # ---------------------------------------------------------------------------
@@ -87,16 +85,22 @@ class ParalogIndexer:
 		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
 
 		branch_pairs = defaultdict(set)
-		for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
-				self.nodes, self.species):
-			# canonical order for set membership
-			pair = (g1, g2) if g1 < g2 else (g2, g1)
-			branch_pairs[node_id].add(pair)
+		fparalog = self.prefix + '.paralog.tsv'
+		with open(fparalog, 'w') as fout:
+			fout.write('#gene1	gene2	node	species	HOG_id\n')
+			for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
+					self.nodes, self.species):
+				fout.write('{}	{}	{}	{}	{}\n'.format(
+					g1, g2, node_id, sp, hog_id))
+				# canonical order for set membership
+				pair = (g1, g2) if g1 < g2 else (g2, g1)
+				branch_pairs[node_id].add(pair)
 
 		self._branch_pairs = {b: frozenset(ps) for b, ps in branch_pairs.items()}
 		self._root_branch = hog.tree.name
 		logger.info('Loaded paralog pairs for {} branches'.format(
 			len(self._branch_pairs)))
+		logger.info('Paralog pairs written to {}'.format(fparalog))
 
 	def _compute_pi(self, block_pairs, branch_pairs):
 		"""Compute Paralogue Index = |intersection| / |block_pairs|."""
@@ -209,8 +213,8 @@ def _is_tandem(rc, d_gene, min_dist):
 def xmain(**kargs):
 	no_index = kargs.pop('no_index', False)
 	if no_index:
-		output = kargs.pop('output', None)
-		Paralog(output=output, **kargs).run()
+		kargs.pop('output', None)  # ignore deprecated -o
+		Paralog(**kargs).run()
 	else:
 		indexer = ParalogIndexer(**kargs)
 		assigned = indexer.assign()

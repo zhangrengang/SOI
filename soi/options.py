@@ -132,9 +132,6 @@ def args_paralog(parser):
 	parser.add_argument('-pre', '-prefix', type=str,
 						dest='prefix', metavar='PREFIX', default='paralog_index',
 						help='Output prefix [default=%(default)s]')
-	parser.add_argument('-o', '--output', type=str,
-						dest='output', metavar='FILE', default=None,
-						help='Output file path (no-index mode) [default: stdout]')
 	parser.add_argument('-ss', '--self-synteny', type=str, nargs='+', default=None,
 						dest='self_synteny', metavar='FILE',
 						help='Synteny file for paralog indexing (default: same as -s)')
