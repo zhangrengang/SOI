@@ -120,7 +120,7 @@ class ParalogIndexer:
 			yield rc
 
 	def assign(self):
-		"""Assign blocks to branches, return {branch: [(rc, pi), ...]}."""
+		"""Assign blocks to branches, return {branch: [(block, sp1, sp2, N, pi), ...]}."""
 		self._load_branch_pairs()
 		assigned = defaultdict(list)
 		threshold = self.pi_threshold
@@ -143,7 +143,9 @@ class ParalogIndexer:
 			if best_pi < threshold:
 				best_branch = root
 
-			assigned[best_branch].append((rc, best_pi))
+			# store data immediately — rc is a shared mutable object
+			assigned[best_branch].append(
+				(rc.block, rc.species1, rc.species2, rc.N, best_pi))
 
 		logger.info('Assigned blocks to {} branches'.format(len(assigned)))
 		return assigned
@@ -154,14 +156,14 @@ class ParalogIndexer:
 		# (branch, sp) -> [blocks, total_genes, paralog_pairs, sum_pi]
 		stats = defaultdict(lambda: [0, 0, 0, 0.0])
 		for branch, items in assigned.items():
-			for rc, pi in items:
-				for sp in (rc.species1, rc.species2):
+			for block, sp1, sp2, N, pi in items:
+				for sp in (sp1, sp2):
 					if sp is None:
 						continue
 					s = stats[(branch, sp)]
 					s[0] += 1
-					s[1] += rc.N
-					s[2] += int(pi * rc.N)
+					s[1] += N
+					s[2] += int(pi * N)
 					s[3] += pi
 
 		with open(fpath, 'w') as fout:
@@ -177,8 +179,8 @@ class ParalogIndexer:
 		for branch, items in assigned.items():
 			fpath = '{}.index.{}.blocks'.format(self.prefix, branch)
 			with open(fpath, 'w') as fout:
-				for rc, pi in items:
-					fout.write(rc.block)
+				for block, sp1, sp2, N, pi in items:
+					fout.write(block)
 		logger.info('Block files written for {} branches'.format(len(assigned)))
 
 
