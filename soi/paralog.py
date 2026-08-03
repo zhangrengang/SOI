@@ -18,9 +18,9 @@ from .RunCmdsMP import logger
 # ---------------------------------------------------------------------------
 
 def _write_paralogs_and_group(hog, fpath, nodes, species):
-	"""Write paralog pairs to TSV, return {branch: {canonical_pairs}} and count.
+	"""Write paralog pairs to TSV and group by branch.
 
-	Returns (branch_pairs: {node_id: set of (g1,g2)}, count: int).
+	Returns {branch: set of canonical (g1,g2)} and total count.
 	"""
 	branch_pairs = defaultdict(set)
 	with open(fpath, 'w') as fout:
@@ -37,7 +37,7 @@ def _write_paralogs_and_group(hog, fpath, nodes, species):
 
 
 # ---------------------------------------------------------------------------
-#  pure paralog output (--no-index)
+#  paralog output (used directly in --no-index, and internally by indexer)
 # ---------------------------------------------------------------------------
 
 class Paralog:
@@ -52,14 +52,17 @@ class Paralog:
 		self.kargs = kargs
 
 	def run(self):
+		"""Load HOGs, write paralog TSV, return {branch: frozenset(pairs)}."""
 		hog = HOG(ogfile=self.ogfile, orthfiles=self.orthfiles,
 				  sptreefile=self.sptreefile, **self.kargs)
 		hog.pipe(write_tsv=False)
 		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
 
 		fpath = self.prefix + '.paralog.tsv'
-		_, count = _write_paralogs_and_group(hog, fpath, self.nodes, self.species)
+		branch_pairs, count = _write_paralogs_and_group(
+			hog, fpath, self.nodes, self.species)
 		logger.info('Output {} paralog pairs to {}'.format(count, fpath))
+		return {b: frozenset(ps) for b, ps in branch_pairs.items()}, hog.tree.name
 
 
 # ---------------------------------------------------------------------------
@@ -87,27 +90,18 @@ class ParalogIndexer:
 		self.hog_kargs = hog_kargs
 
 		# lazy
-		self._branch_pairs = None      # {branch: frozenset of (g1,g2)}
-		self._root_branch = None       # root node name
+		self._branch_pairs = None
+		self._root_branch = None
 
 	def _load_branch_pairs(self):
-		"""Load HOGs, compute paralog pairs, group by branch."""
+		"""Load HOGs and paralog pairs via Paralog."""
 		if self._branch_pairs is not None:
 			return
-		hog = HOG(ogfile=self.ogfile, orthfiles=self.orthfiles,
-				  sptreefile=self.sptreefile, **self.hog_kargs)
-		hog.pipe(write_tsv=False)
-		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
-
-		fpath = self.prefix + '.paralog.tsv'
-		branch_pairs, count = _write_paralogs_and_group(
-			hog, fpath, self.nodes, self.species)
-
-		self._branch_pairs = {b: frozenset(ps) for b, ps in branch_pairs.items()}
-		self._root_branch = hog.tree.name
-		logger.info('Loaded paralog pairs for {} branches ({} pairs)'.format(
-			len(self._branch_pairs), count))
-		logger.info('Paralog pairs written to {}'.format(fpath))
+		paralog = Paralog(ogfile=self.ogfile, orthfiles=self.orthfiles,
+						  sptreefile=self.sptreefile, prefix=self.prefix,
+						  nodes=self.nodes, species=self.species,
+						  **self.hog_kargs)
+		self._branch_pairs, self._root_branch = paralog.run()
 
 	def _compute_pi(self, block_pairs, branch_pairs):
 		"""Compute Paralogue Index = |intersection| / |block_pairs|."""
@@ -141,7 +135,7 @@ class ParalogIndexer:
 			if rc.N < self.min_n:
 				continue
 			if rc.species1 != rc.species2:
-				continue  # only self-synteny blocks have paralog signal
+				continue
 
 			block_pairs = [self._canonical_pair(g1, g2) for g1, g2 in rc.pairs]
 
@@ -156,7 +150,6 @@ class ParalogIndexer:
 			if best_pi < threshold:
 				best_branch = root
 
-			# store data immediately — rc is a shared mutable object
 			assigned[best_branch].append(
 				(rc.block, rc.species1, rc.species2, rc.N, best_pi))
 
