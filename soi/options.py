@@ -504,7 +504,7 @@ CMD_GROUPS = OrderedDict([
 	]),
 	('Hierarchical Orthologous Groups', [
 		('hog',      'Split Hierarchical Orthologous Groups (HOGs) from SOGs using synteny and species tree.'),
-		('paralog',  'Output paralogous gene pairs from HOGs.'),
+		('paralog',  'Output paralogous gene pairs and synteny blocks per branch based on HOGs.'),
 		('prune',    'Prune SOGs to single-copy per species based on HOGs.'),
 	]),
 	('Phylogenomics', [
