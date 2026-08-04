@@ -570,10 +570,11 @@ Dc1       53069   54763     Daucus_carota|DCAR_000506	0	+
 ....
 ```
 
-**Note:** SOI does not require GFF files to be sorted by position.
-However, **WGDI call-synteny (`-icl`)** requires each chromosome's genes
-to be ordered by ascending coordinate in the GFF; unsorted GFF will
-produce scrambled synteny blocks.
+**Note:** SOI re-orders genes by the start coordinate column internally,
+so GFF files do not need to be pre-sorted.
+However, **WGDI call-synteny (`-icl`)** uses the gene-index column
+(e.g. the `1,2,3,4` column in WGDI GFF format) directly without
+re-sorting; incorrect index values will produce scrambled synteny blocks.
 
 #### Ks table format ####
 The outputs from [KaKsCalculator](https://sourceforge.net/projects/kakscalculator2/) and WGDI are supported:
