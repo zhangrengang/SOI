@@ -104,16 +104,6 @@ class ParalogIndexer:
 	def _canonical_pair(self, g1, g2):
 		return (g1, g2) if g1 < g2 else (g2, g1)
 
-	def _filter_tandem(self, blocks):
-		"""Remove tandem blocks if -d is set.  Uses Collinearity.is_tandem()."""
-		if not self.min_dist:
-			yield from blocks
-			return
-		for rc in blocks:
-			if rc.is_tandem(self.min_dist):
-				continue
-			yield rc
-
 	def assign(self):
 		"""Assign blocks to branches, return {branch: [(block, sp1, sp2, N, pi), ...]}."""
 		self._load_branch_pairs()
@@ -121,11 +111,12 @@ class ParalogIndexer:
 		threshold = self.pi_cutoff
 		root = self._root_branch
 
-		for rc in self._filter_tandem(
-				XCollinearity(self.self_synteny, gff=self.gff)):
+		for rc in XCollinearity(self.self_synteny, gff=self.gff):
 			if rc.N < self.min_n:
 				continue
 			if rc.species1 != rc.species2:
+				continue
+			if self.min_dist and rc.is_tandem(self.min_dist):
 				continue
 
 			block_pairs = [self._canonical_pair(g1, g2) for g1, g2 in rc.pairs]
