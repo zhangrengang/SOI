@@ -16,7 +16,7 @@ import random
 from collections import defaultdict
 
 from .OrthoFinder import OrthoMCLGroup
-from .mcscan import Gff, ColinearGroups
+from .mcscan import XGff, ColinearGroups
 from .RunCmdsMP import logger
 
 
@@ -35,7 +35,7 @@ class Detandem:
 	def run(self):
 		# --- 1. parse GFF, build gene -> (chrom, index) map ---
 		logger.info(f'Parsing GFF from {self.gfffile}')
-		gff_parser = Gff(self.gfffile)
+		gff_parser = XGff(self.gfffile)
 		self.d_genes = gff_parser.get_indexed_genes()
 		logger.info(f'  {len(self.d_genes)} genes indexed')
 
