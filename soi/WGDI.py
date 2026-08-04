@@ -652,7 +652,7 @@ class Alignment:
                     print('\t'.join(line), file=fout)
 
     def genetrees(self, pep, cds=None, outdir='genetrees', genetrees='sg.genetrees',
-                  prefix=None, alignments='sg.alignments', max_missing=0.5, **kargs):
+                  prefix=None, alignments='sg.alignments', max_missing=0.5, ncpu=50, **kargs):
         if prefix:
             genetrees = f'{prefix}.genetrees'
             alignments = f'{prefix}.alignments'
@@ -727,7 +727,6 @@ class Alignment:
         logger.info('Filtered {} total SGs -> {} kept (min_genes>=4, max_missing<={})'.format(
             i, len(cdsAlnfiles), max_missing))
         nbin = 10
-        ncpu = 50
         cmd_file = '{}/{}.cmds.list'.format(self.tmpdir, 'cds')
         run_job(cmd_file, cmd_list=cmd_list, tc_tasks=ncpu, by_bin=nbin,
                 fail_exit=False)

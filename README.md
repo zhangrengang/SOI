@@ -369,9 +369,6 @@ Usage examples:
 # basic HOG splitting
 soi hog -og cluster.mcl -s collinearity.ortho -t species.tree -prefix HOGs
 
-# include paralogs
-soi hog -og cluster.mcl -s collinearity.ortho -t species.tree -prefix HOGs -paralog
-
 # output copy-number statistics table (per-node distribution)
 soi hog -og cluster.mcl -s collinearity.ortho -t species.tree -prefix HOGs --out-stats
 
@@ -400,17 +397,10 @@ Usage examples:
 # basic: output paralog pairs per branch
 soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree -pre paralog
 
-# include paralogs from leaf-species HOGs
-soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree -pre paralog -paralog
-
 # classify synteny blocks by branch paralog content (default mode)
 # uses -ss (self-synteny, default same as -s) for block assignment
 soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
-    -ss collinearity.ortho -pre paralog
-
-# with PI cutoff and minimum block size
-soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
-    -ss collinearity.ortho -pre paralog --pi-cutoff 0.1 -n 4
+    -ss self.collinearity.list -pre paralog
 
 # filter by specific branches or species
 soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
@@ -430,7 +420,7 @@ Index mode (default): for each self-synteny block, compute PI = (paralog pairs /
 per branch and assign to the branch with the highest PI.  Blocks with PI below --pi-cutoff
 (0.05) fall back to the root node.
 
-Filter options (shared with `prune` and `paralog`):
+Filter options (shared with `hog` and `paralog`):
 - `--min-child-species N` — skip child HOGs with fewer than N species (default: 1).  Useful for suppressing orphan single-species HOGs that inflate Multi% at branches without WGD.
 - `--cross-speciation` — do not split child HOGs when the genes at a node do not span all child branches.  **Note:** genes that fail to cross the speciation boundary are inherently ambiguous — keeping them unsplit can shift duplication signal from this node down to a child branch.
 - `--drop-no-cross` — drop (instead of merge) entire nodes whose genes do not span all child branches.  **Note:** this can break the HOG parent-child chain: a HOG at node N may have its parent dropped at N's parent, leaving `Parent` as a dead reference and causing internal nodes' copy-number statistics and paralog detection to miss these edges.  Use with caution.
