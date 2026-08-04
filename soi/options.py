@@ -138,7 +138,7 @@ def args_paralog(parser):
 	parser.add_argument('-n', '-min_n', type=int, default=0,
 						dest='min_n', metavar='INT',
 						help='Minimum gene number in a block [default=%(default)s]')
-	parser.add_argument('-g', '-gff', type=str,
+	parser.add_argument('-g', '-gff', type=str, nargs='+',
 						dest='gff', metavar='FILE',
 						help='Gff file. [required for `-d`]')
 	parser.add_argument('-d', '-min_dist', type=int, default=None,
@@ -161,7 +161,7 @@ def args_detandem(parser):
 	parser.add_argument('-og', '-orthogroup', required=True, type=str,
 						dest='ogfile', metavar='FILE',
 						help='Orthogroup file (MCL format). [required]')
-	parser.add_argument('-g', '-gff', required=True, type=str,
+	parser.add_argument('-g', '-gff', required=True, type=str, nargs='+',
 						dest='gfffile', metavar='FILE',
 						help='GFF annotation file. [required]')
 	parser.add_argument('-s', '-synteny', type=str, nargs='*', default=None,
@@ -245,7 +245,7 @@ def args_rak(parser):
 	parser.add_argument('-t', '-sptree', required=True, type=str,
 						dest='sptreefile', metavar='FILE',
 						help='Species tree file [required]')
-	parser.add_argument('-g', '-gff', required=True, type=str,
+	parser.add_argument('-g', '-gff', required=True, type=str, nargs='+',
 						dest='gfffile', metavar='FILE',
 						help='GFF annotation file [required]')
 	parser.add_argument('-prefix', type=str, default='AKR',
