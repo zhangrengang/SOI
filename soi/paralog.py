@@ -9,7 +9,7 @@ Leaf species: genes of the same species within the same HOG -> paralogs.
 """
 from collections import defaultdict, Counter
 from .hog import HOG
-from .mcscan import XCollinearity, Gff
+from .mcscan import XCollinearity
 from .RunCmdsMP import logger
 
 
@@ -105,13 +105,12 @@ class ParalogIndexer:
 		return (g1, g2) if g1 < g2 else (g2, g1)
 
 	def _filter_tandem(self, blocks):
-		"""Remove tandem blocks if -d is set.  Lazy: load GFF on first call."""
-		if not self.min_dist or not self.gff:
+		"""Remove tandem blocks if -d is set.  Uses Collinearity.is_tandem()."""
+		if not self.min_dist:
 			yield from blocks
 			return
-		d_gene = Gff(self.gff).get_indexed_genes()
 		for rc in blocks:
-			if _is_tandem(rc, d_gene, self.min_dist):
+			if rc.is_tandem(self.min_dist):
 				continue
 			yield rc
 
@@ -122,7 +121,8 @@ class ParalogIndexer:
 		threshold = self.pi_cutoff
 		root = self._root_branch
 
-		for rc in self._filter_tandem(XCollinearity(self.self_synteny)):
+		for rc in self._filter_tandem(
+				XCollinearity(self.self_synteny, gff=self.gff)):
 			if rc.N < self.min_n:
 				continue
 			if rc.species1 != rc.species2:
@@ -181,19 +181,6 @@ class ParalogIndexer:
 		logger.info('Block files written for {} branches'.format(len(assigned)))
 
 
-def _is_tandem(rc, d_gene, min_dist):
-	"""Check if block is tandem on the same chromosome within min_dist."""
-	if rc.chr1 != rc.chr2:
-		return False
-	positions = []
-	for g1, g2 in rc.pairs:
-		p1 = d_gene.get(g1, {}).get('pos')
-		p2 = d_gene.get(g2, {}).get('pos')
-		if p1 is not None and p2 is not None:
-			positions.append(abs(p1 - p2))
-	if positions and max(positions) < min_dist:
-		return True
-	return False
 
 
 # ---------------------------------------------------------------------------
