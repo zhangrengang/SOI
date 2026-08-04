@@ -570,6 +570,11 @@ Dc1       53069   54763     Daucus_carota|DCAR_000506	0	+
 ....
 ```
 
+**Note:** SOI does not require GFF files to be sorted by position.
+However, **WGDI call-synteny (`-icl`)** requires each chromosome's genes
+to be ordered by ascending coordinate in the GFF; unsorted GFF will
+produce scrambled synteny blocks.
+
 #### Ks table format ####
 The outputs from [KaKsCalculator](https://sourceforge.net/projects/kakscalculator2/) and WGDI are supported:
 ```
@@ -628,7 +633,7 @@ The Newick format (with or without branch lengths and support values) is support
 # with branch lengths:
 (Vitis_vinifera:0.1,(Daucus_carota:0.05,(Angelica_sinensis:0.02,Apium_graveolens:0.02):0.03):0.05);
 
-# with WGD indicator (p=2: tetraploidy, p=2: hexaploidy, etc.):
+# with WGD indicator (p=2: tetraploidy, p=3: hexaploidy, etc.):
 (Vitis_vinifera:0.1,(Daucus_carota:0.05,(Angelica_sinensis:0.02,Apium_graveolens:0.02):0.03)[p=2]:0.05);
 ```
 
