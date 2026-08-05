@@ -193,13 +193,20 @@ class ParalogIndexer:
 			branch_all[branch] += self._branch_sp_counts.get((branch, sp), 0)
 
 		tree = number_nodes(self.sptreefile)
+		# number of descendant species per node — normalize pie size
+		node_nspecies = {}
+		for node in tree.traverse():
+			node_nspecies[node.name] = len(node.get_leaf_names())
+
 		ns = NodeStyle()
 		ns['size'] = 0
 		ns['hz_line_width'] = 1
 		ns['vt_line_width'] = 1
 
-		# scale pie size by paralog count
-		max_n = max(branch_all.values()) if branch_all else 1
+		# scale pie size by paralog pairs per descendant species
+		branch_per_sp = {b: 1.0 * n / max(node_nspecies.get(b, 1), 1)
+						 for b, n in branch_all.items()}
+		max_n = max(branch_per_sp.values()) if branch_per_sp else 1
 		scale = 60.0 / max_n  # max pie 60px
 
 		def layout(node):
@@ -212,7 +219,7 @@ class ParalogIndexer:
 				syn_n = branch_syn.get(nid, 0)
 				non_n = all_n - syn_n
 				pcts = [100.0 * syn_n / all_n, 100.0 * non_n / all_n]
-				size = max(8, int(scale * all_n))  # pie diameter
+				size = max(8, int(scale * branch_per_sp[nid]))  # pie diameter
 				pie = PieChartFace(pcts, size, size,
 								   colors=['#377eb8', '#d9d9d9'],
 								   line_color=None)
