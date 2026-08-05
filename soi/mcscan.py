@@ -740,6 +740,11 @@ class Collinearity():
 			f.write(self.header)
 		f.write(self.block)
 
+	def _skip_reverse_wgdi(self):
+		"""WGDI outputs each syntenic region twice (chr1&chr2 and chr2&chr1).
+		Keep only the chr1 <= chr2 orientation."""
+		return self.source == 'wgdi' and self.chr1 > self.chr2
+
 	def parse(self):
 		start = lazy_decode(open(self.collinearity).read(1))
 		if start != '#' and not self.homology:
@@ -757,7 +762,8 @@ class Collinearity():
 					self.header = ''.join(head)
 					if lines:
 						self.parse_lines(lines)
-						yield self
+						if not self._skip_reverse_wgdi():
+							yield self
 						lines = []
 					lines.append(line)
 				elif Collinearity._RE_JCV_END.match(line):  # jcvi
@@ -774,7 +780,8 @@ class Collinearity():
 					lines.append(line)
 			if lines:
 				self.parse_lines(lines)
-				yield self
+				if not self._skip_reverse_wgdi():
+					yield self
 		else:  # homology
 			for line in open(self.collinearity):
 				line = lazy_decode(line)
