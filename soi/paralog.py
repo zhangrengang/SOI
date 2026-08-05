@@ -161,14 +161,15 @@ class ParalogIndexer:
 				s[3] += pi
 
 		with open(fpath, 'w') as fout:
-			fout.write('#branch	species	blocks	syntenic_gene_pairs	'
-					   'syntenic_paralog_pairs	mean_PI	n_paralogs	weighted_PI\n')
+			fout.write('#branch	species	n_paralogs	syntenic_blocks	'
+					   'syntenic_gene_pairs	syntenic_paralog_pairs	'
+					   'mean_PI	weighted_PI\n')
 			for (branch, sp), (blocks, gp, pp, sum_pi) in sorted(stats.items()):
 				mean_pi = sum_pi / blocks if blocks else 0.0
 				n_paralogs = self._branch_sp_counts.get((branch, sp), 0)
 				wpi = pp / gp if gp else 0.0
-				fout.write('{}	{}	{}	{}	{}	{:.4f}	{}	{:.4f}\n'.format(
-					branch, sp, blocks, gp, pp, mean_pi, n_paralogs, wpi))
+				fout.write('{}	{}	{}	{}	{}	{}	{:.4f}	{:.4f}\n'.format(
+					branch, sp, n_paralogs, blocks, gp, pp, mean_pi, wpi))
 		logger.info('Stats written to {}'.format(fpath))
 
 	def write_blocks(self, assigned):
