@@ -151,6 +151,10 @@ def args_paralog(parser):
 	parser.add_argument('--no-index', action='store_true', default=False,
 						dest='no_index',
 						help='Disable paralog indexing, output raw paralog pairs')
+	parser.add_argument('--tree-plot', action='store_true', default=False,
+						dest='tree_plot',
+						help='Output species tree with syntenic/non-syntenic paralog pies '
+							 '(<prefix>.tree.pdf/.png)')
 
 def func_paralog(**kargs):
 	from .paralog import xmain as paralog_main

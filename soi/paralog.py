@@ -147,7 +147,7 @@ class ParalogIndexer:
 		return assigned
 
 	def write_stats(self, assigned):
-		"""Write per-branch per-species statistics TSV."""
+		"""Write per-branch per-species statistics TSV, return stats dict."""
 		fpath = self.prefix + '.stats.tsv'
 		stats = defaultdict(lambda: [0, 0, 0, 0.0])
 		for branch, items in assigned.items():
@@ -161,7 +161,7 @@ class ParalogIndexer:
 				s[3] += pi
 
 		with open(fpath, 'w') as fout:
-			fout.write('#branch	species	n_paralogs	syntenic_blocks	'
+			fout.write('#branch	species	paralog_pairs	syntenic_blocks	'
 					   'syntenic_gene_pairs	syntenic_paralog_pairs	'
 					   'mean_PI	weighted_PI\n')
 			for (branch, sp), (blocks, gp, pp, sum_pi) in sorted(stats.items()):
@@ -171,6 +171,74 @@ class ParalogIndexer:
 				fout.write('{}	{}	{}	{}	{}	{}	{:.4f}	{:.4f}\n'.format(
 					branch, sp, n_paralogs, blocks, gp, pp, mean_pi, wpi))
 		logger.info('Stats written to {}'.format(fpath))
+		return stats
+
+	def plot_tree(self, assigned, stats):
+		"""Render species tree with pies: [syntenic, non-syntenic] paralog pairs.
+
+		Pie size maps to total paralog_pairs per branch; pie fractions show
+		the proportion of paralog pairs found in syntenic blocks.
+		"""
+		import os
+		if 'QT_QPA_PLATFORM' not in os.environ:
+			os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+		from ete3 import TreeStyle, PieChartFace, TextFace, NodeStyle, faces as etefaces
+		from .tree import number_nodes
+
+		# aggregate per branch over species
+		branch_syn = defaultdict(int)   # branch -> syntenic paralog pairs
+		branch_all = defaultdict(int)   # branch -> total paralog pairs
+		for (branch, sp), (blocks, gp, pp, sum_pi) in stats.items():
+			branch_syn[branch] += pp
+			branch_all[branch] += self._branch_sp_counts.get((branch, sp), 0)
+
+		tree = number_nodes(self.sptreefile)
+		ns = NodeStyle()
+		ns['size'] = 0
+		ns['hz_line_width'] = 1
+		ns['vt_line_width'] = 1
+
+		# scale pie size by paralog count
+		max_n = max(branch_all.values()) if branch_all else 1
+		scale = 60.0 / max_n  # max pie 60px
+
+		def layout(node):
+			node.set_style(ns)
+			nid = node.name
+			if nid in branch_all:
+				all_n = branch_all[nid]
+				if all_n == 0:
+					return
+				syn_n = branch_syn.get(nid, 0)
+				non_n = all_n - syn_n
+				pcts = [100.0 * syn_n / all_n, 100.0 * non_n / all_n]
+				size = max(8, int(scale * all_n))  # pie diameter
+				pie = PieChartFace(pcts, size, size,
+								   colors=['#377eb8', '#d9d9d9'],
+								   line_color=None)
+				pie.opacity = 0.9
+				if node.is_leaf():
+					etefaces.add_face_to_node(pie, node, column=0)
+				else:
+					etefaces.add_face_to_node(pie, node, column=0, position='branch-right')
+			if node.is_leaf():
+				name_face = TextFace(node.name, fsize=10)
+				etefaces.add_face_to_node(name_face, node, column=1)
+			else:
+				name_face = TextFace(nid, fsize=7, fgcolor='#888888')
+				etefaces.add_face_to_node(name_face, node, column=0, position='branch-top')
+
+		ts = TreeStyle()
+		ts.layout_fn = layout
+		ts.show_leaf_name = False
+		ts.scale = 200
+		ts.branch_vertical_margin = 10
+
+		out_pdf = self.prefix + '.tree.pdf'
+		out_png = self.prefix + '.tree.png'
+		tree.render(out_png, tree_style=ts)
+		tree.render(out_pdf, tree_style=ts)
+		logger.info('Tree plot written to {}'.format(out_pdf))
 
 	def write_blocks(self, assigned):
 		"""Write assigned blocks per branch."""
@@ -194,7 +262,10 @@ def xmain(**kargs):
 		kargs.pop('output', None)
 		Paralog(**kargs).run()
 	else:
+		tree_plot = kargs.pop('tree_plot', False)
 		indexer = ParalogIndexer(**kargs)
 		assigned = indexer.assign()
-		indexer.write_stats(assigned)
+		stats = indexer.write_stats(assigned)
 		indexer.write_blocks(assigned)
+		if tree_plot:
+			indexer.plot_tree(assigned, stats)
