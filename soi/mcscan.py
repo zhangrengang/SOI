@@ -741,11 +741,27 @@ class Collinearity():
 		f.write(self.block)
 
 	def _skip_reverse_wgdi(self):
-		"""WGDI outputs each syntenic region twice (chr1&chr2 and chr2&chr1).
-		For self-synteny (species1 == species2), keep only chr1 <= chr2;
-		cross-species blocks are not duplicated and must be kept."""
-		return (self.source == 'wgdi' and self.species1 == self.species2
-				and self.chr1 > self.chr2)
+		"""WGDI outputs each syntenic region twice.
+
+		Cross-chromosome (chr1 != chr2): keep only chr1 <= chr2.
+		Same-chromosome (chr1 == chr2): WGDI emits a mirror pair
+		  (gene1/gene2 swapped) for the same region — deduplicate by
+		  canonical pair-set content.
+		Only applied to self-synteny (species1 == species2).
+		"""
+		if self.source != 'wgdi' or self.species1 != self.species2:
+			return False
+		if self.chr1 != self.chr2:
+			return self.chr1 > self.chr2
+		# same-chromosome: content-based dedup
+		if not hasattr(self, '_seen_same_chr'):
+			self._seen_same_chr = set()
+		content = frozenset((g1, g2) if g1 < g2 else (g2, g1)
+							for g1, g2 in self.pairs)
+		if content in self._seen_same_chr:
+			return True
+		self._seen_same_chr.add(content)
+		return False
 
 	def parse(self):
 		start = lazy_decode(open(self.collinearity).read(1))
