@@ -93,6 +93,12 @@ class ParalogIndexer:
 						  nodes=self.nodes, species=self.species,
 						  **self.hog_kargs)
 		self._branch_pairs, self._root_branch = paralog.run()
+		# count paralog pairs per (branch, species)
+		self._branch_sp_counts = defaultdict(int)
+		for branch, pairs in self._branch_pairs.items():
+			for g1, g2 in pairs:
+				sp = g1.split('|')[0]
+				self._branch_sp_counts[(branch, sp)] += 1
 
 	def _compute_pi(self, block_pairs, branch_pairs):
 		"""Return (PI, n_intersect) for Paralogue Index."""
@@ -155,11 +161,14 @@ class ParalogIndexer:
 				s[3] += pi
 
 		with open(fpath, 'w') as fout:
-			fout.write('#branch\tspecies\tblocks\tgene_pairs\tparalog_pairs\tmean_PI\n')
+			fout.write('#branch	species	blocks	syntenic_gene_pairs	'
+					   'syntenic_paralog_pairs	mean_PI	n_paralogs	weighted_PI\n')
 			for (branch, sp), (blocks, gp, pp, sum_pi) in sorted(stats.items()):
 				mean_pi = sum_pi / blocks if blocks else 0.0
-				fout.write('{}\t{}\t{}\t{}\t{}\t{:.4f}\n'.format(
-					branch, sp, blocks, gp, pp, mean_pi))
+				n_paralogs = self._branch_sp_counts.get((branch, sp), 0)
+				wpi = pp / gp if gp else 0.0
+				fout.write('{}	{}	{}	{}	{}	{:.4f}	{}	{:.4f}\n'.format(
+					branch, sp, blocks, gp, pp, mean_pi, n_paralogs, wpi))
 		logger.info('Stats written to {}'.format(fpath))
 
 	def write_blocks(self, assigned):

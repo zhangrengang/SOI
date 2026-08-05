@@ -1128,7 +1128,11 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 	ksx = set(ksx)
 	if len(ksx) == 1:
 		logger.warn(
-			'All Ks have the same value: {}. Ks color map will be disabled'.format(ksx))
+			'All values (Ks/OI) are same: {}. Color map will be disabled. '.format(ksx))
+		if ofdir:
+			logger.warn('Please verify that the gene IDs are consistent \
+between the synteny (`{}`) and orthology (`{}`) input files.'.format(collinearity, ofdir)
+)
 	if matrix is not None:
 		fout = open(matrix, 'w')
 		d_matrix = to_matrix(d_blocks)
