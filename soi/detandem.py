@@ -111,7 +111,13 @@ class Detandem:
 		"""Pick the gene with highest degree in ortholog graph, or random."""
 		if self.graph is None:
 			return random.choice(cluster).gene
-		best = max(cluster, key=lambda g: self.graph.degree(g.gene))
+		def _degree(gene):
+			try:
+				d = self.graph.degree(gene)
+				return d if isinstance(d, int) else 0
+			except Exception:
+				return 0
+		best = max(cluster, key=lambda g: _degree(g.gene))
 		return best.gene
 
 	def _write_tandem_clusters(self):
