@@ -207,16 +207,20 @@ ggsave('{outfig}', p, width=12, height=7)
 
 
 class OrthoMCLGroup():  # Parse groups.txt and iterate to return each line.
-	def __init__(self, inGrp, sps=None):
+	def __init__(self, inGrp, sps=None, min_genes=2):
 		self.inGrp = inGrp
 		self.sps = sps
+		self.min_genes = min_genes
 
 	def __iter__(self):
 		return self.parse()
 
 	def parse(self):
 		for line in open(self.inGrp):
-			yield OrthoMCLGroupRecord(line, sps=self.sps)
+			rc = OrthoMCLGroupRecord(line, sps=self.sps)
+			if len(rc.genes) < self.min_genes:
+				continue
+			yield rc
 
 	def get_species(self):
 		species = set([])
