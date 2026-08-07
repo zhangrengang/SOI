@@ -224,7 +224,7 @@ class ParalogIndexer:
 				h = np.sqrt(Ns)
 			else:  # 'log' = natural log
 				h = np.log1p(Ns)
-			h = h / h.max() * 0.8 + 0.2  # keep minimum visible height
+			h = h / h.max() * (1 - 1e-3) + 1e-3  # tiny floor, no artificial base
 		else:
 			h = np.ones(len(rows))
 		# cumulative y positions (bottom of each row)
