@@ -159,6 +159,10 @@ def args_paralog(parser):
 						dest='heatmap',
 						help='Output block x branch PI heatmap '
 							 '(<prefix>.heatmap.tsv/.pdf/.png)')
+	parser.add_argument('--cluster', action='store_true', default=False,
+						dest='heatmap_cluster',
+						help='Order heatmap rows by hierarchical clustering '
+							 'instead of PI-vector sorting')
 
 def func_paralog(**kargs):
 	from .paralog import xmain as paralog_main

@@ -116,14 +116,11 @@ class ParalogIndexer:
 		assigned = defaultdict(list)
 		threshold = self.pi_cutoff
 		root = self._root_branch
-		# branch column order: root first, then tree traversal root -> leaves
+		# branch column order: tree traversal root -> leaves
 		from .tree import number_nodes
 		tree_order = [n.name for n in number_nodes(self.sptreefile).traverse()]
-		branches = [root] if root not in self._branch_pairs else []
-		for b in tree_order:
-			if b in self._branch_pairs and b not in branches:
-				branches.append(b)
-		branches += sorted(set(self._branch_pairs) - set(branches) - {root})
+		branches = [b for b in tree_order if b in self._branch_pairs]
+		branches += sorted(set(self._branch_pairs) - set(branches))
 		self._pi_branches = branches
 		self._pi_rows = []  # (block_id, N, pi_vector) for heatmap
 
@@ -144,8 +141,8 @@ class ParalogIndexer:
 			best_nparalog = 0
 			pi_vector = []
 			for branch in branches:
-				bp_set = self._branch_pairs.get(branch, set())
-				pi, n_paralog = self._compute_pi(block_pairs, bp_set)
+				pi, n_paralog = self._compute_pi(block_pairs,
+												 self._branch_pairs[branch])
 				pi_vector.append(pi)
 				if pi > best_pi:
 					best_pi = pi
@@ -166,12 +163,25 @@ class ParalogIndexer:
 	def write_heatmap(self, assigned):
 		"""Write block x branch PI matrix heatmap.
 
-		Rows (blocks) are sorted by their PI vector so blocks with similar
-		branch-PI profiles end up adjacent.
+		Rows (blocks) are sorted by their PI vector (descending) so blocks
+		with similar branch-PI profiles end up adjacent.  With cluster=True
+		rows are ordered by hierarchical clustering instead.
 		"""
 		fpath = self.prefix + '.heatmap.tsv'
 		branches = self._pi_branches
-		rows = sorted(self._pi_rows, key=lambda r: r[2])  # tuple compare
+		if getattr(self, 'heatmap_cluster', False):
+			# hierarchical clustering of rows
+			import numpy as np
+			from scipy.cluster.hierarchy import linkage, leaves_list
+			M = np.array([r[2] for r in self._pi_rows], dtype=float)
+			if M.size:
+				Z = linkage(M, method='ward')
+				order = leaves_list(Z)
+				rows = [self._pi_rows[i] for i in order]
+			else:
+				rows = []
+		else:
+			rows = sorted(self._pi_rows, key=lambda r: r[2], reverse=True)
 
 		with open(fpath, 'w') as fout:
 			fout.write('#block	N	' + '	'.join(branches) + '\n')
@@ -195,11 +205,13 @@ class ParalogIndexer:
 					   interpolation='nearest', vmin=0, vmax=1)
 		ax.set_xticks(range(len(branches)))
 		ax.set_xticklabels(branches, rotation=90, fontsize=6)
+		ax.xaxis.tick_top()  # ticks on top
+		ax.tick_params(axis='x', which='both', top=True, bottom=False,
+					   labeltop=True, labelbottom=False)
 		ax.set_yticks([])
-		ax.set_xlabel('branch')
-		ax.set_ylabel('block (sorted by PI vector)')
-		ax.set_title('Block x branch Paralogue Index')
-		fig.colorbar(im, ax=ax, label='PI')
+		ax.set_xlabel('Branch')
+		ax.set_ylabel('Block')
+		fig.colorbar(im, ax=ax, label='PI', shrink=0.6)
 		fig.tight_layout()
 		fig.savefig(self.prefix + '.heatmap.pdf')
 		fig.savefig(self.prefix + '.heatmap.png', dpi=150)
@@ -331,7 +343,9 @@ def xmain(**kargs):
 	else:
 		tree_plot = kargs.pop('tree_plot', False)
 		heatmap = kargs.pop('heatmap', False)
+		heatmap_cluster = kargs.pop('heatmap_cluster', False)
 		indexer = ParalogIndexer(**kargs)
+		indexer.heatmap_cluster = heatmap_cluster
 		assigned = indexer.assign()
 		stats = indexer.write_stats(assigned)
 		indexer.write_blocks(assigned)
