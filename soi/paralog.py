@@ -116,9 +116,13 @@ class ParalogIndexer:
 		assigned = defaultdict(list)
 		threshold = self.pi_cutoff
 		root = self._root_branch
-		# branch column order: tree traversal root -> leaves
+		# branch column order: internal nodes first, then leaves, each in
+		# tree traversal order
 		from .tree import number_nodes
-		tree_order = [n.name for n in number_nodes(self.sptreefile).traverse()]
+		tree = number_nodes(self.sptreefile)
+		internal = [n.name for n in tree.traverse() if not n.is_leaf()]
+		leaves = [n.name for n in tree.traverse() if n.is_leaf()]
+		tree_order = internal + leaves
 		branches = [b for b in tree_order if b in self._branch_pairs]
 		branches += sorted(set(self._branch_pairs) - set(branches))
 		self._pi_branches = branches
