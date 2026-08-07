@@ -116,7 +116,12 @@ class ParalogIndexer:
 		assigned = defaultdict(list)
 		threshold = self.pi_cutoff
 		root = self._root_branch
-		branches = sorted(self._branch_pairs)  # fixed column order for heatmap
+		# branch column order: tree traversal root -> leaves
+		from .tree import number_nodes
+		tree_order = [n.name for n in number_nodes(self.sptreefile).traverse()]
+		branches = [b for b in tree_order if b in self._branch_pairs]
+		branches += sorted(set(self._branch_pairs) - set(branches))
+		self._pi_branches = branches
 		self._pi_rows = []  # (block_id, N, pi_vector) for heatmap
 
 		for rc in XCollinearity(self.self_synteny, gff=self.gff):
@@ -148,7 +153,8 @@ class ParalogIndexer:
 			# store data immediately — rc is a shared mutable object
 			assigned[best_branch].append(
 				(rc.block, rc.species1, rc.N, best_nparalog, best_pi))
-			self._pi_rows.append((rc.id, rc.N, tuple(pi_vector)))
+			if not self.species or rc.species1 in self.species:
+				self._pi_rows.append((rc.id, rc.N, tuple(pi_vector)))
 		self._pi_branches = branches
 		logger.info('Assigned blocks to {} branches'.format(len(assigned)))
 		return assigned
