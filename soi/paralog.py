@@ -205,7 +205,8 @@ class ParalogIndexer:
 		if M.size == 0:
 			logger.warning('No blocks for heatmap')
 			return
-		fig, ax = plt.subplots(figsize=(max(6, 0.4 * len(branches)), 10))
+		fig, ax = plt.subplots(figsize=(max(6, 0.4 * len(branches)),
+										min(7, max(3, 0.02 * len(rows)))))
 		im = ax.imshow(M, aspect='auto', cmap='YlOrRd',
 					   interpolation='nearest', vmin=0, vmax=1)
 		ax.set_xticks(range(len(branches)))
