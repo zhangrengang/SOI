@@ -155,7 +155,7 @@ class ParalogIndexer:
 			# store data immediately — rc is a shared mutable object
 			assigned[best_branch].append(
 				(rc.block, rc.species1, rc.N, best_nparalog, best_pi))
-			self._pi_rows.append((rc.id, rc.N, tuple(pi_vector)))
+			self._pi_rows.append((rc.id, rc.N, best_branch, tuple(pi_vector)))
 		self._pi_branches = branches
 		logger.info('Assigned blocks to {} branches'.format(len(assigned)))
 		return assigned
@@ -169,11 +169,12 @@ class ParalogIndexer:
 		"""
 		fpath = self.prefix + '.heatmap.tsv'
 		branches = self._pi_branches
+		branch_idx = {b: i for i, b in enumerate(branches)}
 		if getattr(self, 'heatmap_cluster', False):
 			# hierarchical clustering of rows
 			import numpy as np
 			from scipy.cluster.hierarchy import linkage, leaves_list
-			M = np.array([r[2] for r in self._pi_rows], dtype=float)
+			M = np.array([r[3] for r in self._pi_rows], dtype=float)
 			if M.size:
 				Z = linkage(M, method='ward')
 				order = leaves_list(Z)
@@ -181,11 +182,15 @@ class ParalogIndexer:
 			else:
 				rows = []
 		else:
-			rows = sorted(self._pi_rows, key=lambda r: r[2], reverse=True)
+			# sort by assigned-branch column index, then PI vector (desc);
+			# root-assigned blocks (no paralog signal) go last
+			rows = sorted(self._pi_rows,
+						  key=lambda r: (branch_idx.get(r[2], len(branches)),
+										 tuple(-v for v in r[3])))
 
 		with open(fpath, 'w') as fout:
 			fout.write('#block	N	' + '	'.join(branches) + '\n')
-			for bid, N, vec in rows:
+			for bid, N, bch, vec in rows:
 				fout.write('{}	{}	{}\n'.format(
 					bid, N, '	'.join('{:.4f}'.format(v) for v in vec)))
 		logger.info('Heatmap matrix written to {} ({} blocks x {} branches)'.format(
@@ -196,7 +201,7 @@ class ParalogIndexer:
 		import matplotlib
 		matplotlib.use('Agg')
 		import matplotlib.pyplot as plt
-		M = np.array([r[2] for r in rows], dtype=float)
+		M = np.array([r[3] for r in rows], dtype=float)
 		if M.size == 0:
 			logger.warning('No blocks for heatmap')
 			return
