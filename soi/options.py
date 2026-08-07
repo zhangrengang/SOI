@@ -162,7 +162,8 @@ def args_paralog(parser):
 	parser.add_argument('--cluster', action='store_true', default=False,
 						dest='heatmap_cluster',
 						help=argparse.SUPPRESS)
-	parser.add_argument('--scale', action='store_true', default=False,
+	parser.add_argument('--scale', type=str, default=None,
+						choices=['linear', 'log', 'log2', 'log10', 'sqrt'],
 						dest='heatmap_scale',
 						help=argparse.SUPPRESS)
 

@@ -210,10 +210,20 @@ class ParalogIndexer:
 			logger.warning('No blocks for heatmap')
 			return
 
-		# row heights: uniform, or scaled by gene count (log) when requested
+		# row heights: uniform, or scaled by gene count when --scale given
 		Ns = np.array([r[1] for r in rows], dtype=float)
-		if getattr(self, 'heatmap_scale', False):
-			h = np.log1p(Ns)
+		method = getattr(self, 'heatmap_scale', None)
+		if method:
+			if method == 'linear':
+				h = Ns
+			elif method == 'log2':
+				h = np.log2(1 + Ns)
+			elif method == 'log10':
+				h = np.log10(1 + Ns)
+			elif method == 'sqrt':
+				h = np.sqrt(Ns)
+			else:  # 'log' = natural log
+				h = np.log1p(Ns)
 			h = h / h.max() * 0.8 + 0.2  # keep minimum visible height
 		else:
 			h = np.ones(len(rows))
@@ -235,6 +245,7 @@ class ParalogIndexer:
 						   linewidths=0)
 		ax.set_xlim(-0.5, len(branches) - 0.5)
 		ax.set_ylim(0, y[-1])
+		ax.invert_yaxis()  # first row on top, consistent with imshow default
 		ax.set_xticks(range(len(branches)))
 		ax.set_xticklabels(branches, rotation=90, fontsize=6)
 		ax.xaxis.tick_top()  # ticks on top
@@ -379,7 +390,7 @@ def xmain(**kargs):
 		tree_plot = kargs.pop('tree_plot', False)
 		heatmap = kargs.pop('heatmap', False)
 		heatmap_cluster = kargs.pop('heatmap_cluster', False)
-		heatmap_scale = kargs.pop('heatmap_scale', False)
+		heatmap_scale = kargs.pop('heatmap_scale', None)
 		indexer = ParalogIndexer(**kargs)
 		indexer.heatmap_cluster = heatmap_cluster
 		indexer.heatmap_scale = heatmap_scale
