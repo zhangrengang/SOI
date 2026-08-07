@@ -131,6 +131,8 @@ class ParalogIndexer:
 				continue
 			if self.min_dist and rc.is_tandem(self.min_dist):
 				continue
+			if self.species and rc.species1 not in self.species:
+				continue
 
 			block_pairs = [self._canonical_pair(g1, g2) for g1, g2 in rc.pairs]
 
@@ -153,8 +155,7 @@ class ParalogIndexer:
 			# store data immediately — rc is a shared mutable object
 			assigned[best_branch].append(
 				(rc.block, rc.species1, rc.N, best_nparalog, best_pi))
-			if not self.species or rc.species1 in self.species:
-				self._pi_rows.append((rc.id, rc.N, tuple(pi_vector)))
+			self._pi_rows.append((rc.id, rc.N, tuple(pi_vector)))
 		self._pi_branches = branches
 		logger.info('Assigned blocks to {} branches'.format(len(assigned)))
 		return assigned
