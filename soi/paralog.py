@@ -116,11 +116,14 @@ class ParalogIndexer:
 		assigned = defaultdict(list)
 		threshold = self.pi_cutoff
 		root = self._root_branch
-		# branch column order: tree traversal root -> leaves
+		# branch column order: root first, then tree traversal root -> leaves
 		from .tree import number_nodes
 		tree_order = [n.name for n in number_nodes(self.sptreefile).traverse()]
-		branches = [b for b in tree_order if b in self._branch_pairs]
-		branches += sorted(set(self._branch_pairs) - set(branches))
+		branches = [root] if root not in self._branch_pairs else []
+		for b in tree_order:
+			if b in self._branch_pairs and b not in branches:
+				branches.append(b)
+		branches += sorted(set(self._branch_pairs) - set(branches) - {root})
 		self._pi_branches = branches
 		self._pi_rows = []  # (block_id, N, pi_vector) for heatmap
 
@@ -141,8 +144,8 @@ class ParalogIndexer:
 			best_nparalog = 0
 			pi_vector = []
 			for branch in branches:
-				pi, n_paralog = self._compute_pi(block_pairs,
-												 self._branch_pairs[branch])
+				bp_set = self._branch_pairs.get(branch, set())
+				pi, n_paralog = self._compute_pi(block_pairs, bp_set)
 				pi_vector.append(pi)
 				if pi > best_pi:
 					best_pi = pi
