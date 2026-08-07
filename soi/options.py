@@ -155,6 +155,10 @@ def args_paralog(parser):
 						dest='tree_plot',
 						help='Output species tree with syntenic/non-syntenic paralog pies '
 							 '(<prefix>.tree.pdf/.png)')
+	parser.add_argument('--heatmap', action='store_true', default=False,
+						dest='heatmap',
+						help='Output block x branch PI heatmap '
+							 '(<prefix>.heatmap.tsv/.pdf/.png)')
 
 def func_paralog(**kargs):
 	from .paralog import xmain as paralog_main

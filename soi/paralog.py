@@ -116,6 +116,8 @@ class ParalogIndexer:
 		assigned = defaultdict(list)
 		threshold = self.pi_cutoff
 		root = self._root_branch
+		branches = sorted(self._branch_pairs)  # fixed column order for heatmap
+		self._pi_rows = []  # (block_id, N, pi_vector) for heatmap
 
 		for rc in XCollinearity(self.self_synteny, gff=self.gff):
 			if rc.N < self.min_n:
@@ -130,8 +132,11 @@ class ParalogIndexer:
 			best_branch = root
 			best_pi = 0.0
 			best_nparalog = 0
-			for branch, bp_set in self._branch_pairs.items():
-				pi, n_paralog = self._compute_pi(block_pairs, bp_set)
+			pi_vector = []
+			for branch in branches:
+				pi, n_paralog = self._compute_pi(block_pairs,
+												 self._branch_pairs[branch])
+				pi_vector.append(pi)
 				if pi > best_pi:
 					best_pi = pi
 					best_nparalog = n_paralog
@@ -143,8 +148,53 @@ class ParalogIndexer:
 			# store data immediately — rc is a shared mutable object
 			assigned[best_branch].append(
 				(rc.block, rc.species1, rc.N, best_nparalog, best_pi))
+			self._pi_rows.append((rc.id, rc.N, tuple(pi_vector)))
+		self._pi_branches = branches
 		logger.info('Assigned blocks to {} branches'.format(len(assigned)))
 		return assigned
+
+	def write_heatmap(self, assigned):
+		"""Write block x branch PI matrix heatmap.
+
+		Rows (blocks) are sorted by their PI vector so blocks with similar
+		branch-PI profiles end up adjacent.
+		"""
+		fpath = self.prefix + '.heatmap.tsv'
+		branches = self._pi_branches
+		rows = sorted(self._pi_rows, key=lambda r: r[2])  # tuple compare
+
+		with open(fpath, 'w') as fout:
+			fout.write('#block	N	' + '	'.join(branches) + '\n')
+			for bid, N, vec in rows:
+				fout.write('{}	{}	{}\n'.format(
+					bid, N, '	'.join('{:.4f}'.format(v) for v in vec)))
+		logger.info('Heatmap matrix written to {} ({} blocks x {} branches)'.format(
+			fpath, len(rows), len(branches)))
+
+		# figure
+		import numpy as np
+		import matplotlib
+		matplotlib.use('Agg')
+		import matplotlib.pyplot as plt
+		M = np.array([r[2] for r in rows], dtype=float)
+		if M.size == 0:
+			logger.warning('No blocks for heatmap')
+			return
+		fig, ax = plt.subplots(figsize=(max(6, 0.4 * len(branches)), 10))
+		im = ax.imshow(M, aspect='auto', cmap='YlOrRd',
+					   interpolation='nearest', vmin=0, vmax=1)
+		ax.set_xticks(range(len(branches)))
+		ax.set_xticklabels(branches, rotation=90, fontsize=6)
+		ax.set_yticks([])
+		ax.set_xlabel('branch')
+		ax.set_ylabel('block (sorted by PI vector)')
+		ax.set_title('Block x branch Paralogue Index')
+		fig.colorbar(im, ax=ax, label='PI')
+		fig.tight_layout()
+		fig.savefig(self.prefix + '.heatmap.pdf')
+		fig.savefig(self.prefix + '.heatmap.png', dpi=150)
+		plt.close(fig)
+		logger.info('Heatmap written to {}.heatmap.pdf/png'.format(self.prefix))
 
 	def write_stats(self, assigned):
 		"""Write per-branch per-species statistics TSV, return stats dict."""
@@ -270,9 +320,12 @@ def xmain(**kargs):
 		Paralog(**kargs).run()
 	else:
 		tree_plot = kargs.pop('tree_plot', False)
+		heatmap = kargs.pop('heatmap', False)
 		indexer = ParalogIndexer(**kargs)
 		assigned = indexer.assign()
 		stats = indexer.write_stats(assigned)
 		indexer.write_blocks(assigned)
 		if tree_plot:
 			indexer.plot_tree(assigned, stats)
+		if heatmap:
+			indexer.write_heatmap(assigned)
