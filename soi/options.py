@@ -162,6 +162,9 @@ def args_paralog(parser):
 	parser.add_argument('--cluster', action='store_true', default=False,
 						dest='heatmap_cluster',
 						help=argparse.SUPPRESS)
+	parser.add_argument('--scale', action='store_true', default=False,
+						dest='heatmap_scale',
+						help=argparse.SUPPRESS)
 
 def func_paralog(**kargs):
 	from .paralog import xmain as paralog_main

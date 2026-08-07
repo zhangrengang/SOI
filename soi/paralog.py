@@ -209,10 +209,32 @@ class ParalogIndexer:
 		if M.size == 0:
 			logger.warning('No blocks for heatmap')
 			return
+
+		# row heights: uniform, or scaled by gene count (log) when requested
+		Ns = np.array([r[1] for r in rows], dtype=float)
+		if getattr(self, 'heatmap_scale', False):
+			h = np.log1p(Ns)
+			h = h / h.max() * 0.8 + 0.2  # keep minimum visible height
+		else:
+			h = np.ones(len(rows))
+		# cumulative y positions (bottom of each row)
+		y = np.concatenate([[0.0], np.cumsum(h)])
+
 		fig, ax = plt.subplots(figsize=(max(6, 0.4 * len(branches)),
 										min(7, max(3, 0.02 * len(rows)))))
-		im = ax.imshow(M, aspect='auto', cmap='YlOrRd',
-					   interpolation='nearest', vmin=0, vmax=1)
+		cmap = plt.get_cmap('YlOrRd')
+		# draw each row as a broken barh segment per branch column
+		for i in range(len(rows)):
+			col_frac = M[i]
+			segs = []
+			for j, v in enumerate(col_frac):
+				segs.append((j - 0.5, 1.0))  # (xstart, width)
+			colors = [cmap(v) for v in col_frac]
+			ax.broken_barh(segs, (y[i], h[i]),
+						   facecolors=colors, edgecolors='none',
+						   linewidths=0)
+		ax.set_xlim(-0.5, len(branches) - 0.5)
+		ax.set_ylim(0, y[-1])
 		ax.set_xticks(range(len(branches)))
 		ax.set_xticklabels(branches, rotation=90, fontsize=6)
 		ax.xaxis.tick_top()  # ticks on top
@@ -221,7 +243,10 @@ class ParalogIndexer:
 		ax.set_yticks([])
 		ax.set_xlabel('Branch')
 		ax.set_ylabel('Block')
-		fig.colorbar(im, ax=ax, label='PI', shrink=0.6)
+		import matplotlib as mpl
+		fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(0, 1),
+										   cmap=cmap),
+					 ax=ax, label='PI', shrink=0.6)
 		fig.tight_layout()
 		fig.savefig(self.prefix + '.heatmap.pdf')
 		fig.savefig(self.prefix + '.heatmap.png', dpi=150)
@@ -354,8 +379,10 @@ def xmain(**kargs):
 		tree_plot = kargs.pop('tree_plot', False)
 		heatmap = kargs.pop('heatmap', False)
 		heatmap_cluster = kargs.pop('heatmap_cluster', False)
+		heatmap_scale = kargs.pop('heatmap_scale', False)
 		indexer = ParalogIndexer(**kargs)
 		indexer.heatmap_cluster = heatmap_cluster
+		indexer.heatmap_scale = heatmap_scale
 		assigned = indexer.assign()
 		stats = indexer.write_stats(assigned)
 		indexer.write_blocks(assigned)
