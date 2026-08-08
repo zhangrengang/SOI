@@ -392,15 +392,30 @@ Output files:
 The subcommand `paralog` outputs HOG-based paralogous gene pairs per branch
 and classifies synteny blocks by branch-specific paralog content (Paralogue Index, PI).
 
+Input modes (choose one):
+- **rebuild** (default): build HOGs from `-og` + `-s`
+- **`--hog HOGs.tsv`**: reuse a previously written HOGs.tsv, skip HOG rebuilding
+- **`--paralog pairs.tsv`**: reuse a `--no-index` paralog.tsv (first 3 columns),
+  skip HOG rebuilding and paralog-pair generation
+
+`-t` (species tree) is only needed for tree-ordered heatmap columns and
+`--tree-plot`; without it columns fall back to sorted order.
+
 Usage examples:
 ```
 # basic: output paralog pairs per branch
 soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree -pre paralog
 
 # classify synteny blocks by branch paralog content (default mode)
-# uses -ss (self-synteny, default same as -s) for block assignment
+# uses -ss (self-synteny, required if -s is not given)
 soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
     -ss self.collinearity.list -pre paralog
+
+# reuse a previously built HOGs.tsv (no -og/-s/-t needed)
+soi paralog --hog HOGs.tsv -ss self.collinearity.list -pre paralog
+
+# reuse a --no-index paralog.tsv (fastest; -ss still needed for indexing)
+soi paralog --paralog paralog.pairs.tsv -ss self.collinearity.list -pre paralog
 
 # filter by specific branches or species
 soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
@@ -409,18 +424,31 @@ soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
 # raw paralog output only (disable index mode)
 soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
     --no-index -pre paralog
+
+# block x branch PI heatmap (rows sorted by assigned branch then PI)
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
+    -ss self.collinearity.list -pre paralog --heatmap
+
+# species tree plot with syntenic/non-syntenic paralog pies
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
+    -ss self.collinearity.list -pre paralog --tree-plot
 ```
 
 Output files:
 - `<prefix>.paralog.tsv` — paralog pairs (gene1, gene2, node, species, HOG_id)
 - `<prefix>.stats.tsv` — per-branch per-species block statistics (blocks, gene_pairs, paralog_pairs, mean_PI)
 - `<prefix>.{branch}.blocks` — synteny blocks assigned to each branch
+- `<prefix>.heatmap.tsv/.pdf/.png` (with `--heatmap`) — block x branch PI matrix;
+  rows sorted by assigned-branch column index then PI (desc), columns are
+  internal nodes first then leaf species in tree order
+- `<prefix>.tree.pdf/.png` (with `--tree-plot`) — species tree pies
 
 Index mode (default): for each self-synteny block, compute PI = (paralog pairs / gene pairs)
 per branch and assign to the branch with the highest PI.  Blocks with PI below --pi-cutoff
 (0.05) fall back to the root node.
 
 Filter options (shared with `hog` and `paralog`):
+- `-inparalog` — use inparalogs from the terminal branches.  Do NOT enable if the input is not inparalogs.
 - `--min-child-species N` — skip child HOGs with fewer than N species (default: 1).  Useful for suppressing orphan single-species HOGs that inflate Multi% at branches without WGD.
 - `--cross-speciation` — do not split child HOGs when the genes at a node do not span all child branches.  **Note:** genes that fail to cross the speciation boundary are inherently ambiguous — keeping them unsplit can shift duplication signal from this node down to a child branch.
 - `--drop-no-cross` — drop (instead of merge) entire nodes whose genes do not span all child branches.  **Note:** this can break the HOG parent-child chain: a HOG at node N may have its parent dropped at N's parent, leaving `Parent` as a dead reference and causing internal nodes' copy-number statistics and paralog detection to miss these edges.  Use with caution.
