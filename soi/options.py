@@ -79,12 +79,12 @@ def func_filter(**kargs):
 	from .mcscan import identify_orthologous_blocks
 	identify_orthologous_blocks(**kargs)
 
-def _add_shared_hog_args(parser):
+def _add_shared_hog_args(parser, og_required=True, s_required=True):
 	"""Shared arguments for prune and hog subcommands."""
-	parser.add_argument('-og', '-orthogroup', required=True, type=str,
+	parser.add_argument('-og', '-orthogroup', required=og_required, type=str,
 						dest='ogfile', metavar='FILE',
 						help='Orthogroup file (MCL format) [required]')
-	parser.add_argument('-s', '-synteny', required=True, type=str, nargs='+',
+	parser.add_argument('-s', '-synteny', required=s_required, type=str, nargs='+',
 						dest='orthfiles', metavar='FILE',
 						help='Ortholog/Collinearity files [required]')
 	parser.add_argument('-t', '-sptree', required=True, type=str,
@@ -122,7 +122,7 @@ def func_hog(**kargs):
 	from .hog import xmain as hog_main
 	hog_main(**kargs)
 def args_paralog(parser):
-	_add_shared_hog_args(parser)
+	_add_shared_hog_args(parser, og_required=False, s_required=False)
 	parser.add_argument('--nodes', metavar='NODE', nargs='+', type=str, default=None,
 						dest='nodes',
 						help='Tree nodes to report paralogs for (default: all)')

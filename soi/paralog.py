@@ -424,6 +424,13 @@ class ParalogIndexer:
 
 def xmain(**kargs):
 	no_index = kargs.pop('no_index', False)
+	hog_tsv = kargs.get('hog_tsv')
+	inparalog = kargs.get('inparalog')
+	if not no_index and not hog_tsv and not inparalog:
+		if not kargs.get('ogfile') or not kargs.get('orthfiles'):
+			import sys
+			logger.error('Either -og/-s or --hog/--paralog must be provided')
+			sys.exit(1)
 	if no_index:
 		kargs.pop('output', None)
 		Paralog(**kargs).run()
