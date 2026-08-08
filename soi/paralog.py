@@ -67,8 +67,11 @@ class Paralog:
 	def _load_pairs(self, fpath):
 		"""Read paralog pairs from an existing paralog.tsv (first 3 columns).
 
+		Applies the same --nodes/--species filters as HOG rebuilding.
 		Return ({branch: set of canonical (g1,g2)}, count).
 		"""
+		node_set = set(self.nodes) if self.nodes else None
+		sp_set = set(self.species) if self.species else None
 		branch_pairs = defaultdict(set)
 		count = 0
 		with open(fpath) as f:
@@ -79,6 +82,12 @@ class Paralog:
 				if len(parts) < 3:
 					continue
 				g1, g2, node = parts[0], parts[1], parts[2]
+				if node_set and node not in node_set:
+					continue
+				if sp_set:
+					sp = g1.split('|')[0] if '|' in g1 else g1.rsplit('_', 1)[0]
+					if sp not in sp_set:
+						continue
 				pair = (g1, g2) if g1 < g2 else (g2, g1)
 				branch_pairs[node].add(pair)
 				count += 1

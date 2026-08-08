@@ -99,8 +99,8 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 							 'heatmap columns')
 	target.add_argument('-inparalog', action='store_true', default=False,
 						dest='paralog',
-						help='Use inparalogs from the terminal branches. Do NOT '
-							 'enable if the input is not inparalogs')
+						help='Include paralogs in `-s` input. Do NOT '
+							 'enable if the input inparalogs is not terminal inparalogs')
 	target.add_argument('--min-child-species', type=int, default=1,
 						dest='min_child_species', metavar='INT',
 						help='Minimum number of species in a child HOG for it to be retained [default=%(default)s]')
