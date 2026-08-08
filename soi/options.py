@@ -83,10 +83,10 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True):
 	"""Shared arguments for prune and hog subcommands."""
 	parser.add_argument('-og', '-orthogroup', required=og_required, type=str,
 						dest='ogfile', metavar='FILE',
-						help='Orthogroup file (MCL format) [required]')
+						help='Orthogroup file (MCL format)')
 	parser.add_argument('-s', '-synteny', required=s_required, type=str, nargs='+',
 						dest='orthfiles', metavar='FILE',
-						help='Ortholog/Collinearity files [required]')
+						help='Ortholog/Collinearity files')
 	parser.add_argument('-t', '-sptree', required=True, type=str,
 						dest='sptreefile', metavar='FILE',
 						help='Species tree file (Newick) [required]')
@@ -123,6 +123,14 @@ def func_hog(**kargs):
 	hog_main(**kargs)
 def args_paralog(parser):
 	_add_shared_hog_args(parser, og_required=False, s_required=False)
+	# input mode: HOGs.tsv (--hog) or paralog.tsv (--paralog) skip rebuilding
+	parser.add_argument('--hog', type=str, default=None,
+						dest='hog_tsv', metavar='FILE',
+						help='Load HOGs from existing HOGs.tsv (skip rebuilding)')
+	parser.add_argument('--paralog', type=str, default=None,
+						dest='inparalog', metavar='FILE',
+						help='Load paralog pairs from existing paralog.tsv '
+							 '(first 3 columns only)')
 	parser.add_argument('--nodes', metavar='NODE', nargs='+', type=str, default=None,
 						dest='nodes',
 						help='Tree nodes to report paralogs for (default: all)')
@@ -151,13 +159,6 @@ def args_paralog(parser):
 	parser.add_argument('--no-index', action='store_true', default=False,
 						dest='no_index',
 						help='Disable paralog indexing, output raw paralog pairs')
-	parser.add_argument('--hog', type=str, default=None,
-						dest='hog_tsv', metavar='FILE',
-						help='Load HOGs from existing HOGs.tsv (skip rebuilding)')
-	parser.add_argument('--paralog', type=str, default=None,
-						dest='inparalog', metavar='FILE',
-						help='Load paralog pairs from existing paralog.tsv '
-							 '(first 3 columns only)')
 	parser.add_argument('--tree-plot', action='store_true', default=False,
 						dest='tree_plot',
 						help='Output species tree with syntenic/non-syntenic paralog pies '
