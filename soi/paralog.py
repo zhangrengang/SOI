@@ -115,6 +115,11 @@ class ParalogIndexer:
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
 		self.self_synteny = self_synteny or orthfiles
+		if not self.self_synteny:
+			import sys
+			logger.error('Paralog indexing needs synteny blocks: '
+						 'provide -ss or -s')
+			sys.exit(1)
 		self.min_n = min_n
 		self.gff = gff
 		self.min_dist = min_dist
