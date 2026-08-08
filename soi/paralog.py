@@ -29,16 +29,57 @@ class Paralog:
 		self.kargs = kargs
 
 	def run(self):
-		"""Load HOGs, write paralog TSV, return {branch: frozenset(pairs)}, root_name."""
+		"""Load HOGs, write paralog TSV, return {branch: frozenset(pairs)}, root_name.
+
+		With hog_tsv: load HOGs from an existing HOGs.tsv instead of rebuilding.
+		With inparalog: read an existing --no-index paralog.tsv (first 3 cols).
+		"""
+		hog_tsv = self.kargs.get('hog_tsv')
+		inparalog = self.kargs.get('inparalog')
+		fpath = self.prefix + '.paralog.tsv'
+
+		if inparalog:
+			branch_pairs, count = self._load_pairs(inparalog)
+			root = self._root_name()
+			logger.info('Loaded {} paralog pairs from {}'.format(count, inparalog))
+			return {b: frozenset(ps) for b, ps in branch_pairs.items()}, root
+
 		hog = HOG(ogfile=self.ogfile, orthfiles=self.orthfiles,
 				  sptreefile=self.sptreefile, **self.kargs)
-		hog.pipe(write_tsv=False)
+		if hog_tsv:
+			hog.from_tsv(hog_tsv)
+		else:
+			hog.pipe(write_tsv=False)
 		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
 
-		fpath = self.prefix + '.paralog.tsv'
 		branch_pairs, count = self._write_and_group(hog, fpath)
 		logger.info('Output {} paralog pairs to {}'.format(count, fpath))
 		return {b: frozenset(ps) for b, ps in branch_pairs.items()}, hog.tree.name
+
+	def _root_name(self):
+		"""Root node name from species tree."""
+		from .tree import number_nodes
+		return number_nodes(self.sptreefile).name
+
+	def _load_pairs(self, fpath):
+		"""Read paralog pairs from an existing paralog.tsv (first 3 columns).
+
+		Return ({branch: set of canonical (g1,g2)}, count).
+		"""
+		branch_pairs = defaultdict(set)
+		count = 0
+		with open(fpath) as f:
+			for line in f:
+				if line.startswith('#'):
+					continue
+				parts = line.rstrip().split('	')
+				if len(parts) < 3:
+					continue
+				g1, g2, node = parts[0], parts[1], parts[2]
+				pair = (g1, g2) if g1 < g2 else (g2, g1)
+				branch_pairs[node].add(pair)
+				count += 1
+		return branch_pairs, count
 
 	def _write_and_group(self, hog, fpath):
 		"""Write paralog TSV, return {branch: set of canonical (g1,g2)}, count."""

@@ -28,6 +28,38 @@ class HOG:
 		self.out_stats = outpre + '.stats.tsv' if out_stats else None
 		self.bar_plot = outpre + '.bar' if bar_plot else None
 		self.tree_plot = outpre + '.tree' if tree_plot else None
+	def from_tsv(self, fpath):
+		"""Load HOGs from a previously written HOGs.tsv (skip rebuilding).
+
+		Fills self.tree/species/all_hogs/children in the same shape as pipe().
+		"""
+		from .tree import number_nodes
+		self.tree = number_nodes(self.sptreefile)
+		self.species = self.tree.get_leaf_names()
+		self.all_hogs = {}
+		self.all_genes = []
+		with open(fpath) as f:
+			header = f.readline()
+			for line in f:
+				parts = line.rstrip().split('	')
+				if len(parts) < 5:
+					continue
+				hog_id, og_id, node_id, parent, gene_str = parts[:5]
+				genes = gene_str.split()
+				self.all_genes.extend(genes)
+				species = sorted(set(g.split('|')[0] for g in genes))
+				self.all_hogs[hog_id] = HOGrecord(
+					hog_id=hog_id, og_id=og_id, node_id=node_id,
+					genes=genes, species=species,
+					parent=None if parent in ('None', 'Root') else parent,
+					children=[])
+		# rebuild children links from parent column
+		for hog in self.all_hogs.values():
+			if hog.parent and hog.parent in self.all_hogs:
+				self.all_hogs[hog.parent].children.append(hog.hog_id)
+		logger.info('Loaded {} HOGs from {}'.format(len(self.all_hogs), fpath))
+		return self
+
 	def pipe(self, write_tsv=True):
 		logger.info(f'Reading and Numbering species tree from {self.sptreefile}')
 		self.tree = sptree = number_nodes(self.sptreefile)

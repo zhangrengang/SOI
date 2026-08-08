@@ -151,6 +151,13 @@ def args_paralog(parser):
 	parser.add_argument('--no-index', action='store_true', default=False,
 						dest='no_index',
 						help='Disable paralog indexing, output raw paralog pairs')
+	parser.add_argument('--hog', type=str, default=None,
+						dest='hog_tsv', metavar='FILE',
+						help='Load HOGs from existing HOGs.tsv (skip rebuilding)')
+	parser.add_argument('--inparalog', type=str, default=None,
+						dest='inparalog', metavar='FILE',
+						help='Load paralog pairs from existing paralog.tsv '
+							 '(first 3 columns only)')
 	parser.add_argument('--tree-plot', action='store_true', default=False,
 						dest='tree_plot',
 						help='Output species tree with syntenic/non-syntenic paralog pies '
