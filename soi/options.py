@@ -79,27 +79,34 @@ def func_filter(**kargs):
 	from .mcscan import identify_orthologous_blocks
 	identify_orthologous_blocks(**kargs)
 
-def _add_shared_hog_args(parser, og_required=True, s_required=True):
-	"""Shared arguments for prune and hog subcommands."""
-	parser.add_argument('-og', '-orthogroup', required=og_required, type=str,
+def _add_shared_hog_args(parser, og_required=True, s_required=True,
+						 t_required=True, group=None):
+	"""Shared arguments for prune and hog subcommands.
+
+	If group (an argparse argument group) is given, arguments are added to
+	it instead of the parser directly.
+	"""
+	target = group if group is not None else parser
+	target.add_argument('-og', '-orthogroup', required=og_required, type=str,
 						dest='ogfile', metavar='FILE',
 						help='Orthogroup file (MCL format)')
-	parser.add_argument('-s', '-synteny', required=s_required, type=str, nargs='+',
+	target.add_argument('-s', '-synteny', required=s_required, type=str, nargs='+',
 						dest='orthfiles', metavar='FILE',
 						help='Ortholog/Collinearity files')
-	parser.add_argument('-t', '-sptree', required=True, type=str,
+	target.add_argument('-t', '-sptree', required=t_required, type=str,
 						dest='sptreefile', metavar='FILE',
-						help='Species tree file (Newick) [required]')
-	parser.add_argument('-inparalog', action='store_true', default=False,
+						help='Species tree file (Newick); needed for tree-ordered '
+							 'heatmap columns')
+	target.add_argument('-inparalog', action='store_true', default=False,
 						dest='paralog',
 						help='Include paralogs [default: False]')
-	parser.add_argument('--min-child-species', type=int, default=1,
+	target.add_argument('--min-child-species', type=int, default=1,
 						dest='min_child_species', metavar='INT',
 						help='Minimum number of species in a child HOG for it to be retained [default=%(default)s]')
-	parser.add_argument('--cross-speciation', action='store_true', default=False,
+	target.add_argument('--cross-speciation', action='store_true', default=False,
 						dest='cross_speciation',
 						help='Merge child HOGs whose genes do not span all child branches of this node')
-	parser.add_argument('--drop-no-cross', action='store_true', default=False,
+	target.add_argument('--drop-no-cross', action='store_true', default=False,
 						dest='drop_no_cross',
 						help='Drop (instead of merge) HOGs whose genes do not span all child branches')
 
@@ -122,58 +129,65 @@ def func_hog(**kargs):
 	from .hog import xmain as hog_main
 	hog_main(**kargs)
 def args_paralog(parser):
-	_add_shared_hog_args(parser, og_required=False, s_required=False)
-	# input mode: HOGs.tsv (--hog) or paralog.tsv (--paralog) skip rebuilding
-	parser.add_argument('--hog', type=str, default=None,
-						dest='hog_tsv', metavar='FILE',
-						help='Load HOGs from existing HOGs.tsv (skip rebuilding)')
-	parser.add_argument('--paralog', type=str, default=None,
-						dest='inparalog', metavar='FILE',
-						help='Load paralog pairs from existing paralog.tsv '
-							 '(first 3 columns only)')
-	parser.add_argument('--nodes', metavar='NODE', nargs='+', type=str, default=None,
-						dest='nodes',
-						help='Tree nodes to report paralogs for (default: all)')
-	parser.add_argument('--species', metavar='SPECIES', nargs='+', type=str, default=None,
-						dest='species',
-						help='Species to report paralogs for (default: all)')
-	parser.add_argument('-pre', '-prefix', type=str,
-						dest='prefix', metavar='PREFIX', default='paralog_index',
-						help='Output prefix [default=%(default)s]')
-	parser.add_argument('-ss', '--self-synteny', type=str, nargs='+', default=None,
-						dest='self_synteny', metavar='FILE',
-						help='Synteny file for paralog indexing (default: same as -s)')
-	parser.add_argument('-n', '-min_n', type=int, default=0,
-						dest='min_n', metavar='INT',
-						help='Minimum gene number in a block [default=%(default)s]')
-	parser.add_argument('-g', '-gff', type=str, nargs='+',
-						dest='gff', metavar='FILE',
-						help='Gff file. [required for `-d`]')
-	parser.add_argument('-d', '-min_dist', type=int, default=None,
-						dest='min_dist', metavar='INT',
-						help='Minimum distance to remove a tandem repeated block [default=None]')
-	parser.add_argument('--pi-cutoff', type=float, default=0.05,
-						dest='pi_cutoff', metavar='FLOAT',
-						help='Minimum Paralogue Index (PI = paralog_pairs / block_gene_pairs) '
-							 'to assign a block to a branch [default=%(default)s]')
-	parser.add_argument('--no-index', action='store_true', default=False,
-						dest='no_index',
-						help='Disable paralog indexing, output raw paralog pairs')
-	parser.add_argument('--tree-plot', action='store_true', default=False,
-						dest='tree_plot',
-						help='Output species tree with syntenic/non-syntenic paralog pies '
-							 '(<prefix>.tree.pdf/.png)')
-	parser.add_argument('--heatmap', action='store_true', default=False,
-						dest='heatmap',
-						help='Output block x branch PI heatmap '
-							 '(<prefix>.heatmap.tsv/.pdf/.png)')
-	parser.add_argument('--cluster', action='store_true', default=False,
-						dest='heatmap_cluster',
-						help=argparse.SUPPRESS)
-	parser.add_argument('--scale', type=str, default=None,
-						choices=['linear', 'log', 'log2', 'log10', 'sqrt'],
-						dest='heatmap_scale',
-						help=argparse.SUPPRESS)
+	g_hog = parser.add_argument_group('HOG rebuilding')
+	_add_shared_hog_args(parser, og_required=False, s_required=False,
+						 t_required=False, group=g_hog)
+
+	g_in = parser.add_argument_group('Prebuilt inputs (skip rebuilding)')
+	g_in.add_argument('--hog', type=str, default=None,
+					  dest='hog_tsv', metavar='FILE',
+					  help='Load HOGs from existing HOGs.tsv (skip rebuilding)')
+	g_in.add_argument('--paralog', type=str, default=None,
+					  dest='inparalog', metavar='FILE',
+					  help='Load paralog pairs from existing paralog.tsv '
+						   '(first 3 columns only)')
+
+	g_ix = parser.add_argument_group('Paralog indexing')
+	g_ix.add_argument('-ss', '--self-synteny', type=str, nargs='+', default=None,
+					  dest='self_synteny', metavar='FILE',
+					  help='Synteny file for paralog indexing (default: same as -s)')
+	g_ix.add_argument('-n', '-min_n', type=int, default=0,
+					  dest='min_n', metavar='INT',
+					  help='Minimum gene number in a block [default=%(default)s]')
+	g_ix.add_argument('-g', '-gff', type=str, nargs='+',
+					  dest='gff', metavar='FILE',
+					  help='Gff file. [required for `-d`]')
+	g_ix.add_argument('-d', '-min_dist', type=int, default=None,
+					  dest='min_dist', metavar='INT',
+					  help='Minimum distance to remove a tandem repeated block [default=None]')
+	g_ix.add_argument('--pi-cutoff', type=float, default=0.05,
+					  dest='pi_cutoff', metavar='FLOAT',
+					  help='Minimum Paralogue Index (PI = paralog_pairs / block_gene_pairs) '
+						   'to assign a block to a branch [default=%(default)s]')
+	g_ix.add_argument('--nodes', metavar='NODE', nargs='+', type=str, default=None,
+					  dest='nodes',
+					  help='Tree nodes to report paralogs for (default: all)')
+	g_ix.add_argument('--species', metavar='SPECIES', nargs='+', type=str, default=None,
+					  dest='species',
+					  help='Species to report paralogs for (default: all)')
+
+	g_out = parser.add_argument_group('Output')
+	g_out.add_argument('-pre', '-prefix', type=str,
+					   dest='prefix', metavar='PREFIX', default='paralog_index',
+					   help='Output prefix [default=%(default)s]')
+	g_out.add_argument('--no-index', action='store_true', default=False,
+					   dest='no_index',
+					   help='Disable paralog indexing, output raw paralog pairs')
+	g_out.add_argument('--tree-plot', action='store_true', default=False,
+					   dest='tree_plot',
+					   help='Output species tree with syntenic/non-syntenic paralog pies '
+							'(<prefix>.tree.pdf/.png)')
+	g_out.add_argument('--heatmap', action='store_true', default=False,
+					   dest='heatmap',
+					   help='Output block x branch PI heatmap '
+							'(<prefix>.heatmap.tsv/.pdf/.png)')
+	g_out.add_argument('--cluster', action='store_true', default=False,
+					   dest='heatmap_cluster',
+					   help=argparse.SUPPRESS)
+	g_out.add_argument('--scale', type=str, default=None,
+					   choices=['linear', 'log', 'log2', 'log10', 'sqrt'],
+					   dest='heatmap_scale',
+					   help=argparse.SUPPRESS)
 
 def func_paralog(**kargs):
 	from .paralog import xmain as paralog_main

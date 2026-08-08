@@ -57,7 +57,9 @@ class Paralog:
 		return {b: frozenset(ps) for b, ps in branch_pairs.items()}, hog.tree.name
 
 	def _root_name(self):
-		"""Root node name from species tree."""
+		"""Root node name from species tree, or 'Root' if no tree."""
+		if not self.sptreefile:
+			return 'Root'
 		from .tree import number_nodes
 		return number_nodes(self.sptreefile).name
 
@@ -158,14 +160,18 @@ class ParalogIndexer:
 		threshold = self.pi_cutoff
 		root = self._root_branch
 		# branch column order: internal nodes first, then leaves, each in
-		# tree traversal order; leaves follow tree topology clustering
-		from .tree import number_nodes
-		tree = number_nodes(self.sptreefile)
-		internal = [n.name for n in tree.traverse() if not n.is_leaf()]
-		leaves = tree.get_leaf_names()[::-1]  # reverse: outgroups first
-		tree_order = internal + leaves
-		branches = [b for b in tree_order if b in self._branch_pairs]
-		branches += sorted(set(self._branch_pairs) - set(branches))
+		# tree traversal order; leaves follow tree topology clustering.
+		# Without a species tree, fall back to sorted branch order.
+		if self.sptreefile:
+			from .tree import number_nodes
+			tree = number_nodes(self.sptreefile)
+			internal = [n.name for n in tree.traverse() if not n.is_leaf()]
+			leaves = tree.get_leaf_names()[::-1]  # reverse: outgroups first
+			tree_order = internal + leaves
+			branches = [b for b in tree_order if b in self._branch_pairs]
+			branches += sorted(set(self._branch_pairs) - set(branches))
+		else:
+			branches = sorted(self._branch_pairs)
 		self._pi_branches = branches
 		self._pi_rows = []  # (block_id, N, pi_vector) for heatmap
 
