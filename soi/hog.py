@@ -231,9 +231,23 @@ class HOG:
 		  internal_groups: {node_id: {parent_hog_id: [child_hog_records]}}
 		  leaf_groups:     {species: {hog_id: [genes_of_that_species]}}
 		"""
-		all_nodes = list(self.tree.traverse(strategy="postorder"))
+		all_nodes = list(self.tree.traverse(strategy="postorder")) if self.tree else []
 		leaf_set = {n.name for n in all_nodes if n.is_leaf()}
 		internal_set = {n.name for n in all_nodes if not n.is_leaf()}
+
+		# Without a species tree: infer leaf species from gene prefixes,
+		# internal nodes from node_ids not matching any species.
+		if not self.tree:
+			sp_from_genes = set()
+			for hog in self.all_hogs.values():
+				for sp in hog["species"]:
+					sp_from_genes.add(sp)
+			leaf_set = sp_from_genes
+			internal_set = set()
+			for hog in self.all_hogs.values():
+				nid = hog["node_id"]
+				if nid and nid not in leaf_set and nid not in ("Root", "None"):
+					internal_set.add(nid)
 
 		# --- Internal nodes ---
 		internal_groups = defaultdict(lambda: defaultdict(list))
@@ -254,9 +268,30 @@ class HOG:
 		# Genes appearing only at higher nodes (e.g. ginseng in N6)
 		# are not counted — those duplications belong to deeper branches.
 		leaf_parent = {}
-		for leaf in all_nodes:
-			if leaf.is_leaf() and leaf.up:
-				leaf_parent[leaf.name] = leaf.up.name
+		if self.tree:
+			for leaf in all_nodes:
+				if leaf.is_leaf() and leaf.up:
+					leaf_parent[leaf.name] = leaf.up.name
+		else:
+			# Without a tree: the direct parent node of each species is the
+			# deepest internal node whose HOGs contain that species' genes.
+			sp_to_nodes = {}
+			for hog in self.all_hogs.values():
+				nid = hog["node_id"]
+				if nid in internal_set:
+					for sp in hog["species"]:
+						sp_to_nodes.setdefault(sp, set()).add(nid)
+			# deepest = the node farthest from root; without tree topology
+			# we cannot rank depth — use the node appearing in the most
+			# species' gene sets (closest to leaves) as a heuristic
+			node_sp_count = {}
+			for nids in sp_to_nodes.values():
+				for nid in nids:
+					node_sp_count[nid] = node_sp_count.get(nid, 0) + 1
+			for sp, nids in list(sp_to_nodes.items()):
+				if nids:
+					leaf_parent[sp] = max(nids,
+										  key=lambda n: node_sp_count.get(n, 0))
 
 		leaf_groups = defaultdict(lambda: defaultdict(list))
 		for hog in self.all_hogs.values():
