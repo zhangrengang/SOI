@@ -32,10 +32,16 @@ class HOG:
 		"""Load HOGs from a previously written HOGs.tsv (skip rebuilding).
 
 		Fills self.tree/species/all_hogs/children in the same shape as pipe().
+		Without a species tree, self.tree stays None and species are inferred
+		from gene prefixes.
 		"""
-		from .tree import number_nodes
-		self.tree = number_nodes(self.sptreefile)
-		self.species = self.tree.get_leaf_names()
+		if self.sptreefile:
+			from .tree import number_nodes
+			self.tree = number_nodes(self.sptreefile)
+			self.species = self.tree.get_leaf_names()
+		else:
+			self.tree = None
+			self.species = []
 		self.all_hogs = {}
 		self.all_genes = []
 		with open(fpath) as f:

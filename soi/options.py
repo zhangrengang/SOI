@@ -99,7 +99,8 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 							 'heatmap columns')
 	target.add_argument('-inparalog', action='store_true', default=False,
 						dest='paralog',
-						help='Include paralogs [default: False]')
+						help='Use inparalogs from the terminal branches. Do NOT '
+							 'enable if the input is not inparalogs')
 	target.add_argument('--min-child-species', type=int, default=1,
 						dest='min_child_species', metavar='INT',
 						help='Minimum number of species in a child HOG for it to be retained [default=%(default)s]')
@@ -145,7 +146,8 @@ def args_paralog(parser):
 	g_ix = parser.add_argument_group('Paralog indexing')
 	g_ix.add_argument('-ss', '--self-synteny', type=str, nargs='+', default=None,
 					  dest='self_synteny', metavar='FILE',
-					  help='Synteny file for paralog indexing (default: same as -s)')
+					  help='Synteny file for paralog indexing (default: same as -s; '
+						   'required if -s is not given)')
 	g_ix.add_argument('-n', '-min_n', type=int, default=0,
 					  dest='min_n', metavar='INT',
 					  help='Minimum gene number in a block [default=%(default)s]')

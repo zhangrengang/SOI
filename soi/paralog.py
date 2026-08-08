@@ -54,7 +54,8 @@ class Paralog:
 
 		branch_pairs, count = self._write_and_group(hog, fpath)
 		logger.info('Output {} paralog pairs to {}'.format(count, fpath))
-		return {b: frozenset(ps) for b, ps in branch_pairs.items()}, hog.tree.name
+		root = hog.tree.name if hog.tree else self._root_name()
+		return {b: frozenset(ps) for b, ps in branch_pairs.items()}, root
 
 	def _root_name(self):
 		"""Root node name from species tree, or 'Root' if no tree."""
@@ -452,6 +453,9 @@ def xmain(**kargs):
 		stats = indexer.write_stats(assigned)
 		indexer.write_blocks(assigned)
 		if tree_plot:
-			indexer.plot_tree(assigned, stats)
+			if kargs.get('sptreefile'):
+				indexer.plot_tree(assigned, stats)
+			else:
+				logger.warning('--tree-plot requires -t; skipped')
 		if heatmap:
 			indexer.write_heatmap(assigned)
