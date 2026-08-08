@@ -90,7 +90,7 @@ def _add_shared_hog_args(parser):
 	parser.add_argument('-t', '-sptree', required=True, type=str,
 						dest='sptreefile', metavar='FILE',
 						help='Species tree file (Newick) [required]')
-	parser.add_argument('-paralog', action='store_true', default=False,
+	parser.add_argument('-inparalog', action='store_true', default=False,
 						dest='paralog',
 						help='Include paralogs [default: False]')
 	parser.add_argument('--min-child-species', type=int, default=1,
@@ -154,7 +154,7 @@ def args_paralog(parser):
 	parser.add_argument('--hog', type=str, default=None,
 						dest='hog_tsv', metavar='FILE',
 						help='Load HOGs from existing HOGs.tsv (skip rebuilding)')
-	parser.add_argument('--inparalog', type=str, default=None,
+	parser.add_argument('--paralog', type=str, default=None,
 						dest='inparalog', metavar='FILE',
 						help='Load paralog pairs from existing paralog.tsv '
 							 '(first 3 columns only)')
