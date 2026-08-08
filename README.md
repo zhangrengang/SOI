@@ -307,7 +307,7 @@ soi filter -s collinearity.list -o OrthoFinder/OrthoFinder/Result*/ -c 0.5 > col
 # filter a out-paralogous peak
 soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -c 0.05 -upper 0.4 > collinearity.para
 
-# remove intra-species, tandem repeat-derived synteny (in-paralogous)
+# remove intra-species, tandem repeat-derived synteny
 soi filter -s wgdi/*.collinearity -o OrthoFinder/OrthoFinder/Result*/ -gff all_species_gene.gff -d 200 > collinearity.homo
 
 # It can also distinguish in-paralogous from out-paralogous synteny split by a given speciation event, 
@@ -393,7 +393,7 @@ The subcommand `paralog` outputs HOG-based paralogous gene pairs per branch
 and classifies synteny blocks by branch-specific paralog content (Paralogue Index, PI).
 
 Input modes (choose one):
-- **rebuild** (default): build HOGs from `-og` + `-s`
+- **rebuild** (default): build HOGs from `-og` + `-s` + `-t`
 - **`--hog HOGs.tsv`**: reuse a previously written HOGs.tsv, skip HOG rebuilding
 - **`--paralog pairs.tsv`**: reuse a `--no-index` paralog.tsv (first 3 columns),
   skip HOG rebuilding and paralog-pair generation
@@ -448,7 +448,6 @@ per branch and assign to the branch with the highest PI.  Blocks with PI below -
 (0.05) fall back to the root node.
 
 Filter options (shared with `hog` and `paralog`):
-- `-inparalog` — use inparalogs from the terminal branches.  Do NOT enable if the input is not inparalogs.
 - `--min-child-species N` — skip child HOGs with fewer than N species (default: 1).  Useful for suppressing orphan single-species HOGs that inflate Multi% at branches without WGD.
 - `--cross-speciation` — do not split child HOGs when the genes at a node do not span all child branches.  **Note:** genes that fail to cross the speciation boundary are inherently ambiguous — keeping them unsplit can shift duplication signal from this node down to a child branch.
 - `--drop-no-cross` — drop (instead of merge) entire nodes whose genes do not span all child branches.  **Note:** this can break the HOG parent-child chain: a HOG at node N may have its parent dropped at N's parent, leaving `Parent` as a dead reference and causing internal nodes' copy-number statistics and paralog detection to miss these edges.  Use with caution.
