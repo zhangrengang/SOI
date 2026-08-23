@@ -42,33 +42,56 @@ def ploidy_args(parser):
 						# required=True, help="the blocks (*.collinearity, output of MCSCANX)")
 	# parser.add_argument('-g', '--gff', metavar='INPUT_GENE_GFF_FILE', type=str,
 						# required=True, help="the annotation gff file (one of MCSCANX input)")
-	parser.add_argument('-s', '-synteny', metavar='FILE', type=str, required=True, nargs='+',
-						dest='collinearity',
-						help="syntenic block file (*.collinearity, output of MCSCANX/WGDI)[required]")
-	parser.add_argument('-g', '-gff', metavar='FILE', type=str, required=True, nargs='+',
-						dest='gff',
-						help="gene annotation gff file (*.gff, one of MCSCANX/WGDI input)[required]")
-	parser.add_argument('-r', '-ref', metavar='SPECIES', nargs='+', type=str, required=False, dest='ref',
-						help="reference species (default: from -t tree or same as -q)")
-	parser.add_argument('-q', '-qry', metavar='SPECIES', nargs='+', type=str, dest='qry',
-						required=False, help="query species (default: from -t tree or same as -r)")
-	parser.add_argument('-t', '-sptree', metavar='TREE', type=str, default=None, dest='sptree',
-						help="species tree: use its leaf species as ref/qry set")
-	parser.add_argument('--heatmap', action='store_true', default=False, dest='heatmap',
-						help="output ref x qry depth-ratio heatmap with tree on the left")
-	parser.add_argument('--threads', metavar='INT', type=int, default=1, dest='threads',
-						help="number of parallel processes for ref x qry depth calculation [default=%(default)s]")
-	parser.add_argument('--no-bars', action='store_true', default=False, dest='no_bars',
-						help="skip the per-pair bar plots (heatmap only)")
-	parser.add_argument('-pre', '-prefix', metavar='PREFIX', type=str,
-						dest='output', default=None, help="output prefix")
-	parser.add_argument('--format', metavar='figure file out format', action='append',
-						default=['pdf', 'png'], help="default=%(default)s")
-	parser.add_argument('--nrow', metavar='nrow', type=int, default=None,
-						help="number of rows. default=%(default)s")
-	parser.add_argument('--min_same_block', type=int, default=25,
-						help=argparse.SUPPRESS) #"min gene number in a block on the same chromosome. default=%(default)s")
-	add_ploidy_opts(parser)
+	g_in = parser.add_argument_group('Input')
+	g_in.add_argument('-s', '-synteny', metavar='FILE', type=str, required=True, nargs='+',
+					dest='collinearity',
+					help="syntenic block file (*.collinearity, output of MCSCANX/WGDI)[required]")
+	g_in.add_argument('-g', '-gff', metavar='FILE', type=str, required=True, nargs='+',
+					dest='gff',
+					help="gene annotation gff file (*.gff, one of MCSCANX/WGDI input)[required]")
+	g_in.add_argument('-r', '-ref', metavar='SPECIES', nargs='+', type=str, required=False, dest='ref',
+					help="reference species (default: from -t tree or same as -q)")
+	g_in.add_argument('-q', '-qry', metavar='SPECIES', nargs='+', type=str, dest='qry',
+					required=False, help="query species (default: from -t tree or same as -r)")
+	g_in.add_argument('-t', '-sptree', metavar='TREE', type=str, default=None, dest='sptree',
+					help="species tree: use its leaf species as ref/qry set")
+	g_win = parser.add_argument_group('Window')
+	g_win.add_argument('--window_size', metavar='INT', type=int, default=50,
+					help="window_size. [default=%(default)s]")
+	g_win.add_argument('--window_step', metavar='INT', type=int, default=10,
+					help="window_step. [default=%(default)s]")
+	g_win.add_argument('--min_block', metavar='INT', type=int, default=None,
+					help="min genes for a block. [default=%(default)s]")
+	g_win.add_argument('--max_distance', metavar='INT', type=int, default=20,
+					help="max distance from anchor genes. [default=%(default)s]")
+	g_win.add_argument('--min_overlap', metavar='FLOAT', type=float, default=0.4,
+					help="min overlap for covering a reference window. [default=%(default)s]")
+	g_out = parser.add_argument_group('Output')
+	g_out.add_argument('-pre', '-prefix', metavar='PREFIX', type=str,
+					dest='output', default=None, help="output prefix")
+	g_out.add_argument('--output_depth', metavar='FILE', type=str, default=None,
+					help="output depth data to a file. [default=%(default)s]")
+	g_out.add_argument('--heatmap', action='store_true', default=False, dest='heatmap',
+					help="output ref x qry depth-ratio heatmap with tree on the left")
+	g_out.add_argument('--no-bars', action='store_true', default=False, dest='no_bars',
+					help="skip the per-pair bar plots (heatmap only)")
+	g_out.add_argument('--max_ploidy', metavar='INT', type=int, default=10,
+					help="upper limit for x axis. [default=%(default)s]")
+	g_out.add_argument('--as-proportion', action='store_true', default=False,
+					help="show y-axis as proportion (0-1) instead of count. [default=%(default)s]")
+	g_out.add_argument('--format', metavar='figure file out format', action='append',
+					default=['pdf', 'png'], help="default=%(default)s")
+	g_out.add_argument('--nrow', metavar='nrow', type=int, default=None,
+					help="number of rows. default=%(default)s")
+	g_out.add_argument('--color', metavar='COLOR', type=str, default=None,
+					help="bar fill color. [default=%(default)s]")
+	g_out.add_argument('--edgecolor', metavar='COLOR', type=str, default=None,
+					help="bar edge color. [default=%(default)s]")
+	g_out.add_argument('--min_same_block', type=int, default=25,
+					help=argparse.SUPPRESS) #"min gene number in a block on the same chromosome. default=%(default)s")
+	g_perf = parser.add_argument_group('Performance')
+	g_perf.add_argument('--threads', metavar='INT', type=int, default=1, dest='threads',
+					help="number of parallel processes for ref x qry depth calculation [default=%(default)s]")
 
 def makeArgparse():
 	parser = argparse.ArgumentParser(

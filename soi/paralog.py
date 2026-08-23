@@ -317,7 +317,7 @@ class ParalogIndexer:
 				w = np.sqrt(Ns)
 			else:  # 'log' = natural log
 				w = np.log1p(Ns)
-			w = w / w.max() * (1 - 1e-3) + 1e-3  # tiny floor
+			w = w / w.max() #* (1 - 1e-3) + 1e-3  # tiny floor
 		else:
 			w = np.ones(len(rows))
 		# cumulative x positions (left of each column)
@@ -363,7 +363,7 @@ class ParalogIndexer:
 			ax.set_yticklabels(branches, fontsize=tick_fs)
 			ax.yaxis.tick_right()  # branch names on the right
 		ax.set_xticks([])
-		ax.set_xlabel('Synteny', fontsize=14)
+		ax.set_xlabel('Syntenic block', fontsize=14)
 		# optional: grey dashed rectangles around blocks assigned to each branch
 		if self.box_branch:
 			from collections import defaultdict
@@ -398,7 +398,7 @@ class ParalogIndexer:
 			from matplotlib.ticker import AutoMinorLocator
 			ax_line.xaxis.set_minor_locator(AutoMinorLocator())
 			ax_leg.axis('off')
-			lg = ax_leg.legend(ax_line.get_lines(), ['Raw paralog pairs', 'Assigned gene pairs'],
+			lg = ax_leg.legend(ax_line.get_lines(), ['Inferred paralog pairs', 'Assigned syntenic gene pairs'],
 							 fontsize=8, loc='center', ncol=1)
 		import matplotlib as mpl
 		fig.tight_layout()
