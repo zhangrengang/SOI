@@ -53,8 +53,8 @@ def ploidy_args(parser):
 					help="reference species (default: from -t tree or same as -q)")
 	g_in.add_argument('-q', '-qry', metavar='SPECIES', nargs='+', type=str, dest='qry',
 					required=False, help="query species (default: from -t tree or same as -r)")
-	g_in.add_argument('-t', '-sptree', metavar='TREE', type=str, default=None, dest='sptree',
-					help="species tree: use its leaf species as ref/qry set")
+	g_in.add_argument('-t', '-sptree', metavar='FILE', type=str, default=None, dest='sptree',
+					help="species tree in nwk format: use its leaf species as ref/qry set")
 	g_win = parser.add_argument_group('Ploidy plot',
 								'window and ploidy depth options')
 	add_ploidy_opts(g_win)
@@ -65,9 +65,9 @@ def ploidy_args(parser):
 					help="output ref x qry depth-ratio heatmap with tree on the left")
 	g_out.add_argument('--no-bars', action='store_true', default=False, dest='no_bars',
 					help="skip the per-pair bar plots (heatmap only)")
-	g_out.add_argument('--format', metavar='figure file out format', action='append',
+	g_out.add_argument('--format', metavar='FORMAT', action='append',
 					default=['pdf', 'png'], help="default=%(default)s")
-	g_out.add_argument('--nrow', metavar='nrow', type=int, default=None,
+	g_out.add_argument('--nrow', metavar='INT', type=int, default=None,
 					help="number of rows. default=%(default)s")
 	g_out.add_argument('--min_same_block', type=int, default=25,
 					help=argparse.SUPPRESS) #"min gene number in a block on the same chromosome. default=%(default)s")

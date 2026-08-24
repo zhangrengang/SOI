@@ -2079,11 +2079,11 @@ def cluster_by_mcl(collinearities, orthologs=None, inflation=2,method='mcl',
 		if method=='comp': # add_edges for comp and skip write network
 			G.add_edges_from(rc.pairs)
 			continue
-		for g1, g2 in rc.pairs:
-			line = [g1, g2]
-			if orthologs:
-				line += [str(rc.oi)]
-			fout.write('{}\n'.format('\t'.join(line)))
+		if orthologs:
+			block_lines = ['{}	{}	{}'.format(g1, g2, rc.oi) for g1, g2 in rc.pairs]
+		else:
+			block_lines = ['{}	{}'.format(g1, g2) for g1, g2 in rc.pairs]
+		fout.write('\n'.join(block_lines) + '\n')
 	if method=='mcl': 
 		fout.close()
 	logger.info(
