@@ -199,9 +199,9 @@ class HOG:
 							 f"(SOG {og_id})")
 		logger.info(f"Processed {len(self.all_hogs)} HOGs")
 		if n_drop_no_cross:
-			logger.info(f"Dropped {n_drop_no_cross} gene sets that do not cross all child branches (--drop-no-cross)")
+			logger.info(f"Dropped {n_drop_no_cross} gene sets that do not cross all child branches")
 		if n_no_split:
-			logger.info(f"Kept {n_no_split} gene sets as single HOGs — do not cross all child branches (--cross-speciation)")
+			logger.info(f"Kept {n_no_split} gene sets as single HOGs — do not cross all child branches")
 		logger.info("All HOGs with hierarchy built successfully!")
 		
 		if write_tsv:

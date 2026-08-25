@@ -907,6 +907,8 @@ class Collinearity():
 		return gene.split('|', 1)[1]
 
 	def retrive_ks(self, d_ks, pair):
+		if not d_ks:
+			return
 		if pair in d_ks:
 			return d_ks[pair]
 		pair2 = tuple(reversed(pair))
@@ -2080,10 +2082,11 @@ def cluster_by_mcl(collinearities, orthologs=None, inflation=2,method='mcl',
 			G.add_edges_from(rc.pairs)
 			continue
 		if orthologs:
-			block_lines = ['{}	{}	{}'.format(g1, g2, rc.oi) for g1, g2 in rc.pairs]
+			block_lines = ['\t'.join((g1, g2, str(rc.oi))) for g1, g2 in rc.pairs]
 		else:
-			block_lines = ['{}	{}'.format(g1, g2) for g1, g2 in rc.pairs]
-		fout.write('\n'.join(block_lines) + '\n')
+			block_lines = ['\t'.join(pa) for pa in rc.pairs]
+		fout.write('\n'.join(block_lines)+ '\n')
+
 	if method=='mcl': 
 		fout.close()
 	logger.info(
