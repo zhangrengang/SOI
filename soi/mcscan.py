@@ -1012,7 +1012,11 @@ class Collinearity():
 	def is_tandem(self, max_dist=10):
 		if self.species1 != self.species2 or self.chr1 != self.chr2:
 			return False
-		dist = max(self.istart1, self.istart2) - min(self.iend1, self.iend2)
+		try: dist = max(self.istart1, self.istart2) - min(self.iend1, self.iend2)
+		except TypeError:
+			logger.warn('TypeError for {}; skipping'.format([self.species1, self.species2, self.chr1, self.chr2, 
+					self.istart1, self.istart2, self.iend1, self.iend2]))
+			return 
 		if dist < max_dist:
 			return True
 		return False

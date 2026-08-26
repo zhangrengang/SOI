@@ -148,9 +148,12 @@ _PLOIDY_CTX = {}
 def _ploidy_worker(pair):
 	ref, sp = pair
 	ctx = _PLOIDY_CTX
-	d_fold = get_ploidy(ctx['paths'][ref], ctx['graphs'][ref],
+	try: d_fold = get_ploidy(ctx['paths'][ref], ctx['graphs'][ref],
 						ctx['graphs'][sp], ctx['orth'][ref][sp],
 						**ctx['kargs'])
+	except KeyError as e:
+		logger.warn('KeyError: {}. Skipping'.format(e))
+		d_fold = {}
 	return ref, sp, d_fold
 
 

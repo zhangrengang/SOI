@@ -55,6 +55,8 @@ class Paralog:
 				hog.outtsv = self.prefix + '.HOGs.tsv'
 			hog.pipe(write_tsv=write_tsv)
 		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
+		if not hog.all_hogs:
+			raise ValueError('0 HOGs after HOG building: check collinearity data and --drop-no-cross (all gene sets dropped)')
 
 		branch_pairs, count = self._write_and_group(hog, fpath)
 		logger.info('Output {} paralog pairs to {}'.format(count, fpath))
