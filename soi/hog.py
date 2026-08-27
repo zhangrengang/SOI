@@ -8,6 +8,40 @@ from itertools import combinations
 from .OrthoFinder import OrthoMCLGroup
 from .mcscan import ColinearGroups
 from .tree import number_nodes
+
+
+def mcl_components(G, inflation=1.5, max_iter=100):
+	"""MCL flow clustering on a small graph; returns list of node sets.
+
+	Weak edges (e.g. outparalog contamination) are broken by random-walk
+	flow: the transition matrix is expanded (matrix power) and inflated
+	(elementwise power + column normalize) until convergence, then nodes
+	attracted to the same column-maximum form a cluster.
+	"""
+	nodes = list(G.nodes())
+	n = len(nodes)
+	if n <= 1:
+		return [set(nodes)]
+	idx = {node: i for i, node in enumerate(nodes)}
+	A = np.zeros((n, n))
+	for u, v in G.edges():
+		A[idx[u], idx[v]] = A[idx[v], idx[u]] = 1.0
+	A += np.eye(n)  # self-loops: allow walker to stay
+	M = A / A.sum(axis=0, keepdims=True)
+	M2 = None
+	for _ in range(max_iter):
+		M2 = M @ M  # expand: 2-step transition
+		M2 = M2 ** inflation  # inflate: sharpen
+		M2 = M2 / M2.sum(axis=0, keepdims=True)
+		if np.allclose(M, M2, atol=1e-6):
+			break
+		M = M2
+	# attractors: each column's argmax is the cluster anchor
+	clusters = {}
+	for j in range(n):
+		i = int(M2[:, j].argmax())
+		clusters.setdefault(i, set()).add(nodes[j])
+	return list(clusters.values())
 from .RunCmdsMP import logger
 
 def xmain(**kargs):
@@ -17,7 +51,7 @@ class HOG:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "HOGs",
 		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, 
 			min_child_species=1, cross_speciation=False, drop_no_cross=False,
-			enable_root_paralog=False, **kargs):
+			enable_root_paralog=False, mcl_split=True, **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
@@ -28,6 +62,7 @@ class HOG:
 		self.cross_speciation = cross_speciation
 		self.drop_no_cross = drop_no_cross
 		self.enable_root_paralog = enable_root_paralog
+		self.mcl_split = mcl_split
 		self.out_stats = outpre + '.stats.tsv' if out_stats else None
 		self.bar_plot = outpre + '.bar' if bar_plot else None
 		self.tree_plot = outpre + '.tree' if tree_plot else None
@@ -131,12 +166,19 @@ class HOG:
 						do_split = False
 						n_no_split += 1
 
+				hog_subgraph = subgraph.subgraph(subset_genes)
 				if do_split:
-					hog_subgraph = subgraph.subgraph(subset_genes)
 					connected_components = list(nx.connected_components(hog_subgraph))
 				else:
 					connected_components = [set(subset_genes)]
 				connected_components.sort(key=lambda comp: min(comp))
+				if getattr(self, 'mcl_split', True) and len(subset_genes) > 2:
+					# one weak component may hide outparalogs: refine with MCL
+					refined = mcl_components(hog_subgraph)
+					if len(refined) > 1:
+						logger.debug('MCL split {} into {} clusters'.format(
+							og_id, len(refined)))
+						connected_components = refined
 				for idx, cc_genes in enumerate(connected_components):
 					# species actually present in this connected component
 					cc_species = [sp for sp in og_spdict
