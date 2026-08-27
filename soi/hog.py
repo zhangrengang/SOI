@@ -10,7 +10,7 @@ from .mcscan import ColinearGroups
 from .tree import number_nodes
 
 
-def mcl_components(G, inflation=1.2, max_iter=100):
+def mcl_components(G, inflation=1.5, max_iter=100):
 	"""MCL flow clustering on a small graph; returns list of node sets.
 
 	Weak edges (e.g. outparalog contamination) are broken by random-walk
@@ -126,6 +126,7 @@ class HOG:
 					noparalog=self.noparalog).graph
 		
 		logger.info(f'Splitting HOGs from {self.ogfile}')
+		root_node = sptree.get_tree_root()
 		prefix = 'hog'
 		self.all_hogs = {}
 		self.all_genes = []
@@ -140,7 +141,6 @@ class HOG:
 			subgraph = graph.subgraph(og_genes).copy()
 	
 			node_to_hogs = defaultdict(list)
-			root_node = sptree.get_tree_root()
 			# top-down propagation: each node receives (source_hog_id, genes) sets
 			# from its parent's HOGs; root receives the whole SOG as a virtual set
 			node_inputs = {root_node: [(og_id, set(og_genes))]}
@@ -167,6 +167,7 @@ class HOG:
 				node_species = set(node.get_leaf_names())
 				node_hogs = []
 				dropped_inputs = []  # gene sets dropped here, still propagated down (parent=None)
+				idx = 0
 				for src_id, genes in inputs:
 					subset_genes = [g for g in genes if g.split('|')[0] in node_species]
 					if not subset_genes:
@@ -198,7 +199,7 @@ class HOG:
 					else:
 						connected_components = [set(subset_genes)]
 					connected_components.sort(key=lambda comp: min(comp))
-					for idx, cc_genes in enumerate(connected_components):
+					for cc_genes in connected_components:
 						# species actually present in this connected component
 						cc_species = [sp for sp in og_spdict
 									  if sp in subset_species and set(og_spdict[sp]) & cc_genes]
@@ -207,6 +208,7 @@ class HOG:
 							if len(cc_species) < self.min_child_species:
 								continue
 						hog_id = f"{og_id}.{node_id}.{prefix}{idx}"
+						idx += 1
 	
 						hog = HOGrecord(
 							hog_id=hog_id,
