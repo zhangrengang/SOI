@@ -164,6 +164,7 @@ class HOG:
 						inputs = [(None, set(og_genes))]
 				node_species = set(node.get_leaf_names())
 				node_hogs = []
+				dropped_inputs = []  # gene sets dropped here, still propagated down (parent=None)
 				for src_id, genes in inputs:
 					subset_genes = [g for g in genes if g.split('|')[0] in node_species]
 					if not subset_genes:
@@ -177,7 +178,8 @@ class HOG:
 						if not crosses:
 							if self.drop_no_cross:
 								n_drop_no_cross += 1
-								continue
+							dropped_inputs.append((None, set(subset_genes)))
+							continue
 							do_split = False
 							n_no_split += 1
 	
@@ -218,7 +220,7 @@ class HOG:
 				node_to_hogs[node_id] = node_hogs
 				# propagate to children
 				for child in node.children:
-					node_inputs[child] = [(h.hog_id, set(h["genes"])) for h in node_hogs]
+					node_inputs[child] = [(h.hog_id, set(h["genes"])) for h in node_hogs] + list(dropped_inputs)
 
 		logger.info(f"Processed {len(self.all_hogs)} HOGs")
 		if n_drop_no_cross:
