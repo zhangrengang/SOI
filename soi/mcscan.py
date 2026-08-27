@@ -736,8 +736,10 @@ class Collinearity():
 		return '<Synteny parser>'
 
 	def write(self, f, ):
-		if self.has_head:
+		# header (file-level comments) is written once per file, not per block
+		if self.has_head and not getattr(self, '_header_written', False):
 			f.write(self.header)
+			self._header_written = True
 		f.write(self.block)
 
 	def _skip_reverse_wgdi(self):
