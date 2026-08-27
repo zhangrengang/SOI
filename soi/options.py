@@ -112,6 +112,9 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	target.add_argument('--no-mcl-split', action='store_true', default=False,
 						dest='no_mcl_split',
 						help=argparse.SUPPRESS)  # 'Disable MCL refinement of weakly connected components during HOG splitting'
+	target.add_argument('-I', '--inflation', type=float, default=1.5,
+						dest='mcl_inflation',
+						help='MCL inflation for HOG splitting (default: 1.5)')
 
 
 def args_hog(parser):

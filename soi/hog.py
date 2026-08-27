@@ -10,7 +10,7 @@ from .mcscan import ColinearGroups
 from .tree import number_nodes
 
 
-def mcl_components(G, inflation=1.2, max_iter=100):
+def mcl_components(G, inflation=1.5, max_iter=100):
 	"""MCL flow clustering on a small graph; returns list of node sets.
 
 	Weak edges (e.g. outparalog contamination) are broken by random-walk
@@ -52,7 +52,7 @@ class HOG:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "HOGs",
 		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, 
 			min_child_species=1, cross_speciation=False, drop_no_cross=False,
-			enable_root_paralog=False, mcl_split=True, **kargs):
+			enable_root_paralog=False, mcl_split=True, mcl_inflation=1.5, **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
@@ -64,6 +64,7 @@ class HOG:
 		self.drop_no_cross = drop_no_cross
 		self.enable_root_paralog = enable_root_paralog
 		self.mcl_split = mcl_split
+		self.mcl_inflation = kargs.get('mcl_inflation', mcl_inflation)
 		if kargs.get('no_mcl_split'):
 			self.mcl_split = False
 		self.out_stats = outpre + '.stats.tsv' if out_stats else None
@@ -191,7 +192,7 @@ class HOG:
 						connected_components = list(nx.connected_components(hog_subgraph))
 						# refine each component with MCL to break weak outparalog edges
 						if getattr(self, 'mcl_split', True) and len(subset_genes) > 2:
-							refined = mcl_components(hog_subgraph)
+							refined = mcl_components(hog_subgraph, inflation=self.mcl_inflation)
 							if len(refined) > 1:
 								logger.debug('MCL split {} into {} clusters'.format(
 									og_id, len(refined)))
