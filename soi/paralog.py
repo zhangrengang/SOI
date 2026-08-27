@@ -302,6 +302,7 @@ class ParalogIndexer:
 		fpath = self.prefix + '.heatmap.tsv'
 		branches = self._ordered_branches
 		rows = self._heatmap_rows
+		branch_idx = {b: i for i, b in enumerate(branches)}
 
 
 		# figure
