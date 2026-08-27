@@ -214,6 +214,7 @@ class ParalogIndexer:
 		else:
 			branches = sorted(self._branch_pairs)
 		self._pi_branches = branches
+		self._ordered_branches = list(branches)  # internal+leaves in tree order; shared by heatmap/stats
 		self._pi_rows = []  # (block_id, N, pi_vector) for heatmap
 		self._branch_raw_signal = defaultdict(int)  # raw paralog count per branch (all blocks, even weak)
 
@@ -255,15 +256,17 @@ class ParalogIndexer:
 		logger.info('Assigned blocks to {} branches'.format(len(assigned)))
 		return assigned
 
-	def write_heatmap(self, assigned):
-		"""Write block x branch PI matrix heatmap.
+	def write_heatmap_matrix(self, assigned):
+		"""Write block x branch PI matrix TSV (always, even without heatmap plot).
 
 		Rows (blocks) are sorted by their PI vector (descending) so blocks
 		with similar branch-PI profiles end up adjacent.  With cluster=True
 		rows are ordered by hierarchical clustering instead.
+		Column 'assigned_branch' records which branch each block was
+		assigned to.
 		"""
 		fpath = self.prefix + '.heatmap.tsv'
-		branches = self._pi_branches
+		branches = self._ordered_branches
 		branch_idx = {b: i for i, b in enumerate(branches)}
 		if getattr(self, 'heatmap_cluster', False):
 			# hierarchical clustering of rows
@@ -285,12 +288,20 @@ class ParalogIndexer:
 										 tuple(-v for v in r[4])))
 
 		with open(fpath, 'w') as fout:
-			fout.write('#block	species	N	' + '	'.join(branches) + '\n')
+			fout.write('#block\tspecies\tN\tassigned_branch\t' + '\t'.join(branches) + '\n')
 			for bid, sp, N, bch, vec in rows:
-				fout.write('{}	{}	{}	{}\n'.format(
-					bid, sp, N, '	'.join('{:.4f}'.format(v) for v in vec)))
+				fout.write('{}\t{}\t{}\t{}\t{}\n'.format(
+					bid, sp, N, bch, '\t'.join('{:.4f}'.format(v) for v in vec)))
 		logger.info('Heatmap matrix written to {} ({} blocks x {} branches)'.format(
 			fpath, len(rows), len(branches)))
+		return rows
+
+	def write_heatmap(self, assigned):
+		"""Draw the heatmap figure from the PI matrix."""
+		fpath = self.prefix + '.heatmap.tsv'
+		branches = self._ordered_branches
+		rows = self.write_heatmap_matrix(assigned)
+
 
 		# figure
 		import numpy as np
@@ -435,7 +446,11 @@ class ParalogIndexer:
 			fout.write('#branch	species	paralog_pairs	syntenic_blocks	'
 								   'syntenic_gene_pairs	syntenic_paralog_pairs	'
 								   'mean_PI	weighted_PI\n')
-			for (branch, sp), (blocks, gp, pp, sum_pi) in sorted(stats.items()):
+			ordered = {b: i for i, b in enumerate(self._ordered_branches)}
+			for (branch, sp), (blocks, gp, pp, sum_pi) in sorted(
+					stats.items(),
+					key=lambda kv: (ordered.get(kv[0][0], len(ordered)),  # Unassigned last
+								  kv[0][1])):
 				mean_pi = sum_pi / blocks if blocks else 0.0
 				n_paralogs = self._branch_sp_counts.get((branch, sp), 0)
 				wpi = pp / gp if gp else 0.0
@@ -556,6 +571,7 @@ def xmain(**kargs):
 		indexer.heatmap_scale = heatmap_scale
 		assigned = indexer.assign()
 		stats = indexer.write_stats(assigned)
+		indexer.write_heatmap_matrix(assigned)
 		indexer.write_blocks(assigned)
 		if tree_plot:
 			if kargs.get('sptreefile'):
