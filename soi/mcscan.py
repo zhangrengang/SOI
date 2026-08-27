@@ -881,8 +881,9 @@ class Collinearity():
 		return False
 
 	def parse_homology_line(self, line):
-		temp = line.strip().split()
-		gene1, gene2 = temp[:2]
+		pair = split_pair(line, parser=CommonPair)
+		gene1, gene2 = pair.pair
+		self.weight = pair.weight
 		genes1 = [gene1]
 		genes2 = [gene2]
 		self.N = 1
@@ -1681,6 +1682,7 @@ class CommonPair(object):
 
 	def __init__(self, *pair):
 		self.pair = pair[:2]
+		self.weight = float(pair[2]) if len(pair) > 2 else None
 
 	def __iter__(self):
 		return iter(self.pair)
@@ -2210,7 +2212,11 @@ class ColinearGroups:
 					continue
 				sp_pairs.add(rc.species)
 				for pair, ks in zip(rc.pairs, rc.ks):
-					G.add_edge(*pair)
+					w = getattr(rc, 'weight', None)
+					if w is not None:
+						G.add_edge(pair[0], pair[1], weight=w)
+					else:
+						G.add_edge(*pair)
 					if self.kaks:
 						key = tuple(sorted(pair))
 						d_ks[key] = ks
@@ -2222,7 +2228,10 @@ class ColinearGroups:
 					continue
 				if pair.species in sp_pairs:  # Import only those without synteny information.
 					continue
-				G.add_edge(*pair.pair)
+				if getattr(pair, 'weight', None) is not None:
+					G.add_edge(pair.pair[0], pair.pair[1], weight=pair.weight)
+				else:
+					G.add_edge(*pair.pair)
 		return G
 
 	@property

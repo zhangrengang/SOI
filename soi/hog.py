@@ -25,7 +25,8 @@ def mcl_components(G, inflation=1.5, max_iter=100):
 	idx = {node: i for i, node in enumerate(nodes)}
 	A = np.zeros((n, n))
 	for u, v in G.edges():
-		A[idx[u], idx[v]] = A[idx[v], idx[u]] = 1.0
+		w = G[u][v].get('weight', 1.0)
+		A[idx[u], idx[v]] = A[idx[v], idx[u]] = w
 	A += np.eye(n)  # self-loops: allow walker to stay
 	M = A / A.sum(axis=0, keepdims=True)
 	M2 = None
