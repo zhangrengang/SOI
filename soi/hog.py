@@ -167,19 +167,19 @@ class HOG:
 						do_split = False
 						n_no_split += 1
 
-				hog_subgraph = subgraph.subgraph(subset_genes)
 				if do_split:
+					hog_subgraph = subgraph.subgraph(subset_genes)
 					connected_components = list(nx.connected_components(hog_subgraph))
+					# refine each component with MCL to break weak outparalog edges
+					if getattr(self, 'mcl_split', True) and len(subset_genes) > 2:
+						refined = mcl_components(hog_subgraph)
+						if len(refined) > 1:
+							logger.debug('MCL split {} into {} clusters'.format(
+								og_id, len(refined)))
+							connected_components = refined
 				else:
 					connected_components = [set(subset_genes)]
 				connected_components.sort(key=lambda comp: min(comp))
-				if getattr(self, 'mcl_split', True) and len(subset_genes) > 2:
-					# one weak component may hide outparalogs: refine with MCL
-					refined = mcl_components(hog_subgraph)
-					if len(refined) > 1:
-						logger.debug('MCL split {} into {} clusters'.format(
-							og_id, len(refined)))
-						connected_components = refined
 				for idx, cc_genes in enumerate(connected_components):
 					# species actually present in this connected component
 					cc_species = [sp for sp in og_spdict
