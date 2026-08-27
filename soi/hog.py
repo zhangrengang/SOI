@@ -155,11 +155,13 @@ class HOG:
 					while anc:
 						anc_hogs = node_to_hogs.get(anc.name, [])
 						if anc_hogs:
-							inputs = [(h.hog_id, set(h["genes"])) for h in anc_hogs]
+							# no corresponding parent HOG (it was dropped): parent None
+							inputs = [(None, set(h["genes"])) for h in anc_hogs]
 							break
 						anc = anc.up
 					if not inputs:
-						inputs = [(og_id, set(og_genes))]  # every ancestor dropped
+						# every ancestor dropped: SOG genes fallback, parent None
+						inputs = [(None, set(og_genes))]
 				node_species = set(node.get_leaf_names())
 				node_hogs = []
 				for src_id, genes in inputs:
