@@ -777,7 +777,7 @@ class Collinearity():
 					if self.source is None and re.compile(r'# Alignment').match(line):
 						self.source = 'wgdi'
 						self.has_head = 0
-					self.header = ''.join(head)
+					self._head = list(head)  # snapshot: head list keeps growing
 					if lines:
 						self.parse_lines(lines)
 						if not self._skip_reverse_wgdi():
@@ -807,7 +807,7 @@ class Collinearity():
 				yield self
 
 	def parse_lines(self, lines):
-		self.block = ''.join(lines)
+		self._lines = lines
 		genes1, genes2 = [], []
 
 		for i, line in enumerate(lines):
@@ -857,6 +857,16 @@ class Collinearity():
 		self.parse_genes(genes1, genes2)
 
 	@property
+	def block(self):
+		"""Raw block text; joined on access (cheap when not needed, e.g. cluster)."""
+		return ''.join(self._lines)
+
+	@property
+	def header(self):
+		"""Block header text; joined on access."""
+		return ''.join(getattr(self, '_head', []))
+
+
 	def mean_score(self):
 		try:
 			return self.score / self.N
