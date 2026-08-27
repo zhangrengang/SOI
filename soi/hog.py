@@ -10,7 +10,7 @@ from .mcscan import ColinearGroups
 from .tree import number_nodes
 
 
-def mcl_components(G, inflation=1.5, max_iter=100):
+def mcl_components(G, inflation=1.2, max_iter=100):
 	"""MCL flow clustering on a small graph; returns list of node sets.
 
 	Weak edges (e.g. outparalog contamination) are broken by random-walk
@@ -207,8 +207,9 @@ class HOG:
 						if not node.is_leaf() and self.min_child_species > 1:
 							if len(cc_species) < self.min_child_species:
 								continue
-						hog_id = f"{og_id}.{node_id}.{prefix}{idx}"
 						idx += 1
+						hog_id = f"{og_id}.{node_id}.{prefix}{idx}"
+#						idx += 1
 	
 						hog = HOGrecord(
 							hog_id=hog_id,
