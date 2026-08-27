@@ -294,13 +294,14 @@ class ParalogIndexer:
 					bid, sp, N, bch, '\t'.join('{:.4f}'.format(v) for v in vec)))
 		logger.info('Heatmap matrix written to {} ({} blocks x {} branches)'.format(
 			fpath, len(rows), len(branches)))
+		self._heatmap_rows = rows
 		return rows
 
 	def write_heatmap(self, assigned):
 		"""Draw the heatmap figure from the PI matrix."""
 		fpath = self.prefix + '.heatmap.tsv'
 		branches = self._ordered_branches
-		rows = self.write_heatmap_matrix(assigned)
+		rows = self._heatmap_rows
 
 
 		# figure
