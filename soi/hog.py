@@ -131,115 +131,93 @@ class HOG:
 		n_no_split = 0
 		for og in OrthoMCLGroup(self.ogfile):
 			og_genes = og.genes
-			self.all_genes  += og_genes
+			self.all_genes += og_genes
 			og_species = set(og.species)
 			og_id = og.ogid
 			og_spdict = og.spdict
 			subgraph = graph.subgraph(og_genes).copy()
-
+	
 			node_to_hogs = defaultdict(list)
-
-			for node in sptree.traverse(strategy="postorder"):
+			root_node = sptree.get_tree_root()
+			# top-down propagation: each node receives (source_hog_id, genes) sets
+			# from its parent's HOGs; root receives the whole SOG as a virtual set
+			node_inputs = {root_node: [(og_id, set(og_genes))]}
+	
+			for node in sptree.traverse(strategy="preorder"):
 				if self.noparalog and node.is_leaf():
 					continue
 				node_id = node.name
-				node_species = set(node.get_leaf_names())
-				subset_species = node_species & og_species
-				if not subset_species:
-					continue
-
-				subset_genes = []
-				for sp in subset_species:
-					subset_genes.extend(og_spdict[sp])
-
-				if not subset_genes:
-					continue
-
-				# cross-speciation: genes must span all child branches of this node
-				do_split = True
-				if not node.is_leaf() and (self.cross_speciation or self.drop_no_cross):
-					child_sps = node_child_species[node_id]
-					crosses = all(subset_species & cs for cs in child_sps)
-					if not crosses:
-						if self.drop_no_cross:
-							n_drop_no_cross += 1
-							continue
-						do_split = False
-						n_no_split += 1
-
-				if do_split:
-					hog_subgraph = subgraph.subgraph(subset_genes)
-					connected_components = list(nx.connected_components(hog_subgraph))
-					# refine each component with MCL to break weak outparalog edges
-					if getattr(self, 'mcl_split', True) and len(subset_genes) > 2:
-						refined = mcl_components(hog_subgraph)
-						if len(refined) > 1:
-							logger.debug('MCL split {} into {} clusters'.format(
-								og_id, len(refined)))
-							connected_components = refined
-				else:
-					connected_components = [set(subset_genes)]
-				connected_components.sort(key=lambda comp: min(comp))
-				for idx, cc_genes in enumerate(connected_components):
-					# species actually present in this connected component
-					cc_species = [sp for sp in og_spdict
-								  if sp in subset_species and set(og_spdict[sp]) & cc_genes]
-					# filter orphan HOGs: internal node with genes from < min_child_species species
-					if not node.is_leaf() and self.min_child_species > 1:
-						if len(cc_species) < self.min_child_species:
-							continue
-					hog_id = f"{og_id}.{node_id}.{prefix}{idx}"
-
-					hog = HOGrecord(
-						hog_id=hog_id,
-						og_id=og_id,
-						node_id=node_id,
-						genes=list(cc_genes),
-						species=cc_species,
-						parent=None,
-						children=[]
-					)
-					self.all_hogs[hog_id] = hog
-					node_to_hogs[node_id].append(hog)
-
-			for node in sptree.traverse(strategy="postorder"):
-				node_id = node.name
-				current_hogs = node_to_hogs.get(node_id, [])
-
-				if not current_hogs:
-					continue
-
-				parent_node = node.up
-				if not parent_node:
-					continue
-
-				p_node_id = parent_node.name
-				parent_hogs = node_to_hogs.get(p_node_id, [])
-
-				for hog in current_hogs:
-					hog_genes = set(hog["genes"])
-					for phog in parent_hogs:
-						phog_genes = set(phog["genes"])
-						if hog_genes.issubset(phog_genes):
-							hog["parent"] = phog["hog_id"]
-							phog["children"].append(hog["hog_id"])
+				inputs = node_inputs.get(node, [])
+				# drop fallback: climb to nearest ancestor with HOGs (never straight
+				# from SOG unless every ancestor was dropped)
+				if not inputs:
+					anc = node.up
+					while anc:
+						anc_hogs = node_to_hogs.get(anc.name, [])
+						if anc_hogs:
+							inputs = [(h.hog_id, set(h["genes"])) for h in anc_hogs]
 							break
+						anc = anc.up
+					if not inputs:
+						inputs = [(og_id, set(og_genes))]  # every ancestor dropped
+				node_species = set(node.get_leaf_names())
+				node_hogs = []
+				for src_id, genes in inputs:
+					subset_genes = [g for g in genes if g.split('|')[0] in node_species]
+					if not subset_genes:
+						continue
+					subset_species = {g.split('|')[0] for g in subset_genes}
+					# cross-speciation: genes must span all child branches of this node
+					do_split = True
+					if not node.is_leaf() and (self.cross_speciation or self.drop_no_cross):
+						child_sps = node_child_species[node_id]
+						crosses = all(subset_species & cs for cs in child_sps)
+						if not crosses:
+							if self.drop_no_cross:
+								n_drop_no_cross += 1
+								continue
+							do_split = False
+							n_no_split += 1
+	
+					if do_split:
+						hog_subgraph = subgraph.subgraph(subset_genes)
+						connected_components = list(nx.connected_components(hog_subgraph))
+						# refine each component with MCL to break weak outparalog edges
+						if getattr(self, 'mcl_split', True) and len(subset_genes) > 2:
+							refined = mcl_components(hog_subgraph)
+							if len(refined) > 1:
+								logger.debug('MCL split {} into {} clusters'.format(
+									og_id, len(refined)))
+								connected_components = refined
+					else:
+						connected_components = [set(subset_genes)]
+					connected_components.sort(key=lambda comp: min(comp))
+					for idx, cc_genes in enumerate(connected_components):
+						# species actually present in this connected component
+						cc_species = [sp for sp in og_spdict
+									  if sp in subset_species and set(og_spdict[sp]) & cc_genes]
+						# filter orphan HOGs: internal node with genes from < min_child_species species
+						if not node.is_leaf() and self.min_child_species > 1:
+							if len(cc_species) < self.min_child_species:
+								continue
+						hog_id = f"{og_id}.{node_id}.{prefix}{idx}"
+	
+						hog = HOGrecord(
+							hog_id=hog_id,
+							og_id=og_id,
+							node_id=node_id,
+							genes=list(cc_genes),
+							species=cc_species,
+							parent=src_id,
+							children=[]
+						)
+						self.all_hogs[hog_id] = hog
+						node_hogs.append(hog)
+				node_to_hogs[node_id] = node_hogs
+				# propagate to children
+				for child in node.children:
+					node_inputs[child] = [(h.hog_id, set(h["genes"])) for h in node_hogs]
 
-			# drop leaf HOGs with no parent (genes absent from parent-node
-			# HOGs, e.g. filtered out by min_child_species at the parent level)
-			n_dropped = 0
-			leaf_ids = {n.name for n in sptree.traverse() if n.is_leaf()}
-			for node_id, hogs in list(node_to_hogs.items()):
-				if node_id not in leaf_ids:
-					continue
-				for hog in list(hogs):
-					if not hog["parent"]:
-						del self.all_hogs[hog["hog_id"]]
-						node_to_hogs[node_id].remove(hog)
-						n_dropped += 1
-			if n_dropped:
-				logger.debug(f"Dropped {n_dropped} orphan leaf HOGs without parent "
-							 f"(SOG {og_id})")
 		logger.info(f"Processed {len(self.all_hogs)} HOGs")
 		if n_drop_no_cross:
 			logger.info(f"Dropped {n_drop_no_cross} gene sets that do not cross all child branches")
