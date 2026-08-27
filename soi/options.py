@@ -109,6 +109,9 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	target.add_argument('--drop-no-cross', action='store_true', default=False,
 						dest='drop_no_cross',
 						help=argparse.SUPPRESS)  # 'Drop (instead of merge) HOGs whose genes do not span all child branches'
+	target.add_argument('--no-mcl-split', action='store_true', default=False,
+						dest='no_mcl_split',
+						help=argparse.SUPPRESS)  # 'Disable MCL refinement of weakly connected components during HOG splitting'
 
 
 def args_hog(parser):

@@ -10,7 +10,7 @@ from .mcscan import ColinearGroups
 from .tree import number_nodes
 
 
-def mcl_components(G, inflation=1.5, max_iter=100):
+def mcl_components(G, inflation=1.2, max_iter=100):
 	"""MCL flow clustering on a small graph; returns list of node sets.
 
 	Weak edges (e.g. outparalog contamination) are broken by random-walk
@@ -64,6 +64,8 @@ class HOG:
 		self.drop_no_cross = drop_no_cross
 		self.enable_root_paralog = enable_root_paralog
 		self.mcl_split = mcl_split
+		if kargs.get('no_mcl_split'):
+			self.mcl_split = False
 		self.out_stats = outpre + '.stats.tsv' if out_stats else None
 		self.bar_plot = outpre + '.bar' if bar_plot else None
 		self.tree_plot = outpre + '.tree' if tree_plot else None
