@@ -287,9 +287,15 @@ class ParalogIndexer:
 										 branch_idx.get(r[3], len(branches)),
 										 tuple(-v for v in r[4])))
 
+		# TSV output: ordered by (branch, species, block), Unassigned last;
+		# independent of the figure row order (rows/_heatmap_rows keep figure order)
+		tsv_rows = sorted(rows,
+					  key=lambda r: (branch_idx.get(r[3], len(branches)),
+									 self._ordered_branches.index(r[1]),
+									 r[0]))
 		with open(fpath, 'w') as fout:
 			fout.write('#block\tspecies\tN\tassigned_branch\t' + '\t'.join(branches) + '\n')
-			for bid, sp, N, bch, vec in rows:
+			for bid, sp, N, bch, vec in tsv_rows:
 				fout.write('{}\t{}\t{}\t{}\t{}\n'.format(
 					bid, sp, N, bch, '\t'.join('{:.4f}'.format(v) for v in vec)))
 		logger.info('Heatmap matrix written to {} ({} blocks x {} branches)'.format(
@@ -452,7 +458,7 @@ class ParalogIndexer:
 			for (branch, sp), (blocks, gp, pp, sum_pi) in sorted(
 					stats.items(),
 					key=lambda kv: (ordered.get(kv[0][0], len(ordered)),  # Unassigned last
-								  kv[0][1])):
+								  self._ordered_branches.index(kv[0][1]))):
 				mean_pi = sum_pi / blocks if blocks else 0.0
 				n_paralogs = self._branch_sp_counts.get((branch, sp), 0)
 				wpi = pp / gp if gp else 0.0
