@@ -257,7 +257,7 @@ class HOG:
 			if hog["parent"] is not None:
 				parent_id = hog["parent"]
 			elif node_id == self.tree.name:
-				parent_id = "Root"
+				parent_id = og_id  # root HOG's parent is its orthogroup (was hardcoded "Root")
 			else:
 				parent_id = "None"
 			gene_str = " ".join(sorted(hog["genes"]))
