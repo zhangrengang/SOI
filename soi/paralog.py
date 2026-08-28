@@ -457,8 +457,8 @@ class ParalogIndexer:
 				s[3] += pi
 
 		with open(fpath, 'w') as fout:
-			fout.write('#branch	species	paralog_pairs	syntenic_blocks	'
-								   'syntenic_gene_pairs	syntenic_paralog_pairs	'
+			fout.write('#branch	species	assigned_paralog_pairs	assigned_syntenic_blocks	'
+								   'gene_pairs_in_syntenic_blocks	paralog_pairs_in_syntenic_blocks	'
 								   'mean_PI	weighted_PI\n')
 			ordered = {b: i for i, b in enumerate(self._ordered_branches)}
 			for (branch, sp), (blocks, gp, pp, sum_pi) in sorted(

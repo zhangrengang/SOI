@@ -9,6 +9,11 @@ from .OrthoFinder import OrthoMCLGroup
 from .mcscan import ColinearGroups
 from .tree import number_nodes
 
+from .RunCmdsMP import logger
+
+def xmain(**kargs):
+    HOG(**kargs).pipe()
+
 
 def sp_of(gene):
 	"""Species name of a gene id ('sp|gene' -> 'sp')."""
@@ -123,10 +128,6 @@ def mcl_components(G, inflation=1.5, max_iter=100, edge_power=1.0):
 		i = int(M2[:, j].argmax())
 		clusters.setdefault(i, set()).add(nodes[j])
 	return list(clusters.values())
-from .RunCmdsMP import logger
-
-def xmain(**kargs):
-	HOG(**kargs).pipe()
 	
 class HOG:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "hog",
