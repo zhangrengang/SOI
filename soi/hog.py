@@ -52,7 +52,7 @@ class HOG:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "HOGs",
 		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, 
 			min_child_species=1, cross_speciation=False, drop_no_cross=False,
-			enable_root_paralog=False, mcl_split=True, mcl_inflation=1.5, **kargs):
+			enable_root_paralog=False, mcl_split=False, mcl_inflation=1.5, min_species_ratio=0, **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
@@ -65,8 +65,7 @@ class HOG:
 		self.enable_root_paralog = enable_root_paralog
 		self.mcl_split = mcl_split
 		self.mcl_inflation = kargs.get('mcl_inflation', mcl_inflation)
-		if kargs.get('no_mcl_split'):
-			self.mcl_split = False
+		self.min_species_ratio = kargs.get('min_species_ratio', min_species_ratio)
 		self.out_stats = outpre + '.stats.tsv' if out_stats else None
 		self.bar_plot = outpre + '.bar' if bar_plot else None
 		self.tree_plot = outpre + '.tree' if tree_plot else None
@@ -207,6 +206,8 @@ class HOG:
 						# filter orphan HOGs: internal node with genes from < min_child_species species
 						if not node.is_leaf() and self.min_child_species > 1:
 							if len(cc_species) < self.min_child_species:
+								continue
+							if self.min_species_ratio > 0 and len(cc_species) / max(len(node_species), 1) < self.min_species_ratio:
 								continue
 						idx += 1
 						hog_id = f"{og_id}.{node_id}.{prefix}{idx}"
