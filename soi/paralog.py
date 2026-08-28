@@ -126,12 +126,13 @@ class ParalogIndexer:
 	def __init__(self, ogfile, orthfiles, sptreefile,
 				 self_synteny=None, min_n=0, gff=None, min_dist=None,
 				 pi_cutoff=0.05, nodes=None, species=None,
-				 prefix='paralog_index', box_branch=False, line_plot=False,
+				 prefix='paralog_index', box_branch=False, line_plot=False, note=None,
 				 **hog_kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
 		self.self_synteny = self_synteny or orthfiles
+		self.note = note
 		if not self.self_synteny:
 			import sys
 			logger.error('Paralog indexing needs synteny blocks: '
@@ -432,6 +433,9 @@ class ParalogIndexer:
 		else:
 			cax.set_position([cax.get_position().x0, cax.get_position().y1-0.02,
 							  0.4 * cax.get_position().width, 0.02])
+		if getattr(self, 'note', None):
+			fig.text(0.02, 0.02, self.note, fontsize=8, va='bottom', ha='left',
+					 color='0.4', bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=2))
 		fig.savefig(self.prefix + '.heatmap.pdf', bbox_inches='tight')
 		fig.savefig(self.prefix + '.heatmap.png', dpi=150, bbox_inches='tight')
 		plt.close(fig)

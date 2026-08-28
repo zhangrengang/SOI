@@ -120,7 +120,8 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	target.add_argument('--enable-root-paralog', action='store_true', default=False,
 						dest='enable_root_paralog',
 						help=argparse.SUPPRESS)  # 'Pair root-level sibling HOGs (default: False)'
-
+	target.add_argument('--out-stats', action='store_true', default=True,
+                       help=argparse.SUPPRESS)  # 'Output copy-number statistics TSV (<prefix>.stats.tsv)')
 
 def args_hog(parser):
 	g_build = parser.add_argument_group('HOG building')
@@ -129,8 +130,8 @@ def args_hog(parser):
 	g_out.add_argument('-pre', '-prefix', type=str, default='HOGs',
 					   dest='outpre', metavar='FILE',
 					   help='Output prefix [default=%(default)s]')
-	g_out.add_argument('--out-stats', action='store_true', default=False,
-					   help='Output copy-number statistics TSV (<prefix>.stats.tsv)')
+#	g_out.add_argument('--out-stats', action='store_true', default=False,
+#					   help='Output copy-number statistics TSV (<prefix>.stats.tsv)')
 	g_out.add_argument('--bar-plot', action='store_true', default=False,
 					   help='Output bar chart of copy-number distribution (<prefix>.bar.pdf/.png)')
 	g_out.add_argument('--tree-plot', action='store_true', default=False,
@@ -215,6 +216,8 @@ def args_paralog(parser):
 	g_out.add_argument('--line-plot', action='store_true', default=False,
 					   dest='line_plot',
 					   help='Add a line plot on the right of the heatmap showing raw and assigned paralog signal per branch')
+	g_out.add_argument('--note', type=str, default=None, dest='note',
+					   help='Text label drawn on the heatmap (e.g. key parameters)')
 
 def func_paralog(**kargs):
 	from .paralog import xmain as paralog_main
