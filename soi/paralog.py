@@ -46,8 +46,9 @@ class Paralog:
 
 		self.kargs.update(min_child_species=2, cross_speciation=True, drop_no_cross=True,
 						 min_species_ratio=0.2, mcl_split=True)
+		logger.info('reset kargs for paralog: {}'.format(self.kargs))
 		hog = HOG(ogfile=self.ogfile, orthfiles=self.orthfiles,
-				  sptreefile=self.sptreefile, **self.kargs)
+				  sptreefile=self.sptreefile, outpre=self.prefix, **self.kargs)
 		if hog_tsv:
 			hog.from_tsv(hog_tsv)
 		else:
@@ -434,8 +435,8 @@ class ParalogIndexer:
 			cax.set_position([cax.get_position().x0, cax.get_position().y1-0.02,
 							  0.4 * cax.get_position().width, 0.02])
 		if getattr(self, 'note', None):
-			fig.text(0.02, 0.02, self.note, fontsize=8, va='bottom', ha='left',
-					 color='0.4', bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=2))
+			fig.text(0.1, 0.1, self.note, fontsize=8, va='bottom', ha='left',
+					 color='0.4', bbox=dict(facecolor='white', alpha=1, edgecolor='none', pad=2))
 		fig.savefig(self.prefix + '.heatmap.pdf', bbox_inches='tight')
 		fig.savefig(self.prefix + '.heatmap.png', dpi=150, bbox_inches='tight')
 		plt.close(fig)

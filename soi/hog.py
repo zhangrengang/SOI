@@ -10,7 +10,85 @@ from .mcscan import ColinearGroups
 from .tree import number_nodes
 
 
-def mcl_components(G, inflation=1.5, max_iter=100):
+def sp_of(gene):
+	"""Species name of a gene id ('sp|gene' -> 'sp')."""
+	return gene.split('|', 1)[0]
+
+
+def oi_anchors(G, tail=2.5):
+	"""Per-species-pair quantile anchors for OI normalization.
+
+	Returns {(sp1, sp2): (q_lo, med, q_hi)} sorted pair, computed on the
+	full network so quantiles are stable (each pair has thousands of edges).
+	"""
+	ws = defaultdict(list)
+	for u, v, d in G.edges(data=True):
+		w = d.get('weight')
+		if w is None:
+			continue
+		key = tuple(sorted((sp_of(u), sp_of(v))))
+		ws[key].append(w)
+	anchors = {}
+	lo, hi = tail / 100.0, 1 - tail / 100.0
+	for key, arr in ws.items():
+		a = np.asarray(arr)
+		q_lo, med, q_hi = np.percentile(a, [lo * 100, 50, hi * 100])
+		if med - q_lo < 1e-6 or q_hi - med < 1e-6:  # degenerate distribution
+			continue
+		anchors[key] = (q_lo, med, q_hi)
+	return anchors
+
+
+def oi_shift_normalize(G, target=0.9):
+	"""Shift each species-pair's weight median to `target`; slope preserved.
+
+	In-place rewrite of edge weights on the full network; topology untouched.
+	"""
+	ws = defaultdict(list)
+	for u, v, d in G.edges(data=True):
+		w = d.get('weight')
+		if w is None:
+			continue
+		key = tuple(sorted((sp_of(u), sp_of(v))))
+		ws[key].append(w)
+	medians = {k: float(np.median(v)) for k, v in ws.items()}
+	for u, v, d in G.edges(data=True):
+		w = d.get('weight')
+		if w is None:
+			continue
+		key = tuple(sorted((sp_of(u), sp_of(v))))
+		if key not in medians:
+			continue
+		d['weight'] = float(np.clip(w - medians[key] + target, 0.0, 1.0))
+
+
+def normalize_weights(G, anchors):
+	"""Rewrite edge weights in place: 3-anchor piecewise-linear mapping.
+
+	q_lo->0, median->0.5, q_hi->1 (tails clamped); graph topology untouched,
+	so zero-weight edges still connect components (flow-only denoising).
+	"""
+	for u, v, d in G.edges(data=True):
+		w = d.get('weight')
+		if w is None:
+			continue
+		key = tuple(sorted((sp_of(u), sp_of(v))))
+		anc = anchors.get(key)
+		if anc is None:
+			continue
+		q_lo, med, q_hi = anc
+		if w <= q_lo:
+			w2 = 0.0
+		elif w <= med:
+			w2 = 0.5 * (w - q_lo) / (med - q_lo)
+		elif w <= q_hi:
+			w2 = 0.5 + 0.5 * (w - med) / (q_hi - med)
+		else:
+			w2 = 1.0
+		d['weight'] = w2
+
+
+def mcl_components(G, inflation=1.5, max_iter=100, edge_power=1.0):
 	"""MCL flow clustering on a small graph; returns list of node sets.
 
 	Weak edges (e.g. outparalog contamination) are broken by random-walk
@@ -26,6 +104,8 @@ def mcl_components(G, inflation=1.5, max_iter=100):
 	A = np.zeros((n, n))
 	for u, v in G.edges():
 		w = G[u][v].get('weight', 1.0)
+		if edge_power != 1.0:
+			w = w ** edge_power
 		A[idx[u], idx[v]] = A[idx[v], idx[u]] = w
 	A += np.eye(n)  # self-loops: allow walker to stay
 	M = A / A.sum(axis=0, keepdims=True)
@@ -49,10 +129,11 @@ def xmain(**kargs):
 	HOG(**kargs).pipe()
 	
 class HOG:
-	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "HOGs",
+	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "hog",
 		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, 
 			min_child_species=1, cross_speciation=False, drop_no_cross=False,
-			enable_root_paralog=False, mcl_split=False, mcl_inflation=1.5, min_species_ratio=0, **kargs):
+			enable_root_paralog=False, mcl_split=False, mcl_inflation=1.5, min_species_ratio=0,
+			oi_norm=False, oi_tail=2.5, oi_shift_target=0.9, edge_power=1.0, **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
@@ -66,9 +147,14 @@ class HOG:
 		self.mcl_split = mcl_split
 		self.mcl_inflation = kargs.get('mcl_inflation', mcl_inflation)
 		self.min_species_ratio = kargs.get('min_species_ratio', min_species_ratio)
-		self.out_stats = outpre + '.stats.tsv' if out_stats else None
-		self.bar_plot = outpre + '.bar' if bar_plot else None
-		self.tree_plot = outpre + '.tree' if tree_plot else None
+		self.oi_norm = oi_norm  # False | 'quantile' | 'shift'
+		self.oi_shift_target = oi_shift_target
+		self.oi_tail = oi_tail
+		self.edge_power = edge_power
+		self._anchors = None
+		self.out_stats = outpre + '.hog.stats.tsv' if out_stats else None
+		self.bar_plot = outpre + '.hog.bar' if bar_plot else None
+		self.tree_plot = outpre + '.hog.tree' if tree_plot else None
 	def from_tsv(self, fpath):
 		"""Load HOGs from a previously written HOGs.tsv (skip rebuilding).
 
@@ -124,7 +210,13 @@ class HOG:
 		logger.info(f'Loading orthologs from {self.orthfiles}')
 		graph = ColinearGroups(self.orthfiles, spsd=self.species, 
 					noparalog=self.noparalog).graph
-		
+		if self.oi_norm == 'shift':
+			logger.info('Shifting OI medians to {} per species pair'.format(self.oi_shift_target))
+			oi_shift_normalize(graph, target=self.oi_shift_target)
+		elif self.oi_norm:
+			logger.info('Normalizing OI weights (tail={}%) per species pair'.format(self.oi_tail))
+			self._anchors = oi_anchors(graph, tail=self.oi_tail)
+			normalize_weights(graph, self._anchors)
 		logger.info(f'Splitting HOGs from {self.ogfile}')
 		root_node = sptree.get_tree_root()
 		prefix = 'hog'
@@ -191,7 +283,7 @@ class HOG:
 						connected_components = list(nx.connected_components(hog_subgraph))
 						# refine each component with MCL to break weak outparalog edges
 						if getattr(self, 'mcl_split', True) and len(subset_genes) > 2:
-							refined = mcl_components(hog_subgraph, inflation=self.mcl_inflation)
+							refined = mcl_components(hog_subgraph, inflation=self.mcl_inflation, edge_power=self.edge_power)
 							if len(refined) > 1:
 								logger.debug('MCL split {} into {} clusters'.format(
 									og_id, len(refined)))

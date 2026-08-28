@@ -114,6 +114,20 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	target.add_argument('-I', '--inflation', type=float, default=1.5,
 						dest='mcl_inflation',
 						help='MCL inflation for HOG splitting (default: 1.5)')
+	target.add_argument('--oi-norm', type=str, default=None,
+						dest='oi_norm', choices=['quantile', 'shift'],
+						help='Normalize OI weights per species pair before MCL splitting: '
+							 'quantile = 3-anchor (q/median/q) piecewise mapping; '
+							 'shift = median shifted to --oi-shift-target (slope preserved)')
+	target.add_argument('--oi-shift-target', type=float, default=0.9,
+						dest='oi_shift_target',
+						help='Median target for --oi-norm shift (default: 0.9)')
+	target.add_argument('--oi-tail', type=float, default=2.5,
+						dest='oi_tail',
+						help='Tail percentage clipped by --oi-norm on each side (default: 2.5)')
+	target.add_argument('--edge-power', type=float, default=1.0,
+						dest='edge_power',
+						help='Power exponent applied to edge weights before MCL (default: 1 = off)')
 	target.add_argument('--min-species-ratio', type=float, default=0,
 						dest='min_species_ratio',
 						help=argparse.SUPPRESS)  # 'Drop clusters whose species occupy < this fraction of the branch (default: 0)'
