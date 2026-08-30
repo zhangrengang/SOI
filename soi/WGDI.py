@@ -124,8 +124,6 @@ class AK:
 
         import matplotlib.pyplot as plt
         import matplotlib as mpl
-        mpl.rcParams['font.family'] = 'sans-serif'
-        mpl.rcParams['font.sans-serif'] = 'Arial'
 
         Nchrom = len(chromosomes)
         width = Nchrom*1.0 / 3

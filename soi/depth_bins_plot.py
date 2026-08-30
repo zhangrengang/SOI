@@ -4,6 +4,7 @@ from math import ceil
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 from .small_tools import parse_kargs
+from . import style  # global mpl settings
 from .small_tools import open_file as open
 
 def main(inDepth=sys.argv[1], vvlines=None, order=None,

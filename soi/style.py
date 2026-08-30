@@ -1,7 +1,23 @@
 #!/bin/env python
 # coding: utf-8
 import re
-"""Global style parameters for vis plotting. Analogous to matplotlib rcParams."""
+"""Global style parameters for vis plotting. Analogous to matplotlib rcParams.
+Importing this module applies the global matplotlib settings (Agg backend,
+TrueType output, Arial-first sans-serif)."""
+
+
+def setup_mpl():
+	import matplotlib as mpl
+	mpl.use('Agg')
+	mpl.rcParams.update({
+		'pdf.fonttype': 42,
+		'ps.fonttype': 42,
+		'font.family': 'sans-serif',
+		'font.sans-serif': ['Arial', 'DejaVu Sans'],  # Arial optional; DejaVu fallback
+	})
+
+
+setup_mpl()
 
 STYLE = {
     'fontsize': {

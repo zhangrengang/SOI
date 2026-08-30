@@ -3,9 +3,6 @@ import argparse
 from collections import OrderedDict
 import numpy as np
 import matplotlib as mpl
-mpl.use("Agg")
-mpl.rcParams['pdf.fonttype'] = 42
-mpl.rcParams['ps.fonttype'] = 42
 
 from .style import format_species_title
 

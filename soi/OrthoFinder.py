@@ -15,6 +15,7 @@ from .small_tools import mkdirs, flattern
 from collections import Counter, OrderedDict
 from lazy_property import LazyWritableProperty as lazyproperty
 from .RunCmdsMP import run_cmd, run_job, logger
+from . import style  # global mpl settings
 
 
 def catAln(inALNs, outALN, allow_missing=True, idmap=None):

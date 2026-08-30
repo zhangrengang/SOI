@@ -12,8 +12,6 @@ from .style import set_species_ticklabels, format_species_title
 from .RunCmdsMP import logger
 import matplotlib as mpl
 
-mpl.use("Agg")
-mpl.rcParams['pdf.fonttype'] = 42
 
 
 def add_ploidy_opts(parser):

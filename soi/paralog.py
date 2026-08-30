@@ -64,7 +64,7 @@ class Paralog:
 		else:
 			write_tsv = bool(self.kargs.get('write_hog'))
 			if write_tsv:
-				hog.outtsv = self.prefix + '.HOGs.tsv'
+				hog.outtsv = self.prefix + '.hog.tsv'
 			hog.pipe(write_tsv=write_tsv)
 		logger.info('Loaded {} HOGs'.format(len(hog.all_hogs)))
 		if not hog.all_hogs:
@@ -343,8 +343,6 @@ class ParalogIndexer:
 
 		# figure
 		import numpy as np
-		import matplotlib
-		matplotlib.use('Agg')
 		import matplotlib.pyplot as plt
 		M = np.array([r[4] for r in rows], dtype=float)
 		if M.size == 0:

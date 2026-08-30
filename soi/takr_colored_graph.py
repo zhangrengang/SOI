@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import networkx as nx
 
 from .takr_events import TAKREvent
+from . import style  # global mpl settings (no-op if already imported)
 
 logger = logging.getLogger(__name__)
 
@@ -3329,8 +3330,6 @@ class ColoredGraph(nx.DiGraph):
                               title: str = None):
         """Fallback matplotlib block graph (original implementation)."""
         try:
-            import matplotlib
-            matplotlib.use('Agg')
             import matplotlib.pyplot as plt
         except ImportError:
             logger.warning("matplotlib not available, skipping block graph")
@@ -3445,8 +3444,6 @@ class ColoredGraph(nx.DiGraph):
         Useful for seeing the global structure of shared vs unique adjacencies.
         """
         try:
-            import matplotlib
-            matplotlib.use('Agg')
             import matplotlib.pyplot as plt
             import numpy as np
         except ImportError:

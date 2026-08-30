@@ -11,9 +11,6 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.cm as cm
 
-mpl.use("Agg")
-mpl.rcParams['pdf.fonttype'] = 42
-
 from .RunCmdsMP import logger
 from .style import style_species
 from .WGDI import AK

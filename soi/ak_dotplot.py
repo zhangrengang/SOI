@@ -10,6 +10,8 @@ an ancestral genome and its descendants, or between any two karyotypes.
 import os
 import re
 
+from . import style  # global mpl settings
+
 
 def _sorted_chr_ids(karyo):
     """Sort chromosome IDs numerically if they contain digits."""
@@ -67,8 +69,6 @@ def draw_dotplot(ref_karyo, query_karyo, outpath,
         Output resolution.
     """
     try:
-        import matplotlib
-        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         from matplotlib.patches import Patch
     except ImportError:
@@ -156,8 +156,6 @@ def draw_dotplot(ref_karyo, query_karyo, outpath,
 def draw_self_dotplot(karyo, outpath, title="Self-dotplot", dpi=200):
     """Draw a self-dotplot for a single karyotype."""
     try:
-        import matplotlib
-        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         from matplotlib.patches import Patch
     except ImportError:

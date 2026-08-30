@@ -17,8 +17,6 @@ from .style import style_species
 from .small_tools import sort_version
 from .RunCmdsMP import logger
 
-mpl.use("Agg")
-mpl.rcParams['pdf.fonttype'] = 42
 
 from .colors import Colors as _get_colors
 

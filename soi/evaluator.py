@@ -5,8 +5,6 @@ import collections
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.gridspec import GridSpec
-mpl.use("Agg")
-mpl.rcParams['pdf.fonttype'] = 42
 from lazy_property import LazyWritableProperty as lazyproperty
 from .colors import Colors
 from .mcscan import Collinearity, Gff, XCollinearity
