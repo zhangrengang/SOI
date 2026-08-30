@@ -273,6 +273,7 @@ class XCollinearity:
 		nblock, ngene = 0, 0
 		for collinearity in self.collinearities:
 			for rc in Collinearity(collinearity, inherit=common, **self.kargs):
+				rc.source_file = collinearity
 				nblock += 1
 				ngene += rc.N
 				if self.orthologs is not None:

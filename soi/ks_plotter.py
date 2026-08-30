@@ -10,6 +10,10 @@ from .RunCmdsMP import logger
 def add_ksplot_args(parser):
 	parser.add_argument('--kaks', metavar='FILE', type=str, nargs='+', default=None,
 		help='KaKs input file(s) [required]')
+	parser.add_argument('--blocks', metavar='FILE', type=str, nargs='+', default=None,
+		help='Paralog blocks file(s), Ks joined from --kaks [optional]')
+	parser.add_argument('--block-branches', metavar='NAME', type=str, nargs='+', default=None,
+		dest='block_branches', help='Branch name(s), one-to-one with --blocks [default: parsed from file names]')
 	parser.add_argument('--pair', metavar='FILE', type=str, default=None,
 		help='Species pair control file [optional]')
 	parser.add_argument('-pre', '--prefix', metavar='PREFIX', type=str, default=None,
@@ -54,9 +58,9 @@ def xmain(**kargs):
 	main(**kargs)
 
 
-def main(kaks=None, pair=None, figure=None, max_ks=2, bins_per_ks=50,
-		 normed=False, yn00=False, method='NG86', fdtv=False,
-		 xlabel='Ks', homology_class=None, only_class=False,
+def main(kaks=None, pair=None, blocks=None, block_branches=None, figure=None,
+		 max_ks=2, bins_per_ks=50, normed=False, yn00=False, method='NG86',
+		 fdtv=False, xlabel='Ks', homology_class=None, only_class=False,
 		 plot_others=False, out_data=False, remove_same_chr=False,
 		 gff=None, plot_type=None, **kargs):
 
@@ -71,7 +75,14 @@ def main(kaks=None, pair=None, figure=None, max_ks=2, bins_per_ks=50,
 	suffix = xlabel + '.yn00' if yn00 else xlabel
 	if isinstance(kaks, str):
 		kaks = [kaks]
-	if figure is None:
+	if blocks is not None:
+		if isinstance(blocks, str):
+			blocks = [blocks]
+		if figure is None:
+			if len(blocks) > 1:
+				logger.warning('multiple --blocks files without -pre, using the first file name as prefix') # [hidden]
+			figure = blocks[0].rsplit('.blocks', 1)[0] + '.' + suffix
+	elif figure is None:
 		if pair is not None:
 			figure = pair + '.' + suffix
 		else:
@@ -83,10 +94,20 @@ def main(kaks=None, pair=None, figure=None, max_ks=2, bins_per_ks=50,
 	homology_class_map = parse_homology_class(homology_class)
 	d_gff = parse_gff(gff) if remove_same_chr else None
 
-	d_ks = parse_kaks(kaks=kaks, pairs=pairs, max_ks=max_ks, fdtv=fdtv,
-		yn00=yn00, method=method, d_gff=d_gff,
-		homology_class=homology_class_map, only_class=only_class,
-		plot_others=plot_others)
+	if blocks is not None:
+		if kaks is None:
+			logger.error('--blocks requires --kaks (Ks source)')
+			sys.exit(1)
+		if homology_class_map is not None:
+			logger.error('--blocks and --homology-class are mutually exclusive (branch is the class)')
+			sys.exit(1)
+		d_ks = parse_blocks_ks(blocks, kaks, block_branches=block_branches,
+			pairs=pairs, max_ks=max_ks, fdtv=fdtv, yn00=yn00, method=method)
+	else:
+		d_ks = parse_kaks(kaks=kaks, pairs=pairs, max_ks=max_ks, fdtv=fdtv,
+			yn00=yn00, method=method, d_gff=d_gff,
+			homology_class=homology_class_map, only_class=only_class,
+			plot_others=plot_others)
 
 	if homology_class_map is not None and pairs is not None:
 		pairs = sorted(sorted(d_ks.keys()),
@@ -290,6 +311,73 @@ def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 # Data parsing (unchanged)
 # =====================
 
+def parse_branch(block_file):
+	'''branch name from blocks file name: <prefix>.<branch>.blocks -> <branch>'''
+	base = os.path.basename(block_file)
+	if not base.endswith('.blocks'):
+		logger.error('--blocks file name must end with .blocks: {}'.format(block_file))
+		sys.exit(1)
+	base = base[:-len('.blocks')]
+	if '.' in base:
+		base = base.split('.', 1)[1]  # strip prefix
+	return base
+
+
+def parse_blocks_ks(blocks, kaks, block_branches=None, pairs=None, max_ks=None,
+				   fdtv=False, yn00=False, method='NG86'):
+	'''Join blocks pairs with Ks values; d_ks[(sp1, sp2, branch)] = [ks, ...]'''
+	from .mcscan import XCollinearity, XKaKsParser
+
+	# Ks lookup: bidirectional pair -> ks
+	d_pair = {}
+	for rc in XKaKsParser(kaks):
+		rc.parse_pair()
+		if rc.ks is None or rc.ks <= 0:
+			continue
+		g1, g2 = rc.pair
+		d_pair[(g1, g2)] = rc.ks
+		d_pair[(g2, g1)] = rc.ks
+	logger.info('{} Ks pairs from {} kaks file(s)'.format(len(d_pair) // 2, kaks))
+
+	if block_branches is not None:
+		if len(block_branches) != len(blocks):
+			logger.error('--block-branches ({}) must match --blocks ({}) one-to-one'.format(
+				len(block_branches), len(blocks)))
+			sys.exit(1)
+		d_branch = dict(zip(blocks, block_branches))
+	else:
+		d_branch = {b: parse_branch(b) for b in blocks}
+
+	if pairs is not None:
+		pairs = set(pairs)
+
+	d_ks = {}
+	d_miss = {}
+	for rc in XCollinearity(blocks):
+		branch = d_branch.get(rc.source_file, rc.source_file)
+		sp1, sp2 = rc.species
+		for g1, g2 in rc.pairs:
+			ks = d_pair.get((g1, g2))
+			if ks is None:
+				d_miss[branch] = d_miss.get(branch, 0) + 1
+				continue
+			if max_ks is not None and ks > max_ks:
+				continue
+			if pairs is not None and (sp1, sp2) not in pairs and (sp2, sp1) not in pairs:
+				continue
+			Xpair = (sp1, sp2, branch)
+			try:
+				d_ks[Xpair] += [ks]
+			except KeyError:
+				d_ks[Xpair] = [ks]
+	for branch, n_miss in sorted(d_miss.items()):
+		logger.warning('branch {}: {} pairs without Ks, skipped'.format(branch, n_miss))
+	if not d_ks:
+		logger.error('No Ks values joined from blocks; check --kaks and --blocks overlap')
+		sys.exit(1)
+	return d_ks
+
+
 def parse_homology_class(homology_class):
 	if homology_class is None:
 		return None
@@ -395,7 +483,9 @@ def parse_kaks(kaks, pairs=None, max_ks=None, fdtv=False, yn00=False,
 
 def generate_label(pair):
 	if len(pair) > 2:
-		return pair[2]
+		from .style import format_species_label
+		text, lstyle = format_species_label(pair[2])
+		return (text, lstyle)
 	return format_species_title('-'.join(pair), sep='-')
 
 
