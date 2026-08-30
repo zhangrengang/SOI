@@ -103,7 +103,8 @@ class TreePlotter:
 	"""
 	def __init__(self, tree, row_names=None, internal_node_to_present=False,
 				 use_distances=False, color='k', lw=1.0,
-				 dotted_lw=0.8, dotted_color='0.6', xpad=0.2):
+				 dotted_lw=0.8, dotted_color='0.6', xpad=0.2,
+				 leaf_dotted_color=None):
 		"""tree: ete3 Tree (nodes named, e.g. via number_nodes()).
 		row_names: row order list; None = auto (preorder all nodes when
 		internal_node_to_present else leaf names).
@@ -116,6 +117,7 @@ class TreePlotter:
 		self.lw = lw
 		self.dotted_lw = dotted_lw
 		self.dotted_color = dotted_color
+		self.leaf_dotted_color = leaf_dotted_color or dotted_color
 		self.xpad = xpad
 		if row_names is None:
 			if internal_node_to_present:
@@ -181,13 +183,15 @@ class TreePlotter:
 		xmax = max(xpos.values())
 		if show_dotted and self.internal_node_to_present:
 			for node in tree.traverse():
-				if node.is_leaf() or node.is_root():
+				if node.is_root():
 					continue
 				yp = ypos.get(node)
 				if yp is None:
 					continue
+				# leaf guides start at the branch tip; internal guides start at the node
+				color = self.leaf_dotted_color if node.is_leaf() else self.dotted_color
 				ax.plot([xpos[node], xmax + self.xpad], [yp, yp], ':',
-						color=self.dotted_color, lw=self.dotted_lw, zorder=0)
+						color=color, lw=self.dotted_lw, zorder=0)
 		# axes: rows span the y range, top-down when row mode
 		if self.internal_node_to_present:
 			ax.set_ylim(-0.5, len(self.row_names) - 0.5)

@@ -536,7 +536,9 @@ class ParalogIndexer:
 		from .tree import number_nodes, TreePlotter
 		tree = number_nodes(self.sptreefile)
 		tp = TreePlotter(tree, row_names=branches,
-						 internal_node_to_present=True)
+						 internal_node_to_present=True,
+						 use_distances=True,
+						 leaf_dotted_color='tab:blue')
 		tp.plot(ax)
 
 	def plot_tree(self, assigned, stats):
