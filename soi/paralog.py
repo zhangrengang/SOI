@@ -434,12 +434,14 @@ class ParalogIndexer:
 			ax_line.yaxis.tick_right()  # branch names on the far right
 			for lb, (t, s) in zip(ax_line.get_yticklabels(), labels):
 				lb.set_fontstyle(s)
+			ax_line.tick_params(axis='y', pad=1.75)  # half default(3.5)
 		else:
 			labels = self._branch_texts(branches)
 			ax.set_yticklabels([t for t, s in labels], fontsize=tick_fs)
 			ax.yaxis.tick_right()  # branch names on the right
 			for lb, (t, s) in zip(ax.get_yticklabels(), labels):
 				lb.set_fontstyle(s)
+			ax.tick_params(axis='y', pad=1.75)  # half default(3.5)
 		ax.set_xticks([])
 		ax.set_xlabel('Syntenic block', fontsize=14)
 		# optional: grey dashed rectangles around blocks assigned to each branch
