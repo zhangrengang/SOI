@@ -10,6 +10,7 @@ Leaf species: genes of the same species within the same HOG -> paralogs.
 from collections import defaultdict, Counter
 import os
 from .hog import HOG
+from .style import set_species_ticklabels
 from .mcscan import XCollinearity
 from .RunCmdsMP import logger
 
@@ -428,18 +429,11 @@ class ParalogIndexer:
 		if ax_line is not None:
 			ax.set_yticklabels([])
 			ax.tick_params(axis='y', left=False, labelleft=False)
-			ax_line.set_yticks(range(len(branches)))
-			labels = self._branch_texts(branches)
-			ax_line.set_yticklabels([t for t, s in labels], fontsize=tick_fs)
 			ax_line.yaxis.tick_right()  # branch names on the far right
-			for lb, (t, s) in zip(ax_line.get_yticklabels(), labels):
-				lb.set_fontstyle(s)
+			set_species_ticklabels(ax_line, branches, fontsize=tick_fs)
 		else:
-			labels = self._branch_texts(branches)
-			ax.set_yticklabels([t for t, s in labels], fontsize=tick_fs)
 			ax.yaxis.tick_right()  # branch names on the right
-			for lb, (t, s) in zip(ax.get_yticklabels(), labels):
-				lb.set_fontstyle(s)
+			set_species_ticklabels(ax, branches, fontsize=tick_fs)
 			ax.tick_params(axis='y', pad=1.75)  # half default(3.5)
 		ax.set_xticks([])
 		ax.set_xlabel('Syntenic block', fontsize=14)
@@ -535,13 +529,6 @@ class ParalogIndexer:
 					branch, sp, n_paralogs, blocks, gp, pp, mean_pi, wpi))
 		logger.info('Stats written to {}'.format(fpath))
 		return stats
-
-	def _branch_texts(self, branches):
-		"""Per-label (text, fontstyle) pairs: species names italic, node names normal.
-		Apply the style after set_yticklabels via set_fontstyle (Text objects
-		passed to set_yticklabels lose their style)."""
-		from .small_tools import format_species_label
-		return [format_species_label(b) for b in branches]
 
 	def _draw_tree_panel(self, ax, branches):
 		"""Draw the species tree with rows aligned to heatmap branch rows.

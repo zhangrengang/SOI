@@ -523,12 +523,3 @@ def get_offset(chrs, lengths):
         d[chr] = offset
         last = offset + length
     return d
-
-
-def format_species_label(name):
-	"""Latin-name pattern (Genus_species[, _subsp/author all-lower]) -> label
-	with underscores as spaces + 'italic'; else original name + 'normal'.
-	Return (text, style) where style feeds fontstyle directly."""
-	if re.match(r'^[A-Z][a-z]+(_[a-z]+)+$', name):
-		return (name.replace('_', ' '), 'italic')
-	return (name, 'normal')
