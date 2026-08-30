@@ -197,6 +197,8 @@ def plot_hist(d_data, outFig, order=None, normed=False, xlabel='Ks',
 	ax.minorticks_on()
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
+	if str(outFig).endswith('.pdf'):
+		plt.savefig(str(outFig)[:-4] + '.png', dpi=300)
 	plt.savefig(outFig)
 	plt.close()
 
@@ -237,6 +239,8 @@ def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 	for t, s in zip(ax.legend(fontsize='x-small').get_texts(), label_styles):
 		t.set_fontstyle(s)
 	ax.minorticks_on()
+	if str(outFig).endswith('.pdf'):
+		plt.savefig(str(outFig)[:-4] + '.png', dpi=300)
 	plt.savefig(outFig)
 	plt.close()
 
@@ -304,6 +308,8 @@ def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 
 	plt.tight_layout()
 	plt.subplots_adjust(hspace=0)
+	if str(outFig).endswith('.pdf'):
+		plt.savefig(str(outFig)[:-4] + '.png', dpi=300)
 	plt.savefig(outFig)
 	plt.close()
 
