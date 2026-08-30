@@ -11,6 +11,7 @@ from collections import defaultdict, Counter
 import os
 from .hog import HOG
 from .style import set_species_ticklabels
+from . import style
 from .mcscan import XCollinearity
 from .RunCmdsMP import logger
 
@@ -551,7 +552,7 @@ class ParalogIndexer:
 		import os
 		if 'QT_QPA_PLATFORM' not in os.environ:
 			os.environ['QT_QPA_PLATFORM'] = 'offscreen'
-		from ete3 import TreeStyle, PieChartFace, TextFace, NodeStyle, faces as etefaces
+		from ete3 import TreeStyle, PieChartFace, TextFace, AttrFace, NodeStyle, faces as etefaces
 		from .tree import number_nodes
 
 		# aggregate per branch over species
@@ -598,10 +599,11 @@ class ParalogIndexer:
 				else:
 					etefaces.add_face_to_node(pie, node, column=0, position='branch-right')
 			if node.is_leaf():
-				name_face = TextFace(node.name, fsize=10)
+				node.sp = ' {}'.format(node.name.replace('_', ' '))
+				name_face = AttrFace('sp', fsize=10, fgcolor='black', fstyle='italic')
 				etefaces.add_face_to_node(name_face, node, column=1)
 			else:
-				name_face = TextFace(nid, fsize=7, fgcolor='#888888')
+				name_face = TextFace(nid, fsize=7, fgcolor='#888888', ftype=style.DEFAULT_FONT)
 				etefaces.add_face_to_node(name_face, node, column=0, position='branch-top')
 
 		ts = TreeStyle()
