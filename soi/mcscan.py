@@ -195,6 +195,16 @@ class KaKsParser:
 		return d
 
 
+class XKaKsParser:
+	'''Parser of multiple KaKs Files'''
+	def __init__(self, kaks, **kargs):
+		self.kaks = kaks  # str or list of file paths
+		self.kargs = kargs
+	def __iter__(self):
+		kaks_files = [self.kaks] if isinstance(self.kaks, str) else self.kaks
+		for kaks in kaks_files:
+			yield from KaKsParser(kaks, **self.kargs)
+
 class XCollinearity:
 	'''lazy supporting multiple input formats:
 	collinearities = "file";

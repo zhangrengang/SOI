@@ -5,10 +5,11 @@ import numpy as np
 import matplotlib as mpl
 
 from .style import format_species_title
+from .RunCmdsMP import logger
 
 def add_ksplot_args(parser):
-	parser.add_argument('--kaks', metavar='FILE', type=str, default=None,
-		help='KaKs input file [required]')
+	parser.add_argument('--kaks', metavar='FILE', type=str, nargs='+', default=None,
+		help='KaKs input file(s) [required]')
 	parser.add_argument('--pair', metavar='FILE', type=str, default=None,
 		help='Species pair control file [optional]')
 	parser.add_argument('-pre', '--prefix', metavar='PREFIX', type=str, default=None,
@@ -68,11 +69,15 @@ def main(kaks=None, pair=None, figure=None, max_ks=2, bins_per_ks=50,
 	if fdtv and xlabel == 'Ks':
 		xlabel = '4dTV'
 	suffix = xlabel + '.yn00' if yn00 else xlabel
+	if isinstance(kaks, str):
+		kaks = [kaks]
 	if figure is None:
 		if pair is not None:
 			figure = pair + '.' + suffix
 		else:
-			figure = kaks + '.' + suffix
+			if len(kaks) > 1:
+				logger.warning('multiple --kaks files without -pre, using the first file name as prefix') # [hidden]
+			figure = kaks[0] + '.' + suffix
 
 	pairs = parse_pair(pair)
 	homology_class_map = parse_homology_class(homology_class)
@@ -327,12 +332,12 @@ def parse_gff(gff):
 def parse_kaks(kaks, pairs=None, max_ks=None, fdtv=False, yn00=False,
 			   method='NG86', homology_class=None, only_class=False,
 			   plot_others=False, d_gff=None):
-	from .mcscan import KaKs, KaKsParser
+	from .mcscan import KaKs, XKaKsParser
 
 	if pairs is not None:
 		pairs = set(pairs)
 	d_ks = {}
-	for rc in KaKsParser(kaks):
+	for rc in XKaKsParser(kaks):
 		rc.parse_pair()
 		sp1, sp2 = rc.species
 		g1, g2 = rc.pair
