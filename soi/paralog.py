@@ -600,13 +600,9 @@ class ParalogIndexer:
 					etefaces.add_face_to_node(pie, node, column=0, position='branch-right')
 			if node.is_leaf():
 				text, st = format_species_label(node.name)
-				if st == 'italic':
-					node.sp = ' {}'.format(text)
-					name_face = AttrFace('sp', fsize=10, fgcolor='black', fstyle='italic')
-					etefaces.add_face_to_node(name_face, node, column=1)
-				else:
-					name_face = TextFace(text, fsize=10, fgcolor='black', ftype=style.DEFAULT_FONT)
-					etefaces.add_face_to_node(name_face, node, column=1)
+				name_face = TextFace(text, fsize=10, fgcolor='black',
+									 ftype=style.DEFAULT_FONT, fstyle=st)
+				etefaces.add_face_to_node(name_face, node, column=1)
 			else:
 				name_face = TextFace(nid, fsize=7, fgcolor='#888888', ftype=style.DEFAULT_FONT)
 				etefaces.add_face_to_node(name_face, node, column=0, position='branch-top')
