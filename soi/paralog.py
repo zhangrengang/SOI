@@ -195,9 +195,15 @@ class ParalogIndexer:
 		if self.sptreefile:
 			from .tree import number_nodes
 			tree = number_nodes(self.sptreefile)
-			internal = [n.name for n in tree.traverse() if not n.is_leaf()]
-			leaves = tree.get_leaf_names()[::-1]  # reverse: outgroups first
-			tree_order = internal + leaves
+			if self.tree_heatmap:
+				# Fbranch-style row order: preorder over ALL nodes, so every
+				# node's children sit on adjacent rows and the tree panel
+				# fans out without crossing connectors
+				tree_order = [n.name for n in tree.traverse('preorder')]
+			else:
+				internal = [n.name for n in tree.traverse() if not n.is_leaf()]
+				leaves = tree.get_leaf_names()[::-1]  # reverse: outgroups first
+				tree_order = internal + leaves
 			# 列所有物种树 branch（含没旁系的，全 0 也占一列，别缺列）；树外 branch 兜底
 			branches = list(tree_order)
 			branches += sorted(set(self._branch_pairs) - set(branches))
