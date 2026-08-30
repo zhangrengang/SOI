@@ -50,6 +50,7 @@ class Paralog:
 				unknown = sorted(set(branch_pairs) - tree_names)
 				if unknown:
 					logger.warning('Loaded nodes not present in species tree ({}): {} — check that {} is a paralog.tsv (gene1 gene2 node), not a HOGs.tsv'.format(len(unknown), ', '.join(unknown[:10]), inparalog))
+			return {b: frozenset(ps) for b, ps in branch_pairs.items()}, root
 
 
 		self.kargs.update(min_child_species=2, cross_speciation=True, drop_no_cross=True,
