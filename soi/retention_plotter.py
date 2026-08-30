@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from .mcscan import XCollinearity, XGff
+from .style import style_species
 from .small_tools import sort_version
 from .RunCmdsMP import logger
 
@@ -175,7 +176,7 @@ def main(args):
 			positions = [p for p, _ in pts]
 			rates = [r for _, r in pts]
 			color = query_colors[qi]
-			label = '{} ({:.2f})'.format(qry, overall_stats[qry][2])
+			label = qry
 			ax.step(positions, rates, color=color, linewidth=0.8,
 					label=label, where='mid')
 		ax.set_ylim(0, ymax)
@@ -195,13 +196,15 @@ def main(args):
 		fig.subplots_adjust(left=0.08, right=0.65, top=0.98, bottom=0.05, hspace=0.0)
 	if len(args.qry) <= 3:
 		_ax = axes[plot_chroms.index(legend_chrom)][0]
-		_ax.legend(fontsize=8, loc='upper right', frameon=False)
+		[style_species(t) for t in _ax.legend(fontsize=8, loc='upper right',
+											 frameon=False).get_texts()]
 	else:
 		# Reserve right-side space and put legend there
 		fig.subplots_adjust(right=0.65)
 		h, l = axes[0][0].get_legend_handles_labels()
-		fig.legend(h, l, fontsize=7, loc='right', frameon=False,
-				   bbox_to_anchor=(0.99, 0.5))
+		[style_species(t) for t in fig.legend(h, l, fontsize=7, loc='right',
+										  frameon=False,
+										  bbox_to_anchor=(0.99, 0.5)).get_texts()]
 
 	for fmt in format:
 		fpath = args.output + '.' + fmt

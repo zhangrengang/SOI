@@ -7,6 +7,8 @@ mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['ps.fonttype'] = 42
 
+from .style import format_species_title
+
 def add_ksplot_args(parser):
 	parser.add_argument('--kaks', metavar='FILE', type=str, default=None,
 		help='KaKs input file [required]')
@@ -182,6 +184,7 @@ def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 	fig, ax = plt.subplots()
 	xs = np.linspace(0, max_ks, 500)
 
+	label_styles = []
 	for pair in order:
 		data = np.array(d_data[pair])
 		data = data[(data > 0) & (data <= max_ks)]
@@ -192,7 +195,8 @@ def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 			ys = kde(xs)
 		except np.linalg.LinAlgError:
 			continue
-		label = generate_label(pair)
+		label, lstyle = generate_label(pair)
+		label_styles.append(lstyle)
 		# Distinguish orthologs vs paralogs by line style
 		if len(set(pair)) == 1:
 			ax.plot(xs, ys, label=label, linewidth=1.5, linestyle='--')
@@ -202,7 +206,8 @@ def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 	ax.set_xlabel(xlabel)
 	ax.set_ylabel('Density')
 	ax.set_xlim(0, max_ks)
-	ax.legend(fontsize='x-small')
+	for t, s in zip(ax.legend(fontsize='x-small').get_texts(), label_styles):
+		t.set_fontstyle(s)
 	ax.minorticks_on()
 	plt.savefig(outFig)
 	plt.close()
@@ -232,7 +237,7 @@ def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 		except np.linalg.LinAlgError:
 			continue
 		curves.append(ys)
-		labels.append(generate_label(pair))
+		labels.append(generate_label(pair))  # (text, style)
 
 	if not curves:
 		print("Warning: no valid data for ridge plot", file=sys.stderr)
@@ -248,14 +253,15 @@ def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 	colors = plt.cm.tab10(np.linspace(0, 1, n))
 
 	for i, (ax, ys, label, color) in enumerate(zip(axes, curves, labels, colors)):
+		text, lstyle = label
 		ax.fill_between(xs, ys, alpha=0.5, color=color)
 		ax.plot(xs, ys, color='black', linewidth=0.5)
 		ax.set_yticks([])
 		ax.set_ylim(0, 1.05)
 		ax.set_xlim(0, max_ks)
 		# Label on the right
-		ax.text(1.01, 0.5, label, transform=ax.transAxes,
-				va='center', ha='left', fontsize=8)
+		ax.text(1.01, 0.5, text, transform=ax.transAxes,
+				va='center', ha='left', fontsize=8, fontstyle=lstyle)
 		# Remove spines except bottom
 		for spine in ['left', 'right', 'top']:
 			ax.spines[spine].set_visible(False)
@@ -384,7 +390,7 @@ def parse_kaks(kaks, pairs=None, max_ks=None, fdtv=False, yn00=False,
 def generate_label(pair):
 	if len(pair) > 2:
 		return pair[2]
-	return '-'.join(pair)
+	return format_species_title('-'.join(pair), sep='-')
 
 
 def format_ks(values, bins):

@@ -11,6 +11,7 @@ from lazy_property import LazyWritableProperty as lazyproperty
 from .colors import Colors
 from .mcscan import Collinearity, Gff, XCollinearity
 from .RunCmdsMP import logger
+from .style import style_species
 
 
 def evaluate_args(parser):
@@ -152,7 +153,8 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9, figsize=(10, 12)):
     ncols = n // 40 + 1
     ax0.set_xlim(0, 1)
     ax0.set_ylim(0, 1)
-    ax0.legend(loc=(-1.5, 0), fancybox=False, frameon=False, ncols=ncols)
+    [style_species(t) for t in ax0.legend(loc=(-1.5, 0), fancybox=False,
+                                          frameon=False, ncols=ncols).get_texts()]
     ax0.xaxis.set_tick_params(length=0)
     ax0.spines['right'].set_color('none')
     ax0.spines['top'].set_color('none')
@@ -189,7 +191,7 @@ def set_legends(axs, **kargs):
 
 
 def convert_sp(sp):
-    return '$' + sp.replace('_', '~') + '$'
+    return sp
 
 
 class SynRec:

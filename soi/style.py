@@ -80,11 +80,11 @@ def set_species_ticklabels(ax, names, axis='y', **kw):
 def format_species_title(s, sep=' vs '):
 	"""'Genus_a vs Genus_b' style titles: if BOTH sides match the Latin
 	pattern, return (text with underscores as spaces, 'italic');
-	otherwise (s, 'normal')."""
+	otherwise fall back to single-name format_species_label (handles
+	bare species names and node names like N4)."""
 	parts = s.split(sep)
-	if len(parts) != 2:
-		return (s, 'normal')
-	fmts = [format_species_label(p) for p in parts]
-	if all(st == 'italic' for t, st in fmts):
-		return (sep.join(t for t, st in fmts), 'italic')
-	return (s, 'normal')
+	if len(parts) == 2:
+		fmts = [format_species_label(p) for p in parts]
+		if all(st == 'italic' for t, st in fmts):
+			return (sep.join(t for t, st in fmts), 'italic')
+	return format_species_label(s)
