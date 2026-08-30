@@ -6,6 +6,9 @@ Importing this module applies the global matplotlib settings (Agg backend,
 TrueType output, Arial-first sans-serif)."""
 
 
+DEFAULT_FONT = 'Arial'
+
+
 def setup_mpl():
 	import matplotlib as mpl
 	mpl.use('Agg')
@@ -13,7 +16,7 @@ def setup_mpl():
 		'pdf.fonttype': 42,
 		'ps.fonttype': 42,
 		'font.family': 'sans-serif',
-		'font.sans-serif': ['Arial', 'DejaVu Sans'],  # Arial optional; DejaVu fallback
+		'font.sans-serif': [DEFAULT_FONT, 'DejaVu Sans'],  # DEFAULT_FONT optional; DejaVu fallback
 	})
 
 

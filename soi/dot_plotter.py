@@ -16,7 +16,7 @@ from .style import style_species
 from .WGDI import AK
 from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
 from .mcscan import Collinearity, XGff, XCollinearity
-from .colors import COLORS_HEX as _sg_colors
+from .colors import COLORS_HEX as _sg_colors, Colors
 
 cmaps = {
             'viridis', 'plasma', 'inferno', 'magma', 'cividis',
@@ -46,7 +46,7 @@ def dotplot_args(parser):
 						help="gene annotation gff file (*.gff, one of MCSCANX/WGDI input)[required]")
 	parser.add_argument('-c', metavar='FILE', type=str, required=False, default=None,
 						help="chromosomes config file (*.ctl, same format as MCSCANX dotplotter). Use -c or (--xchrs + --ychrs). [default=%(default)s]")
-	parser.add_argument('-o', metavar='STR', type=str, default=None,
+	parser.add_argument('-o', '-pre', metavar='STR', type=str, default=None,
 						help="output file prefix. [default: the same as `-c`, or 'dotplot']")
 	parser.add_argument('--format', metavar='FORMAT', action='append', default=['pdf', 'png'],
 						help="output figure format [default=%(default)s]")
@@ -127,7 +127,9 @@ def dotplot_args(parser):
 	group_anc.add_argument('--bar-colorby-sg', action='store_true', default=False,
 						   help="color bars (xbars/ybars) by subgenome instead of ancestor color. [default=%(default)s]")
 	group_anc.add_argument('--sg-colors', metavar='COLOR', type=str, nargs='+', default=None,
-						   help="custom subgenome colors (>= number of subgenomes; e.g. --sg-colors '#f9c00c' '#00b9f1'). [default: built-in palette]")
+						   help=argparse.SUPPRESS)  # silenced for backward compat; use --colors
+	group_anc.add_argument('--colors', metavar='COLOR', type=str, nargs='+', default=None,
+						   help="custom colors for --colorby-sg or --colorby-blocks (e.g. --colors '#f9c00c' '#00b9f1'). [default: built-in palette]")
 
 	group_orth = parser.add_argument_group('Orthology Index filter/color',
 										   'filtering or coloring blocks by Orthology Index (prior to Ks color)')
@@ -139,6 +141,12 @@ def dotplot_args(parser):
 							help="coloring dots by Orthology Index [default=%(default)s]")
 	group_orth.add_argument('--use-frac',  action='store_true', default=False,
 							help=argparse.SUPPRESS)  # "use fractionation rate [default=%(default)s]")
+
+	group_blocks = parser.add_argument_group('Blocks coloring',
+										   'color dots by input blocks file (branch)')
+	group_blocks.add_argument('--colorby-blocks', metavar='NAME', type=str, nargs='*', default=None,
+						   dest='colorby_blocks',
+						   help="color dots by input blocks file; optional branch names, one-to-one with -s blocks files (default: parsed from file names <prefix>.<branch>.blocks). [default=%(default)s]")
 
 	group_ks = parser.add_argument_group(
 		'Ks plot', 'options to histogram plot with Ks')
@@ -287,6 +295,8 @@ def main(args):
 	ks_args = {'yn00': args.yn00, 'method': args.method, 'fdtv': args.fdtv}
 	if args.of_color and args.kaks:
 		logger.warning('--of-color overrides Ks coloring; dots will be colored by Orthology Index')
+	if args.colorby_blocks is not None and (args.kaks or args.of_color):
+		logger.warning('--colorby-blocks overrides Ks/OI coloring; dots will be colored by blocks (branch)')
 	if args.hide_blocks is not None:
 		args.hide_blocks = set([line.strip().split()[0]
 							   for line in open(args.hide_blocks)])
@@ -324,7 +334,7 @@ def main(args):
 			cluster=args.cluster, diagonal=args.diagonal, gene_axis=args.gene_axis,
 			matrix=args.matrix, min_same_block=args.min_same_block,
 			min_block=args.min_block, tandem_dist=args.tandem_dist, 
-			ploidy=args.plot_ploidy, **ks_args)
+			ploidy=args.plot_ploidy, colorby_blocks=args.colorby_blocks, **ks_args)
 
 	logger.info('{} blocks to plot'.format(len(blocks)))
 	# positions of chromosome labels
@@ -392,7 +402,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 				plot_bin=None, output_hist=False,
 				xoffset=None, yoffset=None, xbars=None, ybars=None, gff=None,
 				xanc=None, yanc=None, colorby_sg=None, colorby_anc=None,
-				bar_colorby_sg=False, sg_colors=None,
+				bar_colorby_sg=False, sg_colors=None, colorby_blocks=None, colors=None,
 				gene_axis=None, xbarlab=True, ybarlab=True,
 				hist_ylim=None, xlabel=None, ylabel=None, remove_prefix=True,
 				number_plots=True, same_sp=False, cbar=False,
@@ -405,7 +415,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	lsize = fontsize * 1.7		# a-d labels
 
 	# resolve custom subgenome colors
-	sg_colors = sg_colors or _sg_colors
+	sg_colors = colors or sg_colors or _sg_colors
 	# warn if no dot coloring mode is active
 	if ks is None and colorby_sg is None and colorby_anc is None:
 		logger.warning('No dot coloring active; blocks shown as lines. '
@@ -453,15 +463,22 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	# ax1
 	allKs = []
 	kXs, kYs, Ks = [], [], []
+	kBs = []  # branch per point (--colorby-blocks)
 	for block in blocks:
 		Xs, Ys, = [], [],
-		for pos1, pos2, myks in block:
-			if clip_ks is not None and myks > max_ks:
-				continue
-			if myks is None:
+		for pos1, pos2, myks, mybranch in block:
+			if myks is None and mybranch is None:
 				if colorby_sg or colorby_anc:
 					Xs += [pos1]
 					Ys += [pos2]
+				continue
+			if mybranch is not None:
+				# --colorby-blocks: keep the branch, skip Ks bookkeeping
+				Xs += [pos1]
+				Ys += [pos2]
+				kBs += [mybranch]
+				continue
+			if clip_ks is not None and myks > max_ks:
 				continue
 			Xs += [pos1]
 			Ys += [pos2]
@@ -470,7 +487,7 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 			allKs += [myks]
 		kXs += Xs
 		kYs += Ys
-		if ks is None and colorby_sg is None and colorby_anc is None:
+		if ks is None and colorby_sg is None and colorby_anc is None and colorby_blocks is None:
 			plt.plot(Xs, Ys, linewidth=1.5, rasterized=rasterize)
 		else:
 			plt.plot(Xs, Ys, color="grey", ls='-', alpha=0.45, linewidth=0.55, rasterized=rasterize)
@@ -525,6 +542,29 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 				marker=',', s=point_size, c=color_arr,
 				rasterized=rasterize, edgecolors='none', linewidths=0,
 				)
+	# colorby-blocks dot coloring + legend
+	if colorby_blocks is not None and kBs:
+		from .style import format_species_label
+		branches = list(dict.fromkeys(kBs))  # unique, keep order
+		block_colors = colors[:len(branches)] if colors is not None \
+			else Colors(len(branches)).to_hex()
+		if colors is not None and len(colors) < len(branches):
+			logger.warning('--colors has {} colors for {} branches; reusing cyclically'.format(
+				len(colors), len(branches)))
+			block_colors = [colors[i % len(colors)] for i in range(len(branches))]
+		d_branch_color = dict(zip(branches, block_colors))
+		color_arr = [d_branch_color[b] for b in kBs]
+		plt.scatter(kXs[:len(color_arr)], kYs[:len(color_arr)],
+			marker=',', s=point_size, c=color_arr,
+			rasterized=rasterize, edgecolors='none', linewidths=0,
+			)
+		from matplotlib.patches import Patch
+		handles = [Patch(facecolor=d_branch_color[b], label=None) for b in branches]
+		labels = [format_species_label(b)[0] for b in branches]
+		lstyles = [format_species_label(b)[1] for b in branches]
+		leg = plt.legend(handles, labels, frameon=False, fontsize=fontsize*0.8)
+		for t, st in zip(leg.get_texts(), lstyles):
+			t.set_fontstyle(st)
 	if same_sp:
 		plt.plot((xmin, xmax), (ymin, ymax), ls='--',
 				 color="grey", linewidth=0.8)
@@ -1009,10 +1049,24 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 					   hide_blocks=None, use_median=False, lower_ks=None, upper_ks=None,
 					   cluster=False, diagonal=False, gene_axis=False, source=None, use_frac=False,
 					   ofdir=None, of_ratio=0, of_color=False, tandem_dist=None, min_block=None,
-					   matrix=None, min_same_block=None, ploidy=None, **ks_args):
+					   matrix=None, min_same_block=None, ploidy=None, colorby_blocks=None, **ks_args):
 	blocks = XCollinearity(collinearity, orthologs=ofdir, gff=gff, kaks=kaks,
 						   homology=homology, source=source, **ks_args)
 	chrs1s, chrs2s = set(chrs1), set(chrs2)
+	# --colorby-blocks: branch per block; names one-to-one with -s files or parsed from file names
+	d_file_branch = {}
+	if colorby_blocks is not None:
+		files = [collinearity] if isinstance(collinearity, str) else collinearity
+		if colorby_blocks:
+			if len(colorby_blocks) != len(files):
+				sys.exit('Error: --colorby-blocks names ({}) must match -s files ({}) one-to-one'.format(
+					len(colorby_blocks), len(files)))
+			for f, b in zip(files, colorby_blocks):
+				d_file_branch[f] = b
+		else:
+			from .ks_plotter import parse_branch
+			for f in files:
+				d_file_branch[f] = parse_branch(f)
 	d_blocks = {}
 	d_blocks2 = {}
 	ortholog_graph = nx.Graph()
@@ -1053,6 +1107,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 		ks = rc.ks
 		if use_median:
 			ks = [rc.median_ks] * len(ks)
+		branch = d_file_branch.get(getattr(rc, 'source_file', None), None) if d_file_branch else None
 
 		# use OI or fractionation_rate
 		if ofdir or use_frac:
@@ -1067,14 +1122,14 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 		if ploidy:
 			ortholog_graph.add_edges_from(rc.pairs)
 		try:
-			d_blocks[(chr1, chr2)] += [(genes1, genes2, ks)]
+			d_blocks[(chr1, chr2)] += [(genes1, genes2, ks, branch)]
 		except KeyError:
-			d_blocks[(chr1, chr2)] = [(genes1, genes2, ks)]
+			d_blocks[(chr1, chr2)] = [(genes1, genes2, ks, branch)]
 		if chr1 in chrs2s and chr2 in chrs1s:  # same species, double blocks
 			try:
-				d_blocks[(chr2, chr1)] += [(genes2, genes1, ks)]
+				d_blocks[(chr2, chr1)] += [(genes2, genes1, ks, branch)]
 			except KeyError:
-				d_blocks[(chr2, chr1)] = [(genes2, genes1, ks)]
+				d_blocks[(chr2, chr1)] = [(genes2, genes1, ks, branch)]
 		if diagonal:
 			value = [rc.score, start1, start2, rc.median_ks]
 			try:
@@ -1103,7 +1158,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 	ksx = []
 	for chr_pair, tblocks in list(d_blocks.items()):
 		chr1, chr2 = chr_pair
-		for (genes1, genes2, ksS) in tblocks:
+		for (genes1, genes2, ksS, branch) in tblocks:
 			points = []
 			for gene1, gene2, ks in zip(genes1, genes2, ksS):
 				if isinstance(gene1, str) or isinstance(gene2, str):
@@ -1114,7 +1169,7 @@ def parse_collinearity(collinearity, gff, chrs1, chrs2, kaks, homology,
 				else:
 					pos1 = (gene1.start + gene1.end) / 2 + d_offset1[chr1]
 					pos2 = (gene2.start + gene2.end) / 2 + d_offset2[chr2]
-				points += [(pos1, pos2, ks)]
+				points += [(pos1, pos2, ks, branch)]
 				ksx += [ks]
 			if not points:
 				continue
@@ -1234,7 +1289,7 @@ def to_matrix(d_blocks, ):
 	d_genes = {}
 	for (chr1, chr2), blocks in list(d_blocks.items()):
 		blocks = sorted(blocks, key=lambda x: len(x[0]))
-		for (genes1, genes2, _) in blocks:
+		for (genes1, genes2, _, _) in blocks:
 			for gene1, gene2 in zip(genes1, genes2):
 				d_genes[(chr1, chr2, gene1)] = gene2.id
 	return d_genes
