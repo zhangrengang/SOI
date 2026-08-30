@@ -10,7 +10,7 @@ Leaf species: genes of the same species within the same HOG -> paralogs.
 from collections import defaultdict, Counter
 import os
 from .hog import HOG
-from .style import set_species_ticklabels
+from .style import set_species_ticklabels, format_species_label
 from . import style
 from .mcscan import XCollinearity
 from .RunCmdsMP import logger
@@ -599,9 +599,14 @@ class ParalogIndexer:
 				else:
 					etefaces.add_face_to_node(pie, node, column=0, position='branch-right')
 			if node.is_leaf():
-				node.sp = ' {}'.format(node.name.replace('_', ' '))
-				name_face = AttrFace('sp', fsize=10, fgcolor='black', fstyle='italic')
-				etefaces.add_face_to_node(name_face, node, column=1)
+				text, st = format_species_label(node.name)
+				if st == 'italic':
+					node.sp = ' {}'.format(text)
+					name_face = AttrFace('sp', fsize=10, fgcolor='black', fstyle='italic')
+					etefaces.add_face_to_node(name_face, node, column=1)
+				else:
+					name_face = TextFace(text, fsize=10, fgcolor='black', ftype=style.DEFAULT_FONT)
+					etefaces.add_face_to_node(name_face, node, column=1)
 			else:
 				name_face = TextFace(nid, fsize=7, fgcolor='#888888', ftype=style.DEFAULT_FONT)
 				etefaces.add_face_to_node(name_face, node, column=0, position='branch-top')
