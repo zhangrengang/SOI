@@ -139,15 +139,18 @@ def plot_hist(d_data, outFig, order=None, normed=False, xlabel='Ks',
 	x_list = []
 	y_list = []
 	pair_list = []
+	label_styles = []
 
 	print('\t'.join(['species1', 'species2', 'category', 'genePairNumber',
 					 'mean', 'median', 'peak', '95% CI']))
 	for pair in order:
 		data = np.array(d_data[pair])
-		pair_list.append(generate_label(pair))
+		label, lstyle = generate_label(pair)
+		pair_list.append(label)
+		label_styles.append(lstyle)
 		data2 = np.concatenate([[0, max_ks], data])
 		n, bins, patches = ax.hist(data2, bins=nbins, density=normed,
-								   label=generate_label(pair))
+								   label=label)
 		y_hist = [(bins[i] + bins[i+1]) / 2 for i in range(len(bins)-1)]
 		x_list.append(y_hist)
 		y_list.append(n)
@@ -167,7 +170,8 @@ def plot_hist(d_data, outFig, order=None, normed=False, xlabel='Ks',
 	ax.cla()
 	for i in range(len(pair_list)):
 		ax.plot(x_list[i], y_list[i], label=pair_list[i], linewidth=1.5)
-	ax.legend(fontsize='x-small')
+	for t, s in zip(ax.legend(fontsize='x-small').get_texts(), label_styles):
+		t.set_fontstyle(s)
 	ax.minorticks_on()
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
