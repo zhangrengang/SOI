@@ -429,10 +429,10 @@ class ParalogIndexer:
 			ax.set_yticklabels([])
 			ax.tick_params(axis='y', left=False, labelleft=False)
 			ax_line.set_yticks(range(len(branches)))
-			ax_line.set_yticklabels(branches, fontsize=tick_fs)
+			ax_line.set_yticklabels(self._branch_texts(branches), fontsize=tick_fs)
 			ax_line.yaxis.tick_right()  # branch names on the far right
 		else:
-			ax.set_yticklabels(branches, fontsize=tick_fs)
+			ax.set_yticklabels(self._branch_texts(branches), fontsize=tick_fs)
 			ax.yaxis.tick_right()  # branch names on the right
 		ax.set_xticks([])
 		ax.set_xlabel('Syntenic block', fontsize=14)
@@ -528,6 +528,16 @@ class ParalogIndexer:
 					branch, sp, n_paralogs, blocks, gp, pp, mean_pi, wpi))
 		logger.info('Stats written to {}'.format(fpath))
 		return stats
+
+	def _branch_texts(self, branches):
+		"""Tick labels as Text objects: species names italic, node names normal."""
+		from matplotlib.text import Text
+		from .small_tools import format_species_label
+		texts = []
+		for b in branches:
+			label, style = format_species_label(b)
+			texts.append(Text(0, 0, label, fontstyle=style))
+		return texts
 
 	def _draw_tree_panel(self, ax, branches):
 		"""Draw the species tree with rows aligned to heatmap branch rows.
