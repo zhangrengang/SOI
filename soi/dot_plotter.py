@@ -15,6 +15,7 @@ mpl.use("Agg")
 mpl.rcParams['pdf.fonttype'] = 42
 
 from .RunCmdsMP import logger
+from .style import style_species
 from .WGDI import AK
 from .ploidy_plotter import add_ploidy_opts, get_ploidy, plot_bars
 from .mcscan import Collinearity, XGff, XCollinearity
@@ -625,12 +626,12 @@ def plot_blocks(blocks, outplots, ks=None, max_ks=None, ks_hist=False, ks_cmap=N
 	# species labels
 	if xlabel:
 		_ax = ax_xbin if plot_bin else ax
-		_ax.set_xlabel(xlabel, ha='center', fontsize=xsize, labelpad=xlabelpad, style='italic')
+		style_species(_ax.set_xlabel(xlabel, ha='center', fontsize=xsize, labelpad=xlabelpad))
 		_ax.xaxis.set_label_position('top')
 	if ylabel:
 		_ax = ax_ybin if plot_bin else ax
-		_ax.set_ylabel(ylabel, rotation='vertical', ha='center', fontsize=ysize, style='italic',
-					  labelpad=ylabelpad)
+		style_species(_ax.set_ylabel(ylabel, rotation='vertical', ha='center', fontsize=ysize,
+									  labelpad=ylabelpad))
 		_ax.yaxis.set_label_position('right')
 	if number_plots and (ks_hist or ploidy):
 		label = '(a)'

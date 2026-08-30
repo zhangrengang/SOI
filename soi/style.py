@@ -75,3 +75,16 @@ def set_species_ticklabels(ax, names, axis='y', **kw):
 	setter([t for t, s in labels], **kw)
 	for lb, (t, s) in zip(getter(), labels):
 		lb.set_fontstyle(s)
+
+
+def format_species_title(s, sep=' vs '):
+	"""'Genus_a vs Genus_b' style titles: if BOTH sides match the Latin
+	pattern, return (text with underscores as spaces, 'italic');
+	otherwise (s, 'normal')."""
+	parts = s.split(sep)
+	if len(parts) != 2:
+		return (s, 'normal')
+	fmts = [format_species_label(p) for p in parts]
+	if all(st == 'italic' for t, st in fmts):
+		return (sep.join(t for t, st in fmts), 'italic')
+	return (s, 'normal')

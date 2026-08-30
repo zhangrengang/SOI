@@ -8,6 +8,7 @@ import numpy as np
 import itertools
 import matplotlib.pyplot as plt
 from .mcscan import XCollinearity, XGff
+from .style import set_species_ticklabels, format_species_title
 from .RunCmdsMP import logger
 import matplotlib as mpl
 
@@ -226,14 +227,12 @@ def _plot_heatmap(ratio, refs, qry, kargs):
 	ax_hm.imshow(M, aspect='auto', cmap=cmap, vmin=0, vmax=1,
 				 interpolation='nearest')
 	tick_fs = max(6, min(12, 240 // max(max(n_ref, n_qry), 1)))
-	ax_hm.set_xticks(range(n_qry))
-	ax_hm.set_xticklabels(qry, rotation=90, fontsize=tick_fs)
 	ax_hm.xaxis.tick_top()  # column labels on top
 	ax_hm.tick_params(axis='x', which='both', top=True, bottom=False,
 					  labeltop=True, labelbottom=False)
-	ax_hm.set_yticks(range(n_ref))
-	ax_hm.set_yticklabels(refs, fontsize=tick_fs)
+	set_species_ticklabels(ax_hm, qry, axis='x', rotation=90, fontsize=tick_fs)
 	ax_hm.yaxis.tick_right()  # row labels on the right
+	set_species_ticklabels(ax_hm, refs, axis='y', fontsize=tick_fs)
 	ax_hm.set_xlabel('Query')
 	if not sptree:
 		ax_hm.set_ylabel('Reference')
@@ -349,7 +348,8 @@ def plot_bars(data, titles, ax=None, outfigs=None, nrow=1, ncol=1, fontsize=10,
 		except IndexError:
 			pass
 		if title is not None:
-			sax.set_title(title)
+			t, st = format_species_title(title)
+			sax.set_title(t, fontstyle=st)
 		sax.set_xlim(0, max_ploidy)
 		if xlabel is not None and i >= (nrow-1)*ncol:
 			sax.set_xlabel(xlabel, fontsize=fontsize)
