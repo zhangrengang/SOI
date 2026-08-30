@@ -103,7 +103,7 @@ class TreePlotter:
 	"""
 	def __init__(self, tree, row_names=None, internal_node_to_present=False,
 				 use_distances=False, color='k', lw=1.0,
-				 dotted_lw=0.8, dotted_color='0.6', xpad=0.2,
+				 dotted_lw=0.8, dotted_color='0.6', xpad_frac=0.02,
 				 leaf_dotted_color=None):
 		"""tree: ete3 Tree (nodes named, e.g. via number_nodes()).
 		row_names: row order list; None = auto (preorder all nodes when
@@ -118,7 +118,7 @@ class TreePlotter:
 		self.dotted_lw = dotted_lw
 		self.dotted_color = dotted_color
 		self.leaf_dotted_color = leaf_dotted_color or dotted_color
-		self.xpad = xpad
+		self.xpad_frac = xpad_frac
 		if row_names is None:
 			if internal_node_to_present:
 				row_names = [n.name for n in tree.traverse('preorder')]
@@ -173,14 +173,16 @@ class TreePlotter:
 			if y_par is not None:
 				ax.plot([xp, xp], [y_par, yp], '-', color=self.color,
 						lw=self.lw, zorder=1, solid_capstyle='butt')
+		# pad scales with tree width (x units vary: topological depth vs distance)
+		xmax = max(xpos.values())
+		pad = self.xpad_frac * xmax
 		# root stub
 		y_root = ypos.get(tree)
 		x_root = xpos[tree]
 		if y_root is not None:
-			ax.plot([x_root - self.xpad, x_root], [y_root, y_root], '-',
+			ax.plot([x_root - pad, x_root], [y_root, y_root], '-',
 					color=self.color, lw=self.lw, zorder=1)
 		# dotted alignment guides from internal nodes to the right edge
-		xmax = max(xpos.values())
 		if show_dotted and self.internal_node_to_present:
 			for node in tree.traverse():
 				if node.is_root():
@@ -190,7 +192,7 @@ class TreePlotter:
 					continue
 				# leaf guides start at the branch tip; internal guides start at the node
 				color = self.leaf_dotted_color if node.is_leaf() else self.dotted_color
-				ax.plot([xpos[node], xmax + self.xpad], [yp, yp], ':',
+				ax.plot([xpos[node], xmax + pad], [yp, yp], ':',
 						color=color, lw=self.dotted_lw, zorder=0)
 		# axes: rows span the y range, top-down when row mode
 		if self.internal_node_to_present:
@@ -199,5 +201,5 @@ class TreePlotter:
 		else:
 			ys = [v for v in ypos.values() if v is not None]
 			ax.set_ylim(min(ys) - 0.5, max(ys) + 0.5)
-		ax.set_xlim(-self.xpad, xmax + (self.xpad if show_dotted and self.internal_node_to_present else 0))
+		ax.set_xlim(-pad, xmax + (pad if show_dotted and self.internal_node_to_present else 0))
 		ax.axis('off')
