@@ -507,52 +507,14 @@ class ParalogIndexer:
 	def _draw_tree_panel(self, ax, branches):
 		"""Draw the species tree with rows aligned to heatmap branch rows.
 
-		Orthogonal cladogram (no labels): x = topology depth, y = branch
-		row index in the heatmap (branches list = _ordered_branches).
+		Fbranch-style: every branch (internal + leaf) sits on its own heatmap
+		row; dotted guides extend internal-node rows to the panel edge.
 		"""
-		from .tree import number_nodes
+		from .tree import number_nodes, TreePlotter
 		tree = number_nodes(self.sptreefile)
-		# y position per node: leaves by row index, internal = mean of children
-		ypos = {}
-		depth = {}
-		def layout(node, d):
-			depth[id(node)] = d
-			if node.is_leaf():
-				name = node.name
-				ypos[id(node)] = branches.index(name) if name in branches else None
-			else:
-				ys = []
-				for ch in node.children:
-					layout(ch, d + 1)
-					y = ypos.get(id(ch))
-					if y is not None:
-						ys.append(y)
-				ypos[id(node)] = sum(ys) / len(ys) if ys else None
-		layout(tree, 0)
-
-		for node in tree.traverse():
-			if node.is_root():
-				continue
-			yp = ypos.get(id(node))
-			if yp is None:
-				continue
-			par = node.up
-			y_par = ypos.get(id(par))
-			x = depth[id(node)]
-			x_par = depth[id(par)]
-			# horizontal branch from parent x to node x at node y
-			ax.plot([x_par, x], [yp, yp], '-', color='k', lw=1, zorder=1)
-			# vertical connector at parent x spanning children y
-			if y_par is not None:
-				ax.plot([x_par, x_par], [y_par, yp], '-', color='k', lw=1, zorder=1)
-		# root stub from x=-0.2
-		y_root = ypos.get(id(tree))
-		if y_root is not None:
-			ax.plot([-0.2, 0], [y_root, y_root], '-', color='k', lw=1, zorder=1)
-		ax.set_xlim(-0.2, max(depth.values()) if depth else 1)
-		ax.set_ylim(-0.5, len(branches) - 0.5)
-		ax.invert_yaxis()  # match heatmap row direction
-		ax.axis('off')
+		tp = TreePlotter(tree, row_names=branches,
+						 internal_node_to_present=True)
+		tp.plot(ax)
 
 	def plot_tree(self, assigned, stats):
 		"""Render species tree with pies: [syntenic, non-syntenic] paralog pairs.

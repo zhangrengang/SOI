@@ -82,7 +82,118 @@ def convert_newick(line: str) -> str:
     return line
 	
 def convertNHX(inNwk, ):
-    nwk = []
-    for line in open(inNwk):
-        nwk += [convert_newick(line)]
-    return ''.join(nwk)
+	nwk = []
+	for line in open(inNwk):
+		nwk += [convert_newick(line)]
+	return ''.join(nwk)
+
+
+class TreePlotter:
+	"""Matplotlib orthogonal tree plotter, Dsuite-Fbranch style.
+
+	Every node (internal + leaves) sits on its own row; row order comes from
+	`row_names` (Dsuite Fbranch mode: preorder over ALL nodes when
+	`internal_node_to_present=True`). Internal nodes get dotted alignment
+	lines to the right edge, like Fbranch's guides between tree and matrix.
+	Draws into a caller-provided matplotlib Axes.
+
+	Usage:
+		tp = TreePlotter(tree, row_names, internal_node_to_present=True)
+		tp.plot(ax)
+	"""
+	def __init__(self, tree, row_names=None, internal_node_to_present=False,
+				 use_distances=False, color='k', lw=1.0,
+				 dotted_lw=0.8, dotted_color='0.6', xpad=0.2):
+		"""tree: ete3 Tree (nodes named, e.g. via number_nodes()).
+		row_names: row order list; None = auto (preorder all nodes when
+		internal_node_to_present else leaf names).
+		use_distances: x = time from root (branch lengths) instead of depth.
+		"""
+		self.tree = tree
+		self.internal_node_to_present = internal_node_to_present
+		self.use_distances = use_distances
+		self.color = color
+		self.lw = lw
+		self.dotted_lw = dotted_lw
+		self.dotted_color = dotted_color
+		self.xpad = xpad
+		if row_names is None:
+			if internal_node_to_present:
+				row_names = [n.name for n in tree.traverse('preorder')]
+			else:
+				row_names = tree.get_leaf_names()
+		self.row_names = list(row_names)
+		self._layout()
+
+	def _layout(self):
+		"""Assign x (depth/time) and y (row index) to every node."""
+		tree = self.tree
+		row_idx = {}
+		for i, nm in enumerate(self.row_names):
+			if nm not in row_idx:
+				row_idx[nm] = i
+		max_dist = tree.get_farthest_leaf()[1] if self.use_distances else 0.0
+		ypos = {}
+		xpos = {}
+		def layout(node, depth):
+			xpos[node] = (max_dist - tree.get_distance(node)) if self.use_distances else depth
+			# recurse first (children must be placed before the fallback mean)
+			for ch in node.children:
+				layout(ch, depth + 1)
+			if node.name in row_idx:
+				ypos[node] = row_idx[node.name]
+			else:
+				# name not in row list (e.g. leaves-only mode with unlisted
+				# leaves): fall back to mean of children rows
+				ys = [ypos[ch] for ch in node.children if ch in ypos]
+				ypos[node] = sum(ys) / len(ys) if ys else None
+		layout(tree, 0)
+		self.ypos = ypos
+		self.xpos = xpos
+
+	def plot(self, ax, show_dotted=True):
+		"""Draw orthogonal tree into ax; dotted guides from internal nodes."""
+		tree = self.tree
+		ypos, xpos = self.ypos, self.xpos
+		for node in tree.traverse():
+			if node.is_root():
+				continue
+			yp = ypos.get(node)
+			if yp is None:
+				continue
+			par = node.up
+			x, xp = xpos[node], xpos[par]
+			# horizontal branch at child y
+			ax.plot([xp, x], [yp, yp], '-', color=self.color, lw=self.lw,
+					zorder=1, solid_capstyle='butt')
+			# vertical connector at parent x
+			y_par = ypos.get(par)
+			if y_par is not None:
+				ax.plot([xp, xp], [y_par, yp], '-', color=self.color,
+						lw=self.lw, zorder=1, solid_capstyle='butt')
+		# root stub
+		y_root = ypos.get(tree)
+		x_root = xpos[tree]
+		if y_root is not None:
+			ax.plot([x_root - self.xpad, x_root], [y_root, y_root], '-',
+					color=self.color, lw=self.lw, zorder=1)
+		# dotted alignment guides from internal nodes to the right edge
+		xmax = max(xpos.values())
+		if show_dotted and self.internal_node_to_present:
+			for node in tree.traverse():
+				if node.is_leaf() or node.is_root():
+					continue
+				yp = ypos.get(node)
+				if yp is None:
+					continue
+				ax.plot([xpos[node], xmax + self.xpad], [yp, yp], ':',
+						color=self.dotted_color, lw=self.dotted_lw, zorder=0)
+		# axes: rows span the y range, top-down when row mode
+		if self.internal_node_to_present:
+			ax.set_ylim(-0.5, len(self.row_names) - 0.5)
+			ax.invert_yaxis()
+		else:
+			ys = [v for v in ypos.values() if v is not None]
+			ax.set_ylim(min(ys) - 0.5, max(ys) + 0.5)
+		ax.set_xlim(-self.xpad, xmax + (self.xpad if show_dotted and self.internal_node_to_present else 0))
+		ax.axis('off')
