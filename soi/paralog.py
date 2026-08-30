@@ -434,7 +434,6 @@ class ParalogIndexer:
 			ax_line.yaxis.tick_right()  # branch names on the far right
 			for lb, (t, s) in zip(ax_line.get_yticklabels(), labels):
 				lb.set_fontstyle(s)
-			ax_line.tick_params(axis='y', pad=1.75)  # half default(3.5)
 		else:
 			labels = self._branch_texts(branches)
 			ax.set_yticklabels([t for t, s in labels], fontsize=tick_fs)
@@ -473,7 +472,7 @@ class ParalogIndexer:
 			ax_line.set_ylim(-0.5, len(branches) - 0.5)
 			ax_line.invert_yaxis()  # match heatmap direction
 			ax_line.set_xlabel('Number of gene pairs', fontsize=9)
-			ax_line.tick_params(axis='y', labelleft=False, left=False, pad=12)
+			ax_line.tick_params(axis='y', labelleft=False, left=False, pad=6)  # half of 12: label closer to line panel
 			# ax_line.set_xticks([min(raw_sig + asgn_sig), max(raw_sig + asgn_sig)])
 			from matplotlib.ticker import AutoMinorLocator
 			ax_line.xaxis.set_minor_locator(AutoMinorLocator())
