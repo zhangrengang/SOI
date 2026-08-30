@@ -230,6 +230,10 @@ def args_paralog(parser):
 	g_out.add_argument('--line-plot', action='store_true', default=False,
 					   dest='line_plot',
 					   help='Add a line plot on the right of the heatmap showing raw and assigned paralog signal per branch')
+	g_out.add_argument('--tree-heatmap', action='store_true', default=False,
+					   dest='tree_heatmap',
+					   help='Add a species tree panel on the left of the heatmap '
+					   			'(branches aligned with heatmap rows; -t required)')
 	g_out.add_argument('--note', type=str, default=None, dest='note',
 					   help='Text label drawn on the heatmap (e.g. key parameters)')
 

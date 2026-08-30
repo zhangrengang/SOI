@@ -8,6 +8,7 @@ Internal nodes: sibling child HOGs (same parent) -> genes of the same species
 Leaf species: genes of the same species within the same HOG -> paralogs.
 """
 from collections import defaultdict, Counter
+import os
 from .hog import HOG
 from .mcscan import XCollinearity
 from .RunCmdsMP import logger
@@ -128,6 +129,7 @@ class ParalogIndexer:
 				 self_synteny=None, min_n=0, gff=None, min_dist=None,
 				 pi_cutoff=0.05, nodes=None, species=None,
 				 prefix='paralog_index', box_branch=False, line_plot=False, note=None,
+				 tree_heatmap=False,
 				 **hog_kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
@@ -148,6 +150,7 @@ class ParalogIndexer:
 		self.prefix = prefix
 		self.box_branch = box_branch
 		self.line_plot = line_plot
+		self.tree_heatmap = tree_heatmap
 		self.hog_kargs = hog_kargs
 
 		# lazy
@@ -345,24 +348,46 @@ class ParalogIndexer:
 		# cumulative x positions (left of each column)
 		x = np.concatenate([[0.0], np.cumsum(w)])
 
-		fig = plt.figure(figsize=(min(7, max(4, 0.02 * M.shape[0])),
-								min(7, max(3, 0.4 * len(branches)))))
+		fig = plt.figure(figsize=(min(7, max(4, 0.02 * M.shape[0])) + (1.8 if self.tree_heatmap else 0),
+									min(7, max(3, 0.4 * len(branches)))))
 		cmap = plt.get_cmap('YlOrRd')
 		from matplotlib import gridspec
 		hr = max(1, 0.3 * len(branches))
-		if self.line_plot:
-			gs = gridspec.GridSpec(2, 2, width_ratios=[6, 2],
-								   height_ratios=[len(branches), hr],
-								   wspace=0.05, hspace=0.05)
-			ax = fig.add_subplot(gs[0, 0])
-			ax_line = fig.add_subplot(gs[0, 1])
-			ax_leg = fig.add_subplot(gs[1, 1])
-			cax = fig.add_subplot(gs[1, 0])
+		# tree panel on the left column; heatmap columns shift right by one
+		ncol_tree = 1 if self.tree_heatmap else 0
+		if ncol_tree:
+			if self.line_plot:
+				gs = gridspec.GridSpec(2, 3, width_ratios=[2, 6, 2],
+										height_ratios=[len(branches), hr],
+										wspace=0.05, hspace=0.05)
+				ax_tree = fig.add_subplot(gs[0, 0])
+				ax = fig.add_subplot(gs[0, 1])
+				ax_line = fig.add_subplot(gs[0, 2])
+				ax_leg = fig.add_subplot(gs[1, 2])
+				cax = fig.add_subplot(gs[1, 1])
+			else:
+				gs = gridspec.GridSpec(2, 2, width_ratios=[2, 6],
+										height_ratios=[len(branches), hr],
+										wspace=0.05, hspace=0.05)
+				ax_tree = fig.add_subplot(gs[0, 0])
+				ax = fig.add_subplot(gs[0, 1])
+				ax_line = None
+				ax_leg = None
+				cax = fig.add_subplot(gs[1, 1])
 		else:
-			gs = gridspec.GridSpec(2, 1, height_ratios=[len(branches), hr])
-			ax = fig.add_subplot(gs[0, 0])
-			cax = fig.add_subplot(gs[1, 0])
-			ax_line = None
+			if self.line_plot:
+				gs = gridspec.GridSpec(2, 2, width_ratios=[6, 2],
+										height_ratios=[len(branches), hr],
+										wspace=0.05, hspace=0.05)
+				ax = fig.add_subplot(gs[0, 0])
+				ax_line = fig.add_subplot(gs[0, 1])
+				ax_leg = fig.add_subplot(gs[1, 1])
+				cax = fig.add_subplot(gs[1, 0])
+			else:
+				gs = gridspec.GridSpec(2, 1, height_ratios=[len(branches), hr])
+				ax = fig.add_subplot(gs[0, 0])
+				cax = fig.add_subplot(gs[1, 0])
+				ax_line = None
 		# transposed: one row per branch, segments = blocks
 		for i, branch_vec in enumerate(M.T):
 			colors = [cmap(v) for v in branch_vec]
@@ -424,6 +449,12 @@ class ParalogIndexer:
 							 fontsize=8, loc='center', ncol=1)
 		import matplotlib as mpl
 		fig.tight_layout()
+		# tree panel: draw after tight_layout so it uses final axes geometry
+		if ncol_tree:
+			if self.sptreefile and os.path.exists(self.sptreefile):
+				self._draw_tree_panel(ax_tree, branches)
+			else:
+				logger.warning('--tree-heatmap requires a valid -t tree file; panel left empty')
 		fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(0, 1),
 										   cmap=cmap),
 					 cax=cax, label='BPI', orientation='horizontal')
@@ -472,6 +503,56 @@ class ParalogIndexer:
 					branch, sp, n_paralogs, blocks, gp, pp, mean_pi, wpi))
 		logger.info('Stats written to {}'.format(fpath))
 		return stats
+
+	def _draw_tree_panel(self, ax, branches):
+		"""Draw the species tree with rows aligned to heatmap branch rows.
+
+		Orthogonal cladogram (no labels): x = topology depth, y = branch
+		row index in the heatmap (branches list = _ordered_branches).
+		"""
+		from .tree import number_nodes
+		tree = number_nodes(self.sptreefile)
+		# y position per node: leaves by row index, internal = mean of children
+		ypos = {}
+		depth = {}
+		def layout(node, d):
+			depth[id(node)] = d
+			if node.is_leaf():
+				name = node.name
+				ypos[id(node)] = branches.index(name) if name in branches else None
+			else:
+				ys = []
+				for ch in node.children:
+					layout(ch, d + 1)
+					y = ypos.get(id(ch))
+					if y is not None:
+						ys.append(y)
+				ypos[id(node)] = sum(ys) / len(ys) if ys else None
+		layout(tree, 0)
+
+		for node in tree.traverse():
+			if node.is_root():
+				continue
+			yp = ypos.get(id(node))
+			if yp is None:
+				continue
+			par = node.up
+			y_par = ypos.get(id(par))
+			x = depth[id(node)]
+			x_par = depth[id(par)]
+			# horizontal branch from parent x to node x at node y
+			ax.plot([x_par, x], [yp, yp], '-', color='k', lw=1, zorder=1)
+			# vertical connector at parent x spanning children y
+			if y_par is not None:
+				ax.plot([x_par, x_par], [y_par, yp], '-', color='k', lw=1, zorder=1)
+		# root stub from x=-0.2
+		y_root = ypos.get(id(tree))
+		if y_root is not None:
+			ax.plot([-0.2, 0], [y_root, y_root], '-', color='k', lw=1, zorder=1)
+		ax.set_xlim(-0.2, max(depth.values()) if depth else 1)
+		ax.set_ylim(-0.5, len(branches) - 0.5)
+		ax.invert_yaxis()  # match heatmap row direction
+		ax.axis('off')
 
 	def plot_tree(self, assigned, stats):
 		"""Render species tree with pies: [syntenic, non-syntenic] paralog pairs.
