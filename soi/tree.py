@@ -138,7 +138,7 @@ class TreePlotter:
 		ypos = {}
 		xpos = {}
 		def layout(node, depth):
-			xpos[node] = (max_dist - tree.get_distance(node)) if self.use_distances else depth
+			xpos[node] = tree.get_distance(node) if self.use_distances else depth
 			# recurse first (children must be placed before the fallback mean)
 			for ch in node.children:
 				layout(ch, depth + 1)
