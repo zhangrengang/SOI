@@ -429,11 +429,17 @@ class ParalogIndexer:
 			ax.set_yticklabels([])
 			ax.tick_params(axis='y', left=False, labelleft=False)
 			ax_line.set_yticks(range(len(branches)))
-			ax_line.set_yticklabels(self._branch_texts(branches), fontsize=tick_fs)
+			labels = self._branch_texts(branches)
+			ax_line.set_yticklabels([t for t, s in labels], fontsize=tick_fs)
 			ax_line.yaxis.tick_right()  # branch names on the far right
+			for lb, (t, s) in zip(ax_line.get_yticklabels(), labels):
+				lb.set_fontstyle(s)
 		else:
-			ax.set_yticklabels(self._branch_texts(branches), fontsize=tick_fs)
+			labels = self._branch_texts(branches)
+			ax.set_yticklabels([t for t, s in labels], fontsize=tick_fs)
 			ax.yaxis.tick_right()  # branch names on the right
+			for lb, (t, s) in zip(ax.get_yticklabels(), labels):
+				lb.set_fontstyle(s)
 		ax.set_xticks([])
 		ax.set_xlabel('Syntenic block', fontsize=14)
 		# optional: grey dashed rectangles around blocks assigned to each branch
@@ -530,14 +536,11 @@ class ParalogIndexer:
 		return stats
 
 	def _branch_texts(self, branches):
-		"""Tick labels as Text objects: species names italic, node names normal."""
-		from matplotlib.text import Text
+		"""Per-label (text, fontstyle) pairs: species names italic, node names normal.
+		Apply the style after set_yticklabels via set_fontstyle (Text objects
+		passed to set_yticklabels lose their style)."""
 		from .small_tools import format_species_label
-		texts = []
-		for b in branches:
-			label, style = format_species_label(b)
-			texts.append(Text(0, 0, label, fontstyle=style))
-		return texts
+		return [format_species_label(b) for b in branches]
 
 	def _draw_tree_panel(self, ax, branches):
 		"""Draw the species tree with rows aligned to heatmap branch rows.
