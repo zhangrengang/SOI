@@ -43,7 +43,14 @@ class Paralog:
 			branch_pairs, count = self._load_pairs(inparalog)
 			root = self._root_name()
 			logger.info('Loaded {} paralog pairs from {}'.format(count, inparalog))
-			return {b: frozenset(ps) for b, ps in branch_pairs.items()}, root
+			# warn when loaded nodes do not match the species tree nodes
+			if self.sptreefile:
+				from .tree import number_nodes
+				tree_names = {n.name for n in number_nodes(self.sptreefile).traverse()}
+				unknown = sorted(set(branch_pairs) - tree_names)
+				if unknown:
+					logger.warning('Loaded nodes not present in species tree ({}): {} — check that {} is a paralog.tsv (gene1 gene2 node), not a HOGs.tsv'.format(len(unknown), ', '.join(unknown[:10]), inparalog))
+
 
 		self.kargs.update(min_child_species=2, cross_speciation=True, drop_no_cross=True,
 						 min_species_ratio=0.2, mcl_split=True)
@@ -266,6 +273,15 @@ class ParalogIndexer:
 								  best_branch, tuple(pi_vector)))
 		self._pi_branches = branches
 		logger.info('Assigned blocks to {} branches'.format(len(assigned)))
+		n_assigned_blocks = sum(len(v) for b, v in assigned.items() if b != 'Unassigned')
+		n_unassigned_blocks = len(assigned.get('Unassigned', []))
+		n_assigned_genes = sum(it[2] for b, v in assigned.items() if b != 'Unassigned' for it in v)
+		n_unassigned_genes = sum(it[2] for it in assigned.get('Unassigned', []))
+		logger.info('Blocks assigned/unassigned: {}/{}; genes assigned/unassigned: {}/{}'.format(
+			n_assigned_blocks, n_unassigned_blocks, n_assigned_genes, n_unassigned_genes))
+		if assigned and n_assigned_blocks == 0:
+			logger.warning('All {} blocks unassigned (no branch reached PI >= {}): check that the paralog input matches the species tree and collinearity data'.format(
+				n_unassigned_blocks, threshold))
 		return assigned
 
 	def write_heatmap_matrix(self, assigned):
