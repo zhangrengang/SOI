@@ -536,6 +536,12 @@ def get_homologs(orthologs, outHomo):
 		pair.write(outHomo)
 
 
+def get_pairs(ortholog, outPairs=sys.stdout):
+	'''convert collinearity/pairs/OFdir to two-column gene pairs'''
+	for pair in Xpairs(ortholog):
+		pair.write(outPairs)
+
+
 def get_chrom(chrom):
 	try:
 		return chrom.split('|', 1)[1]
@@ -4009,6 +4015,8 @@ def main():
 		OFdir = sys.argv[2]
 		outHomo = sys.stdout
 		get_homologs(OFdir, outHomo)
+	elif subcmd == 'pairs':  # collinearity -> gene pairs
+		get_pairs(sys.argv[2])
 	elif subcmd == 'get_blocks':  # subset collinearity file based on block IDs
 		collinearity, block_ids = sys.argv[2:4]
 		get_blocks(collinearity, block_ids, fout=sys.stdout)
