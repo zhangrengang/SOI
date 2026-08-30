@@ -422,7 +422,9 @@ class ParalogIndexer:
 		ax.invert_yaxis()  # branches top-down (first branch at top)
 		ax.set_yticks(range(len(branches)))
 		tick_fs = max(6, min(12, 240 // max(len(branches), 1)))
-		ax.set_ylabel('Branch', fontsize=14)
+		# no y label when the tree panel sits on the left
+		if not self.tree_heatmap:
+			ax.set_ylabel('Branch', fontsize=14)
 		if ax_line is not None:
 			ax.set_yticklabels([])
 			ax.tick_params(axis='y', left=False, labelleft=False)
@@ -538,7 +540,7 @@ class ParalogIndexer:
 		tp = TreePlotter(tree, row_names=branches,
 						 internal_node_to_present=True,
 						 use_distances=True,
-						 leaf_dotted_color='tab:blue')
+						 leaf_dotted_color='tab:green')
 		tp.plot(ax)
 
 	def plot_tree(self, assigned, stats):
