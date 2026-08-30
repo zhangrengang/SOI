@@ -103,6 +103,7 @@ def main(kaks=None, pair=None, blocks=None, block_branches=None, figure=None,
 			sys.exit(1)
 		d_ks = parse_blocks_ks(blocks, kaks, block_branches=block_branches,
 			pairs=pairs, max_ks=max_ks, fdtv=fdtv, yn00=yn00, method=method)
+		pairs = None  # order keys are (sp1, sp2, branch); plot falls back to sorted keys
 	else:
 		d_ks = parse_kaks(kaks=kaks, pairs=pairs, max_ks=max_ks, fdtv=fdtv,
 			yn00=yn00, method=method, d_gff=d_gff,
