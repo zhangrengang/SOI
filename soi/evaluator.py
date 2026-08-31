@@ -16,9 +16,9 @@ def evaluate_args(parser):
 	parser.add_argument('-s', '-synteny', required=True, nargs='+',
 						dest='collinearities', metavar='FILE',
 						help='Collinearity files [required]')
-	parser.add_argument('-o', '-orthology', required=True, nargs='+',
+	parser.add_argument('-o', '-orthology', nargs='+', default=None,
 						dest='orthologs', metavar='FILE',
-						help='Ortholog files [required]')
+						help='Ortholog files for OI [optional; OI panels hidden if omitted]')
 	parser.add_argument('-g', '-gff', required=True, nargs='+',
 						dest='gff', metavar='GFF',
 						help='GFF file [required]')
@@ -31,6 +31,9 @@ def evaluate_args(parser):
 	parser.add_argument('-pre', '-prefix', type=str, default=None,
 						dest='pre', metavar='PREFIX',
 						help='Output prefix [default: <synteny>_<ref>]')
+	parser.add_argument('--blocks', metavar='NAME', type=str, nargs='*', default=None,
+						dest='blocks',
+						help='treat -s input(s) as paralog blocks file(s) and aggregate by branch; optional branch names, one-to-one with -s files (default: parsed from file names <prefix>.<branch>.blocks) [default: off]')
 	parser.add_argument('--figsize', type=float, nargs=2, default=(10, 12),
 						dest='figsize', metavar=('W', 'H'),
 						help='Figure size in inches [default: 10 12]')
@@ -44,7 +47,23 @@ def evaluate_main(**kargs):
 	eval(**kargs)
 
 
-def eval(collinearities, orthologs, gff, qry=None, ref=None, pre=None, figsize=(10, 12)):
+def eval(collinearities, orthologs, gff, qry=None, ref=None, pre=None, figsize=(10, 12),
+		 blocks=None):
+	# --blocks: aggregate by branch; names one-to-one with -s files or parsed from file names
+	d_file_branch = {}
+	if blocks is not None:
+		from .ks_plotter import parse_branch
+		files = [collinearities] if isinstance(collinearities, str) else collinearities
+		if blocks:
+			if len(blocks) != len(files):
+				logger.error('--blocks names ({}) must match -s files ({}) one-to-one'.format(
+					len(blocks), len(files)))
+				sys.exit(1)
+			for f, b in zip(files, blocks):
+				d_file_branch[f] = b
+		else:  # no names: parse from file names
+			for f in files:
+				d_file_branch[f] = parse_branch(f)
 	d_rcs = {}
 	d_refgenes = {}
 	for rc in XCollinearity(collinearities, orthologs=orthologs, gff=gff):
@@ -53,7 +72,10 @@ def eval(collinearities, orthologs, gff, qry=None, ref=None, pre=None, figsize=(
 			continue
 		sp1, sp2 = rc.species1, rc.species2
 		genes1, genes2 = rc.genes
-		if sp1 == sp2:
+		branch = None
+		if blocks is not None:
+			branch = d_file_branch.get(getattr(rc, 'source_file', None))
+		elif sp1 == sp2:
 			continue
 		if qry and sp1 not in qry and sp2 not in qry:
 			continue
@@ -61,7 +83,7 @@ def eval(collinearities, orthologs, gff, qry=None, ref=None, pre=None, figsize=(
 			sp1, sp2 = sp2, sp1
 			genes1, genes2 = genes2, genes1
 		xrc = SynRec(rc)
-		key = (sp1, sp2)
+		key = (branch, sp1, sp2) if blocks is not None else (sp1, sp2)
 		try:
 			d_rcs[key] += [xrc]
 		except KeyError:
@@ -100,16 +122,26 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9, figsize=(10, 12)):
 
     n = len(d_rcs)
     colors = Colors(n).colors
+    has_oi = all(rcs.has_oi for rcs in d_rcs.values())
     line = ['species1', 'species2',  'block number', 'gene number', 'min size',
             'max size', 'median size', 'mean size', 'size 50',
             'FR50', 'OI50']
     logger.info('\t'.join(line))
-    for i, ((sp1, sp2), rcs) in enumerate(sorted(d_rcs.items())):
-        _sp = convert_sp(sp2)
+    for i, (key, rcs) in enumerate(sorted(d_rcs.items(), key=str)):
+        if len(key) == 3:  # blocks mode: (branch, sp1, sp2)
+            from .style import format_species_label
+            branch, sp1, sp2 = key
+            s1, _ = format_species_label(sp1)
+            s2, _ = format_species_label(sp2)
+            _sp = '{}: {} {}'.format(branch, s1, s2)
+        else:
+            branch = None
+            sp1, sp2 = key
+            _sp = convert_sp(sp2)
         i50, sn50, fn50 = rcs.xn50  # index 50, block size 50, frac rate 50
         fm, sm = np.median(rcs.extended_frs), np.median(rcs.extended_ns)
         # frac rate 50, block size 50
-        om = np.median(rcs.extended_ois)  # OI 50
+        om = np.median(rcs.extended_ois) if has_oi else None  # OI 50
         ns = rcs.ns  # block sizes: Ns
         nb = len(ns)  # block number
         bm = sum(rcs.refcounts[:, 1])  # gene number of all blocks
@@ -123,12 +155,15 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9, figsize=(10, 12)):
         hist_plot(rcs.extended_frs, ax4, bins=40, **kargs)
         ax5.scatter(fm, sm, **kargs)
 
-        ax6.scatter(fm, om, **kargs)
-        hist_plot(rcs.extended_ois, ax7, bins=40, **kargs)
+        if has_oi:
+            ax6.scatter(fm, om, **kargs)
+            hist_plot(rcs.extended_ois, ax7, bins=40, **kargs)
         ax8.plot(rcs.refcounts[:, 0], rcs.refcounts[:, 1], **kargs)
 
-        line = [sp1, sp2, nb, bm, int(min(ns)), int(max(ns)), int(np.median(ns)),
-                round(np.mean(ns), 1), sm, round(fm, 2), round(om, 2)]
+        line = [branch if branch is not None else sp1, sp2, nb, bm,
+                int(min(ns)), int(max(ns)), int(np.median(ns)),
+                round(np.mean(ns), 1), sm, round(fm, 2),
+                round(om, 2) if has_oi else 'NA']
         logger.info('\t'.join(map(str, line)))
     # ax
     # 1	4
@@ -145,6 +180,9 @@ def plot_eval(d_rcs, outfig, legend_fontsize=9, figsize=(10, 12)):
             [ax7, 'Orthology index', 'Number of genes'],
             [ax8, 'Copy number', 'Number of genes'],
     ):
+        if ax in (ax6, ax7) and not has_oi:
+            ax.axis('off')  # OI panels hidden without orthologs input
+            continue
         set_labels(ax, xlab, ylab)
 
     # legend
@@ -196,18 +234,23 @@ class SynRec:
     def __init__(self, rc):
         self.N = rc.N
         self.fr = rc.fr
-        self.oi = rc.oi
+        self.oi = getattr(rc, 'oi', None)  # None if no orthologs input
 
 
 class SynRecs:
     def __init__(self, rcs):
         self.rcs = rcs
 
+    @property
+    def has_oi(self):
+        return any(rc.oi is not None for rc in self.rcs)
+
     @lazyproperty
     def matrix(self):
         data = []
         for rc in self.rcs:
-            data += [[rc.N, rc.fr, rc.oi]]
+            oi = rc.oi if rc.oi is not None else 0  # placeholder; panels hidden without OI
+            data += [[rc.N, rc.fr, oi]]
         return np.array(sorted(data, key=lambda x: -x[0]))
 
     @lazyproperty
