@@ -95,13 +95,18 @@ def normalize_weights(G, anchors):
 		d['weight'] = w2
 
 
-def mcl_components(G, inflation=1.5, max_iter=100, edge_power=1.0):
+def mcl_components(G, inflation=1.5, max_iter=200, edge_power=1.0, tol=1e-11):
 	"""MCL flow clustering on a small graph; returns list of node sets.
 
 	Weak edges (e.g. outparalog contamination) are broken by random-walk
 	flow: the transition matrix is expanded (matrix power) and inflated
-	(elementwise power + column normalize) until convergence, then nodes
-	attracted to the same column-maximum form a cluster.
+	(elementwise power + column normalize) until convergence, then clusters
+	are read off the attractor structure of the converged matrix, following
+	standard mcl: each column's argmax defines a j -> a(j) edge; strongly
+	connected components (incl. self-attractors) seed clusters and remaining
+	nodes are absorbed along their argmax chain.  Bare per-column argmax is
+	not used: on (near-)uniform fixed points of symmetric blocks it is
+	driven by 1e-14 float noise and shatters connected blocks.
 	"""
 	nodes = list(G.nodes())
 	n = len(nodes)
@@ -121,16 +126,43 @@ def mcl_components(G, inflation=1.5, max_iter=100, edge_power=1.0):
 		M2 = M @ M  # expand: 2-step transition
 		M2 = M2 ** inflation  # inflate: sharpen
 		M2 = M2 / M2.sum(axis=0, keepdims=True)
-		if np.allclose(M, M2, atol=1e-6):
+		if np.abs(M2 - M).max() < tol:
 			break
 		M = M2
-	# attractors: each column's argmax is the cluster anchor
-	clusters = {}
+	# attractor analysis (mcl-style): j -> argmax_j DAG; SCCs seed clusters
+	argmaxes = [int(M2[:, j].argmax()) for j in range(n)]
+	DG = nx.DiGraph()
+	DG.add_nodes_from(range(n))
+	for j, a in enumerate(argmaxes):
+		if a != j:
+			DG.add_edge(j, a)
+	node2cluster = {}
+	for scc in nx.strongly_connected_components(DG):
+		# multi-node cycles and self-attractors seed a cluster
+		if len(scc) > 1 or argmaxes[next(iter(scc))] == next(iter(scc)):
+			cid = len(node2cluster)
+			for x in scc:
+				node2cluster[x] = cid
+	# nodes outside any attractor SCC: walk the argmax chain into one
 	for j in range(n):
-		i = int(M2[:, j].argmax())
-		clusters.setdefault(i, set()).add(nodes[j])
+		if j in node2cluster:
+			continue
+		chain = [j]
+		cur = j
+		seen = set()
+		while cur not in node2cluster and cur not in seen:
+			seen.add(cur)
+			cur = argmaxes[cur]
+			chain.append(cur)
+		cid = node2cluster.get(cur, len(node2cluster))
+		node2cluster[cur] = cid
+		for x in chain:
+			node2cluster[x] = cid
+	clusters = {}
+	for j, cid in node2cluster.items():
+		clusters.setdefault(cid, set()).add(nodes[j])
 	return list(clusters.values())
-	
+
 class HOG:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "hog",
 		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, 
@@ -341,7 +373,7 @@ class HOG:
 			logger.info(f"Dropped {n_drop_no_cross} gene sets that do not cross all child branches")
 		if n_no_split:
 			logger.info(f"Kept {n_no_split} gene sets as single HOGs — do not cross all child branches")
-		logger.info("All HOGs with hierarchy built successfully!")
+		logger.info("All HOGs built!")
 		
 		if write_tsv:
 			with open(self.outtsv, 'w', encoding='utf-8') as f:
