@@ -128,6 +128,12 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	target.add_argument('--edge-power', type=float, default=1.0,
 						dest='edge_power',
 						help='Power exponent applied to edge weights before MCL (default: 1 = off)')
+	target.add_argument('--equal-weight', action='store_true', default=False,
+						dest='equal_weight',
+						help='Force equal edge weights (1.0) before MCL splitting, ignoring input weights (default: off)')
+	target.add_argument('--min-weight', type=float, default=None,
+						dest='min_weight',
+						help='Drop edges with weight below this threshold before MCL splitting (default: None = keep all)')
 	target.add_argument('--min-species-ratio', type=float, default=0,
 						dest='min_species_ratio',
 						help=argparse.SUPPRESS)  # 'Drop clusters whose species occupy < this fraction of the branch (default: 0)'

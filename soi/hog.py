@@ -1,4 +1,5 @@
 import sys
+import os
 import re
 import numpy as np
 import networkx as nx
@@ -163,12 +164,64 @@ def mcl_components(G, inflation=1.5, max_iter=200, edge_power=1.0, tol=1e-11):
 		clusters.setdefault(cid, set()).add(nodes[j])
 	return list(clusters.values())
 
+def mcl_components_mclbin(G, inflation=1.5, edge_power=1.0, **unused):
+	"""Reference implementation: call external mcl binary on the same subgraph.
+
+	Test/comparison only (SOI_MCL_BIN=path enables it at the mcl_components
+	call site); not used in production runs.  Returns the same shape as
+	mcl_components: list of node sets.
+	"""
+	import os
+	import subprocess
+	import tempfile
+	mclbin = os.environ.get('SOI_MCL_BIN')
+	if not mclbin:
+		raise ValueError('SOI_MCL_BIN not set')
+	nodes = list(G.nodes())
+	if len(nodes) <= 1:
+		return [set(nodes)]
+	idx = {node: i for i, node in enumerate(nodes)}
+	with tempfile.NamedTemporaryFile('w', suffix='.abc', delete=False) as f:
+		for u, v in G.edges():
+			w = G[u][v].get('weight', 1.0)
+			if edge_power != 1.0:
+				w = w ** edge_power
+			# mcl --abc requires integer node labels in .abc? no, arbitrary tokens ok,
+			# but '|' in gene ids must be quoted for mcl? mcl treats tab-separated
+			# fields as tokens; '|' is fine.  Use dummy integer labels to be safe.
+			f.write('{}\t{}\t{!r}\n'.format(idx[u], idx[v], w))
+		abc = f.name
+	out = abc + '.mcl'
+	try:
+		r = subprocess.run([mclbin, abc, '--abc', '-I', str(inflation), '-o', out],
+					   capture_output=True, text=True, timeout=300)
+		if r.returncode != 0:
+			raise RuntimeError('mcl failed: {} {}'.format(r.returncode, r.stderr[:200]))
+		clusters = []
+		for line in open(out):
+			line = line.strip()
+			if line:
+				clusters.append(set(nodes[int(x)] for x in line.split()))
+		# singletons: mcl outputs every node; if any missing (shouldn't), add isolated
+		seen = set()
+		for c in clusters:
+			seen |= c
+		for node in nodes:
+			if node not in seen:
+				clusters.append({node})
+		return clusters
+	finally:
+		import os as _os
+		_os.unlink(abc)
+		if _os.path.exists(out):
+			_os.unlink(out)
+
 class HOG:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "hog",
 		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, 
 			min_child_species=1, cross_speciation=False, drop_no_cross=False,
 			enable_root_paralog=False, mcl_split=False, mcl_inflation=1.5, min_species_ratio=0,
-			oi_norm=False, oi_tail=2.5, oi_shift_target=0.9, edge_power=1.0, **kargs):
+			oi_norm=False, oi_tail=2.5, oi_shift_target=0.9, edge_power=1.0, equal_weight=False, min_weight=None, **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
@@ -186,6 +239,8 @@ class HOG:
 		self.oi_shift_target = oi_shift_target
 		self.oi_tail = oi_tail
 		self.edge_power = edge_power
+		self.equal_weight = equal_weight
+		self.min_weight = min_weight
 		self._anchors = None
 		self.out_stats = outpre + '.hog.stats.tsv' if out_stats else None
 		self.bar_plot = outpre + '.hog.bar' if bar_plot else None
@@ -245,6 +300,13 @@ class HOG:
 		logger.info(f'Loading orthologs from {self.orthfiles}')
 		graph = ColinearGroups(self.orthfiles, spsd=self.species, 
 					noparalog=self.noparalog).graph
+		if self.min_weight is not None:
+			n0 = graph.number_of_edges()
+			dropped = [(u, v) for u, v, d in graph.edges(data=True)
+					   if d.get('weight', 1.0) < self.min_weight]
+			graph.remove_edges_from(dropped)
+			logger.info('Dropped {} edges with weight < {} (min_weight); {} edges remain'.format(
+				len(dropped), self.min_weight, graph.number_of_edges()))
 		if self.oi_norm == 'shift':
 			logger.info('Shifting OI medians to {} per species pair'.format(self.oi_shift_target))
 			oi_shift_normalize(graph, target=self.oi_shift_target)
@@ -252,12 +314,16 @@ class HOG:
 			logger.info('Normalizing OI weights (tail={}%) per species pair'.format(self.oi_tail))
 			self._anchors = oi_anchors(graph, tail=self.oi_tail)
 			normalize_weights(graph, self._anchors)
+		if self.equal_weight:
+			for u, v, d in graph.edges(data=True):
+				d['weight'] = 1.0
+			logger.info('Equal weights forced (equal_weight=True); input weights ignored')
 		# log effective splitting parameters for reproducibility
 		if self.mcl_split:
 			logger.info('MCL split enabled: mcl_split=True, inflation={}, edge_power={}, '
-						'oi_norm={}, oi_tail={}, oi_shift_target={}'.format(
+						'oi_norm={}, oi_tail={}, oi_shift_target={}, equal_weight={}, min_weight={}'.format(
 						self.mcl_inflation, self.edge_power, self.oi_norm,
-						self.oi_tail, self.oi_shift_target))
+						self.oi_tail, self.oi_shift_target, self.equal_weight, self.min_weight))
 		else:
 			logger.info('MCL split disabled (mcl_split=False); raw connected components used')
 		logger.info('Splitting parameters: min_child_species={}, min_species_ratio={}, '
@@ -330,7 +396,8 @@ class HOG:
 						connected_components = list(nx.connected_components(hog_subgraph))
 						# refine each component with MCL to break weak outparalog edges
 						if getattr(self, 'mcl_split', True) and len(subset_genes) > 2:
-							refined = mcl_components(hog_subgraph, inflation=self.mcl_inflation, edge_power=self.edge_power)
+							refine_fn = mcl_components_mclbin if os.environ.get('SOI_MCL_BIN') else mcl_components
+							refined = refine_fn(hog_subgraph, inflation=self.mcl_inflation, edge_power=self.edge_power)
 							if len(refined) > 1:
 								logger.debug('MCL split {} into {} clusters'.format(
 									og_id, len(refined)))
