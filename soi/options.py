@@ -290,13 +290,14 @@ def args_ksplot(parser):
 
 def args_prune(parser):
 	_add_shared_hog_args(parser)
-	parser.add_argument('-o', '--output', type=str,
+	g_out = parser.add_argument_group('Output')
+	g_out.add_argument('-o', '--output', type=str,
 						dest='output', metavar='FILE', default=None,
 						help='Output file path [default: stdout]')
-	parser.add_argument('-restore-gene','--restore-gene', action='store_true', 
+	g_out.add_argument('-restore-gene','--restore-gene', action='store_true', 
 						dest='restore_gene',default=False,
-						help='When a species has no genes retained, restore the first gene of that species (default: False)')
-	parser.add_argument('-restore-log','--restore-log', type=str,
+						help='When a species has no genes retained, restore the first gene of that species [default: off]')
+	g_out.add_argument('-restore-log','--restore-log', type=str,
 						dest='restore_log',
 						help='Log file path for recording restored genes')
 
