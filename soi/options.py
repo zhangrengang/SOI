@@ -110,7 +110,7 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 						dest='drop_no_cross',
 						help=argparse.SUPPRESS)  # 'Drop (instead of merge) HOGs whose genes do not span all child branches'
 	target.add_argument('--mcl-split', dest='mcl_split', action='store_true', default=False,
-						help=argparse.SUPPRESS)  # 'Enable MCL refinement of weakly connected components (default: disabled)'
+						help='Enable MCL refinement of weakly connected components (default: disabled)')
 	target.add_argument('-I', '--inflation', type=float, default=1.5,
 						dest='mcl_inflation',
 						help='MCL inflation for HOG splitting (default: 1.5)')

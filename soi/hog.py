@@ -220,6 +220,18 @@ class HOG:
 			logger.info('Normalizing OI weights (tail={}%) per species pair'.format(self.oi_tail))
 			self._anchors = oi_anchors(graph, tail=self.oi_tail)
 			normalize_weights(graph, self._anchors)
+		# log effective splitting parameters for reproducibility
+		if self.mcl_split:
+			logger.info('MCL split enabled: mcl_split=True, inflation={}, edge_power={}, '
+						'oi_norm={}, oi_tail={}, oi_shift_target={}'.format(
+						self.mcl_inflation, self.edge_power, self.oi_norm,
+						self.oi_tail, self.oi_shift_target))
+		else:
+			logger.info('MCL split disabled (mcl_split=False); raw connected components used')
+		logger.info('Splitting parameters: min_child_species={}, min_species_ratio={}, '
+					'cross_speciation={}, drop_no_cross={}, max_copies={}'.format(
+					self.min_child_species, self.min_species_ratio,
+					self.cross_speciation, self.drop_no_cross, self.max_copies))
 		logger.info(f'Splitting HOGs from {self.ogfile}')
 		root_node = sptree.get_tree_root()
 		prefix = 'hog'
