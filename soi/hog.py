@@ -229,9 +229,9 @@ class HOG:
 		else:
 			logger.info('MCL split disabled (mcl_split=False); raw connected components used')
 		logger.info('Splitting parameters: min_child_species={}, min_species_ratio={}, '
-					'cross_speciation={}, drop_no_cross={}, max_copies={}'.format(
+					'cross_speciation={}, drop_no_cross={}, '.format(
 					self.min_child_species, self.min_species_ratio,
-					self.cross_speciation, self.drop_no_cross, self.max_copies))
+					self.cross_speciation, self.drop_no_cross, ))
 		logger.info(f'Splitting HOGs from {self.ogfile}')
 		root_node = sptree.get_tree_root()
 		prefix = 'hog'

@@ -35,7 +35,7 @@ def load_tree_smart(treestr):
     """
     # 提取所有 ")LABEL:" 或 ")LABEL;" 模式的内部节点标签
     # 匹配 ) 后到 : 或 ; 或 ) 前的内容
-    internal_labels = re.findall(r'\)([^:;,\(\)]+)(?=:)', treestr)
+    internal_labels = re.findall(r'\)([^:;,\(\)]+)(?=[;:])', treestr)
     
     # 判断是否有非数字标签（允许空，允许小数）
     has_text_label = any(
