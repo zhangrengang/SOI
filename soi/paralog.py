@@ -139,7 +139,7 @@ class ParalogIndexer:
 				 self_synteny=None, min_n=0, gff=None, min_dist=None,
 				 pi_cutoff=0.05, nodes=None, species=None,
 				 prefix='paralog_index', box_branch=False, line_plot=False, note=None,
-				 tree_heatmap=False,
+				 tree_heatmap=False, heatmap_raster=True,
 				 **hog_kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
@@ -161,6 +161,7 @@ class ParalogIndexer:
 		self.box_branch = box_branch
 		self.line_plot = line_plot
 		self.tree_heatmap = tree_heatmap
+		self.heatmap_raster = heatmap_raster
 		self.hog_kargs = hog_kargs
 
 		# lazy
@@ -416,7 +417,7 @@ class ParalogIndexer:
 			colors = [cmap(v) for v in branch_vec]
 			ax.broken_barh(list(zip(x[:-1], w)), (i - 0.5, 1.0),
 						   facecolors=colors, edgecolors='none',
-						   linewidths=0)
+						   linewidths=0, rasterized=self.heatmap_raster)
 		ax.set_xlim(0, x[-1])
 		ax.set_ylim(-0.5, len(branches) - 0.5)
 		ax.invert_yaxis()  # branches top-down (first branch at top)
@@ -493,7 +494,7 @@ class ParalogIndexer:
 		if getattr(self, 'note', None):
 			fig.text(0.1, 0.1, self.note, fontsize=8, va='bottom', ha='left',
 					 color='0.4', bbox=dict(facecolor='white', alpha=1, edgecolor='none', pad=2))
-		fig.savefig(self.prefix + '.heatmap.pdf', bbox_inches='tight')
+		fig.savefig(self.prefix + '.heatmap.pdf', dpi=300, bbox_inches='tight')
 		fig.savefig(self.prefix + '.heatmap.png', dpi=150, bbox_inches='tight')
 		plt.close(fig)
 		logger.info('Heatmap written to {}.heatmap.pdf/png'.format(self.prefix))
@@ -652,9 +653,11 @@ def xmain(**kargs):
 		heatmap = kargs.pop('heatmap', False)
 		heatmap_cluster = kargs.pop('heatmap_cluster', False)
 		heatmap_scale = kargs.pop('heatmap_scale', None)
+		heatmap_raster = kargs.pop('heatmap_raster', True)
 		indexer = ParalogIndexer(**kargs)
 		indexer.heatmap_cluster = heatmap_cluster
 		indexer.heatmap_scale = heatmap_scale
+		indexer.heatmap_raster = heatmap_raster
 		assigned = indexer.assign()
 		stats = indexer.write_stats(assigned)
 		indexer.write_heatmap_matrix(assigned)
