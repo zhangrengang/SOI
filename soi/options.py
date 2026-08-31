@@ -80,72 +80,74 @@ def func_filter(**kargs):
 	identify_orthologous_blocks(**kargs)
 
 def _add_shared_hog_args(parser, og_required=True, s_required=True,
-						 t_required=True, group=None):
-	"""Shared arguments for prune and hog subcommands.
+						 t_required=True):
+	"""Shared arguments for prune and hog subcommands, in three groups.
 
-	If group (an argparse argument group) is given, arguments are added to
-	it instead of the parser directly.
+	Group 1 "HOG input": input files.  Group 2 "HOG structure control":
+	how the HOG tree is built/merged/dropped.  Group 3 "MCL refinement":
+	MCL splitting and edge-weight transforms.
 	"""
-	target = group if group is not None else parser
-	target.add_argument('-og', '-orthogroup', required=og_required, type=str,
+	g_in = parser.add_argument_group('HOG input')
+	g_ctl = parser.add_argument_group('HOG structure control')
+	g_mcl = parser.add_argument_group('MCL refinement')
+	g_in.add_argument('-og', '-orthogroup', required=og_required, type=str,
 						dest='ogfile', metavar='FILE',
-						help='Orthogroup file (MCL format)')
-	target.add_argument('-s', '-synteny', required=s_required, type=str, nargs='+',
+						help='Orthogroup input file (MCL format)')
+	g_in.add_argument('-s', '-synteny', required=s_required, type=str, nargs='+',
 						dest='orthfiles', metavar='FILE',
-						help='Ortholog/Collinearity files for orthologous relationships')
-	target.add_argument('-t', '-sptree', required=t_required, type=str,
+						help='Ortholog/Collinearity input files for orthologous relationships')
+	g_in.add_argument('-t', '-sptree', required=t_required, type=str,
 						dest='sptreefile', metavar='FILE',
-						help='Species tree file (Newick)')
-	target.add_argument('-inparalog', action='store_true', default=False,
+						help='Species tree input file (Newick)')
+	g_in.add_argument('-inparalog', action='store_true', default=False,
 						dest='paralog',
 						help=argparse.SUPPRESS) #'Include paralogs in `-s` input. Do NOT '
 							 #'enable if the input paralogs is not terminal inparalogs')
-	target.add_argument('--min-child-species', type=int, default=1,
+	g_ctl.add_argument('--min-child-species', type=int, default=1,
 						dest='min_child_species', metavar='INT',
 						help=argparse.SUPPRESS)  # 'Minimum number of species in a child HOG for it to be retained [default=%(default)s]'
-	target.add_argument('--cross-speciation', action='store_true', default=False,
+	g_ctl.add_argument('--cross-speciation', action='store_true', default=False,
 						dest='cross_speciation',
 						help=argparse.SUPPRESS)  # 'Merge child HOGs whose genes do not span all child branches of this node'
-	target.add_argument('--drop-no-cross', action='store_true', default=False,
+	g_ctl.add_argument('--drop-no-cross', action='store_true', default=False,
 						dest='drop_no_cross',
 						help=argparse.SUPPRESS)  # 'Drop (instead of merge) HOGs whose genes do not span all child branches'
-	target.add_argument('--mcl-split', dest='mcl_split', action='store_true', default=False,
+	g_mcl.add_argument('--mcl-split', dest='mcl_split', action='store_true', default=False,
 						help='Enable MCL refinement of weakly connected components (default: disabled)')
-	target.add_argument('-I', '--inflation', type=float, default=1.5,
+	g_mcl.add_argument('-I', '--inflation', type=float, default=1.5,
 						dest='mcl_inflation', metavar='FLOAT',
 						help='MCL inflation for HOG splitting (default: 1.5)')
-	target.add_argument('--oi-norm', type=str, default=None,
+	g_mcl.add_argument('--oi-norm', type=str, default=None,
 						dest='oi_norm', choices=['quantile', 'shift'],
 						help='Normalize OI weights per species pair before MCL splitting: '
 							 'quantile = 3-anchor (q/median/q) piecewise mapping; '
 							 'shift = median shifted to --oi-shift-target (slope preserved)')
-	target.add_argument('--oi-shift-target', type=float, default=0.9,
+	g_mcl.add_argument('--oi-shift-target', type=float, default=0.9,
 						dest='oi_shift_target', metavar='FLOAT',
 						help='Median target for --oi-norm shift (default: 0.9)')
-	target.add_argument('--oi-tail', type=float, default=2.5,
+	g_mcl.add_argument('--oi-tail', type=float, default=2.5,
 						dest='oi_tail', metavar='FLOAT',
 						help='Tail percentage clipped by --oi-norm on each side (default: 2.5)')
-	target.add_argument('--edge-power', type=float, default=1.0,
+	g_mcl.add_argument('--edge-power', type=float, default=1.0,
 						dest='edge_power', metavar='FLOAT',
 						help='Power exponent applied to edge weights before MCL (default: 1 = off)')
-	target.add_argument('--equal-weight', action='store_true', default=False,
+	g_mcl.add_argument('--equal-weight', action='store_true', default=False,
 						dest='equal_weight',
 						help='Force equal edge weights (1.0) before MCL splitting, ignoring input weights (default: off)')
-	target.add_argument('--min-weight', type=float, default=None,
+	g_mcl.add_argument('--min-weight', type=float, default=None,
 						dest='min_weight', metavar='FLOAT',
 						help='Drop edges with weight below this threshold before MCL splitting (default: None = keep all)')
-	target.add_argument('--min-species-ratio', type=float, default=0,
+	g_ctl.add_argument('--min-species-ratio', type=float, default=0,
 						dest='min_species_ratio', metavar='FLOAT',
 						help=argparse.SUPPRESS)  # 'Drop clusters whose species occupy < this fraction of the branch (default: 0)'
-	target.add_argument('--enable-root-paralog', action='store_true', default=False,
+	g_ctl.add_argument('--enable-root-paralog', action='store_true', default=False,
 						dest='enable_root_paralog',
 						help=argparse.SUPPRESS)  # 'Pair root-level sibling HOGs (default: False)'
-	target.add_argument('--out-stats', action='store_true', default=True,
+	g_ctl.add_argument('--out-stats', action='store_true', default=True,
                        help=argparse.SUPPRESS)  # 'Output copy-number statistics TSV (<prefix>.stats.tsv)')
 
 def args_hog(parser):
-	g_build = parser.add_argument_group('HOG building')
-	_add_shared_hog_args(parser, group=g_build)
+	_add_shared_hog_args(parser)
 	g_out = parser.add_argument_group('Output')
 	g_out.add_argument('-pre', '-prefix', type=str, default='HOGs',
 					   dest='outpre', metavar='FILE',
@@ -163,10 +165,10 @@ def func_hog(**kargs):
 	from .hog import xmain as hog_main
 	hog_main(**kargs)
 def args_paralog(parser):
-	g_hog = parser.add_argument_group('HOG building')
 	_add_shared_hog_args(parser, og_required=False, s_required=False,
-						 t_required=False, group=g_hog)
-	g_hog.add_argument('--write-hog', action='store_true', default=True,
+						 t_required=False)
+	g_ctl = parser.add_argument_group('HOG structure control')
+	g_ctl.add_argument('--write-hog', action='store_true', default=True,
 					   dest='write_hog',
 					   help=argparse.SUPPRESS)  # 'Write HOGs.tsv while rebuilding (for later --hog reuse)'
 
