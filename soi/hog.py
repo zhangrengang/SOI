@@ -205,7 +205,7 @@ class HOG:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None, outpre = "hog",
 		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, 
 			min_child_species=1, cross_speciation=False, drop_no_cross=False,
-			enable_root_paralog=False, mcl_split=False, mcl_inflation=1.5, min_species_ratio=0,
+			enable_root_paralog=False, mcl_split=True, mcl_inflation=1.5, min_species_ratio=0,
 			oi_norm=False, oi_tail=2.5, oi_shift_target=0.9, edge_power=1.0, equal_weight=False, min_weight=None, **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
@@ -292,9 +292,11 @@ class HOG:
 			graph.remove_edges_from(dropped)
 			logger.info('Dropped {} edges with weight < {} (min_weight); {} edges remain'.format(
 				len(dropped), self.min_weight, graph.number_of_edges()))
-		if self.oi_norm == 'shift':
-			logger.info('Shifting OI medians to {} per species pair'.format(self.oi_shift_target))
+		if self.oi_shift_target is not None:
+			logger.info('Shifting OI medians to {} per species pair (--median-weight)'.format(self.oi_shift_target))
 			oi_shift_normalize(graph, target=self.oi_shift_target)
+		elif self.oi_norm == 'shift':
+			raise ValueError('--norm-method shift requires --median-weight (shift target); none given')
 		elif self.oi_norm:
 			logger.info('Normalizing OI weights (tail={}%) per species pair'.format(self.oi_tail))
 			self._anchors = oi_anchors(graph, tail=self.oi_tail)
@@ -305,12 +307,12 @@ class HOG:
 			logger.info('Equal weights forced (equal_weight=True); input weights ignored')
 		# log effective splitting parameters for reproducibility
 		if self.mcl_split:
-			logger.info('MCL split enabled: mcl_split=True, inflation={}, edge_power={}, '
-						'oi_norm={}, oi_tail={}, oi_shift_target={}, equal_weight={}, min_weight={}'.format(
+			logger.info('MCL split enabled: inflation={}, weight_power={}, '
+						'norm_method={}, weight_tail={}, median_weight={}, equal_weight={}, min_weight={}'.format(
 						self.mcl_inflation, self.edge_power, self.oi_norm,
 						self.oi_tail, self.oi_shift_target, self.equal_weight, self.min_weight))
 		else:
-			logger.info('MCL split disabled (mcl_split=False); raw connected components used')
+			logger.info('MCL split disabled (--no-mcl); raw connected components used')
 		logger.info('Splitting parameters: min_child_species={}, min_species_ratio={}, '
 					'cross_speciation={}, drop_no_cross={}, '.format(
 					self.min_child_species, self.min_species_ratio,

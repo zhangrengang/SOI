@@ -112,31 +112,34 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	g_ctl.add_argument('--drop-no-cross', action='store_true', default=False,
 						dest='drop_no_cross',
 						help=argparse.SUPPRESS)  # 'Drop (instead of merge) HOGs whose genes do not span all child branches'
-	g_mcl.add_argument('--mcl-split', dest='mcl_split', action='store_true', default=False,
-						help='Enable MCL refinement of weakly connected components (default: disabled)')
+	g_mcl.add_argument('--no-mcl', dest='mcl_split', action='store_false', default=True,
+						help='Disable MCL refinement; use raw connected components instead [default: MCL on]')
+	g_mcl.add_argument('--mcl-split', dest='mcl', action='store_true', default=False,
+                        help=argparse.SUPPRESS)
 	g_mcl.add_argument('-I', '--inflation', type=float, default=1.5,
 						dest='mcl_inflation', metavar='FLOAT',
-						help='MCL inflation for HOG splitting (default: 1.5)')
-	g_mcl.add_argument('--oi-norm', type=str, default=None,
+						help='MCL inflation for HOG splitting [default=%(default)s]')
+	g_mcl.add_argument('--norm-method', type=str, default=None,
 						dest='oi_norm', choices=['quantile', 'shift'],
-						help='Normalize OI weights per species pair before MCL splitting: '
-							 'quantile = 3-anchor (q/median/q) piecewise mapping; '
-							 'shift = median shifted to --oi-shift-target (slope preserved)')
-	g_mcl.add_argument('--oi-shift-target', type=float, default=0.9,
+						help=argparse.SUPPRESS) #'Normalize OI weights per species pair before MCL splitting: '
+							 #'quantile = 3-anchor (q/median/q) piecewise mapping; '
+							 #'shift = median shifted to --oi-shift-target (slope preserved)')
+	g_mcl.add_argument('--median-weight', type=float, default=None,
 						dest='oi_shift_target', metavar='FLOAT',
-						help='Median target for --oi-norm shift (default: 0.9)')
-	g_mcl.add_argument('--oi-tail', type=float, default=2.5,
+						help='Shift the median weight per species pair to a fixed value (0.8-1 recommended); '
+							 'enables shift normalization [default: None = off]')
+	g_mcl.add_argument('--weight-tail', type=float, default=2.5,
 						dest='oi_tail', metavar='FLOAT',
-						help='Tail percentage clipped by --oi-norm on each side (default: 2.5)')
-	g_mcl.add_argument('--edge-power', type=float, default=1.0,
+						help=argparse.SUPPRESS) #'Tail percentage clipped by normalization on each side [default=%(default)s]')
+	g_mcl.add_argument('--weight-power', type=float, default=1.0,
 						dest='edge_power', metavar='FLOAT',
-						help='Power exponent applied to edge weights before MCL (default: 1 = off)')
+						help='Power exponent applied to edge weights before MCL [default=%(default)s = off]')
 	g_mcl.add_argument('--equal-weight', action='store_true', default=False,
 						dest='equal_weight',
-						help='Force equal edge weights (1.0) before MCL splitting, ignoring input weights (default: off)')
+						help='Force equal edge weights (1.0) before MCL splitting, ignoring input weights [default: off]')
 	g_mcl.add_argument('--min-weight', type=float, default=None,
 						dest='min_weight', metavar='FLOAT',
-						help='Drop edges with weight below this threshold before MCL splitting (default: None = keep all)')
+						help='Drop edges with weight below this threshold before MCL splitting [default: None = keep all]')
 	g_ctl.add_argument('--min-species-ratio', type=float, default=0,
 						dest='min_species_ratio', metavar='FLOAT',
 						help=argparse.SUPPRESS)  # 'Drop clusters whose species occupy < this fraction of the branch (default: 0)'
@@ -150,7 +153,7 @@ def args_hog(parser):
 	_add_shared_hog_args(parser)
 	g_out = parser.add_argument_group('Output')
 	g_out.add_argument('-pre', '-prefix', type=str, default='HOGs',
-					   dest='outpre', metavar='FILE',
+					   dest='outpre', metavar='PREFIX',
 					   help='Output prefix [default=%(default)s]')
 #	g_out.add_argument('--out-stats', action='store_true', default=False,
 #					   help='Output copy-number statistics TSV (<prefix>.stats.tsv)')
@@ -396,7 +399,7 @@ This will use Orthology Index as weight for MCL [default=%(default)s]")
 						dest='ingroup', nargs='*',
 						help="Ingroups that are only included [default=%(default)s]")
 	parser.add_argument('-pre', '-prefix', type=str, default='cluster',
-						dest='outpre',
+						dest='outpre', metavar='PREFIX',
 						help="Output prefix [default=%(default)s]")
 	parser.add_argument('-m','-method', type=str, default='mcl',
 						dest='method',

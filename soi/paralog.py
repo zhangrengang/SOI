@@ -56,7 +56,7 @@ class Paralog:
 
 
 		self.kargs.update(min_child_species=2, cross_speciation=True, drop_no_cross=True,
-						 min_species_ratio=0.2, ) # mcl_split=True)
+						 min_species_ratio=0.2)
 		logger.info('reset kargs for paralog: {}'.format(self.kargs))
 		hog = HOG(ogfile=self.ogfile, orthfiles=self.orthfiles,
 				  sptreefile=self.sptreefile, outpre=self.prefix, **self.kargs)
