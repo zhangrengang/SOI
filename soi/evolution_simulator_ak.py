@@ -1473,48 +1473,48 @@ def sim_args(parser):
                         help='Output directory [default=%(default)s]')
 
     g_anc = parser.add_argument_group('Ancestor genome')
-    g_anc.add_argument('--num-chroms', type=int, default=8,
+    g_anc.add_argument('--num-chroms', type=int, default=8, metavar='INT',
                        help='Number of ancestral chromosomes [default=%(default)s]')
-    g_anc.add_argument('--min-genes', type=int, default=200,
+    g_anc.add_argument('--min-genes', type=int, default=200, metavar='INT',
                        help='Min genes per ancestral chromosome [default=%(default)s]')
-    g_anc.add_argument('--max-genes', type=int, default=1000,
+    g_anc.add_argument('--max-genes', type=int, default=1000, metavar='INT',
                        help='Max genes per ancestral chromosome [default=%(default)s]')
 
     g_rate = parser.add_argument_group('Rates (per unit branch length)')
-    g_rate.add_argument('--inv-rate', type=float, default=10.0,
+    g_rate.add_argument('--inv-rate', type=float, metavar='FLOAT', default=10.0,
                         help='Inversion rate [default=%(default)s]')
-    g_rate.add_argument('--rt-rate', type=float, default=4.0,
+    g_rate.add_argument('--rt-rate', type=float, metavar='FLOAT', default=4.0,
                         help='Reciprocal translocation rate [default=%(default)s]')
-    g_rate.add_argument('--ncf-rate', type=float, default=2.0,
+    g_rate.add_argument('--ncf-rate', type=float, metavar='FLOAT', default=2.0,
                         help='Non-centric fusion rate [default=%(default)s]')
-    g_rate.add_argument('--eej-rate', type=float, default=2.0,
+    g_rate.add_argument('--eej-rate', type=float, metavar='FLOAT', default=2.0,
                         help='End-end joining rate [default=%(default)s]')
-    g_rate.add_argument('--fission-rate', type=float, default=0.02,
+    g_rate.add_argument('--fission-rate', type=float, metavar='FLOAT', default=0.02,
                         help='Fission rate (very low) [default=%(default)s]')
-    g_rate.add_argument('--wgd-rate', type=float, default=0.2,
+    g_rate.add_argument('--wgd-rate', type=float, metavar='FLOAT', default=0.2,
                         help='WGD rate (2x most common) [default=%(default)s]')
-    g_rate.add_argument('--gene-gain-rate', type=float, default=0.5,
+    g_rate.add_argument('--gene-gain-rate', type=float, metavar='FLOAT', default=0.5,
                         help='Gene gain rate [default=%(default)s]')
-    g_rate.add_argument('--gene-loss-rate', type=float, default=0.5,
+    g_rate.add_argument('--gene-loss-rate', type=float, metavar='FLOAT', default=0.5,
                         help='Gene loss rate [default=%(default)s]')
-    g_rate.add_argument('--tandem-dup-rate', type=float, default=10.0,
+    g_rate.add_argument('--tandem-dup-rate', type=float, metavar='FLOAT', default=10.0,
                         help='Tandem duplication rate [default=%(default)s]')
-    g_rate.add_argument('--dispersed-dup-rate', type=float, default=2.0,
+    g_rate.add_argument('--dispersed-dup-rate', type=float, metavar='FLOAT', default=2.0,
                         help='Dispersed duplication rate [default=%(default)s]')
-    g_rate.add_argument('--unidir-trans-rate', type=float, default=1.0,
+    g_rate.add_argument('--unidir-trans-rate', type=float, metavar='FLOAT', default=1.0,
                         help='Unidirectional translocation rate [default=%(default)s]')
-    g_rate.add_argument('--frac-rate', type=float, default=1000,
+    g_rate.add_argument('--frac-rate', type=float, metavar='FLOAT', default=1000,
                         help='Fractionation rate after WGD (Poisson rate per gene) [default=%(default)s]')
-    g_rate.add_argument('--seg-del-rate', type=float, default=0.1,
+    g_rate.add_argument('--seg-del-rate', type=float, metavar='FLOAT', default=0.1,
                         help='Segmental deletion rate [default=%(default)s]')
-    g_rate.add_argument('--seg-dup-rate', type=float, default=0.2,
+    g_rate.add_argument('--seg-dup-rate', type=float, metavar='FLOAT', default=0.2,
                         help='Segmental duplication rate [default=%(default)s]')
-    g_rate.add_argument('--chromothripsis-rate', type=float, default=0.01,
+    g_rate.add_argument('--chromothripsis-rate', type=float, metavar='FLOAT', default=0.01,
                         help='Chromothripsis rate [default=%(default)s]')
-    g_rate.add_argument('--scale', type=float, default=1.0,
+    g_rate.add_argument('--scale', type=float, metavar='FLOAT', default=1.0,
                         help='Global rate scaling factor [default=%(default)s]')
 
-    parser.add_argument('--seed', type=int, default=42,
+    parser.add_argument('--seed', type=int, default=42, metavar='INT',
                         help='Random seed [default=%(default)s]')
 
 

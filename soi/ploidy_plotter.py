@@ -68,7 +68,7 @@ def ploidy_args(parser):
 					default=['pdf', 'png'], help="default=%(default)s")
 	g_out.add_argument('--nrow', metavar='INT', type=int, default=None,
 					help="number of rows. default=%(default)s")
-	g_out.add_argument('--min_same_block', type=int, default=25,
+	g_out.add_argument('--min_same_block', metavar='INT', type=int, default=25,
 					help=argparse.SUPPRESS) #"min gene number in a block on the same chromosome. default=%(default)s")
 	g_perf = parser.add_argument_group('Performance')
 	g_perf.add_argument('--threads', metavar='INT', type=int, default=1, dest='threads',

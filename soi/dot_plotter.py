@@ -178,7 +178,7 @@ def dotplot_args(parser):
 						  help="plot color bar when no histogram plot. [default=%(default)s]")
 	group_ks.add_argument('--clip-ks', action='store_true', default=None,
 						  help=argparse.SUPPRESS)  # "clip ks > max-ks. [default=%(default)s]")
-	group_ks.add_argument('--hist-ylim', type=float, default=None,
+	group_ks.add_argument('--hist-ylim', metavar='FLOAT', type=float, default=None,
 						  help=argparse.SUPPRESS)  # "max y axis of Ks histgram. [default=%(default)s]")
 	group_ks.add_argument('--lfont-scale', metavar='NUM', type=float, default=1.5,
                             help="scaling factor for font size of x/y labels of subplots b--d [default=%(default)s]")

@@ -52,7 +52,7 @@ def retention_args(parser):
 						dest='count_duplicates',
 						help="Count syntenic genes with multiplicity "
 							 "(for WGD query, retention may exceed 1)")
-	parser.add_argument('--min_same_block', type=int, default=25,
+	parser.add_argument('--min_same_block', metavar='INT', type=int, default=25,
 						help=argparse.SUPPRESS)
 
 

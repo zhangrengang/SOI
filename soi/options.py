@@ -87,18 +87,18 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	how the HOG tree is built/merged/dropped.  Group 3 "MCL refinement":
 	MCL splitting and edge-weight transforms.
 	"""
-	g_in = parser.add_argument_group('HOG input')
+	g_in = parser.add_argument_group('Input for HOG building')
 	g_ctl = parser.add_argument_group('HOG structure control')
 	g_mcl = parser.add_argument_group('MCL refinement')
 	g_in.add_argument('-og', '-orthogroup', required=og_required, type=str,
 						dest='ogfile', metavar='FILE',
-						help='Orthogroup input file (MCL format)')
+						help='Orthogroup file (MCL format)')
 	g_in.add_argument('-s', '-synteny', required=s_required, type=str, nargs='+',
 						dest='orthfiles', metavar='FILE',
-						help='Ortholog/Collinearity input files for orthologous relationships')
+						help='Ortholog/Collinearity files for orthologous relationships')
 	g_in.add_argument('-t', '-sptree', required=t_required, type=str,
 						dest='sptreefile', metavar='FILE',
-						help='Species tree input file (Newick)')
+						help='Species tree file (Newick format)')
 	g_in.add_argument('-inparalog', action='store_true', default=False,
 						dest='paralog',
 						help=argparse.SUPPRESS) #'Include paralogs in `-s` input. Do NOT '
@@ -198,9 +198,9 @@ def args_paralog(parser):
 					  help='Minimum distance to remove a tandem repeated block [default=None]')
 	g_ix.add_argument('--pi-cutoff', type=float, default=0.05,
 					  dest='pi_cutoff', metavar='FLOAT',
-					  help='BPI cutoff: blocks whose best-branch BPI falls below '
-						   'this are assigned to the root (BPI = branch paralog_pairs / '
-						   'block_gene_pairs) [default=%(default)s]')
+					  help=argparse.SUPPRESS) #'BPI cutoff: blocks whose best-branch BPI falls below '
+						   #'this are assigned to the root (BPI = branch paralog_pairs / '
+						   #'block_gene_pairs) [default=%(default)s]')
 	g_ix.add_argument('--nodes', metavar='NODE', nargs='+', type=str, default=None,
 					  dest='nodes',
 					  help='Tree nodes to report paralogs for (default: all)')
