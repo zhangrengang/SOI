@@ -112,7 +112,7 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	target.add_argument('--mcl-split', dest='mcl_split', action='store_true', default=False,
 						help='Enable MCL refinement of weakly connected components (default: disabled)')
 	target.add_argument('-I', '--inflation', type=float, default=1.5,
-						dest='mcl_inflation',
+						dest='mcl_inflation', metavar='FLOAT',
 						help='MCL inflation for HOG splitting (default: 1.5)')
 	target.add_argument('--oi-norm', type=str, default=None,
 						dest='oi_norm', choices=['quantile', 'shift'],
@@ -120,22 +120,22 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 							 'quantile = 3-anchor (q/median/q) piecewise mapping; '
 							 'shift = median shifted to --oi-shift-target (slope preserved)')
 	target.add_argument('--oi-shift-target', type=float, default=0.9,
-						dest='oi_shift_target',
+						dest='oi_shift_target', metavar='FLOAT',
 						help='Median target for --oi-norm shift (default: 0.9)')
 	target.add_argument('--oi-tail', type=float, default=2.5,
-						dest='oi_tail',
+						dest='oi_tail', metavar='FLOAT',
 						help='Tail percentage clipped by --oi-norm on each side (default: 2.5)')
 	target.add_argument('--edge-power', type=float, default=1.0,
-						dest='edge_power',
+						dest='edge_power', metavar='FLOAT',
 						help='Power exponent applied to edge weights before MCL (default: 1 = off)')
 	target.add_argument('--equal-weight', action='store_true', default=False,
 						dest='equal_weight',
 						help='Force equal edge weights (1.0) before MCL splitting, ignoring input weights (default: off)')
 	target.add_argument('--min-weight', type=float, default=None,
-						dest='min_weight',
+						dest='min_weight', metavar='FLOAT',
 						help='Drop edges with weight below this threshold before MCL splitting (default: None = keep all)')
 	target.add_argument('--min-species-ratio', type=float, default=0,
-						dest='min_species_ratio',
+						dest='min_species_ratio', metavar='FLOAT',
 						help=argparse.SUPPRESS)  # 'Drop clusters whose species occupy < this fraction of the branch (default: 0)'
 	target.add_argument('--enable-root-paralog', action='store_true', default=False,
 						dest='enable_root_paralog',
@@ -156,7 +156,7 @@ def args_hog(parser):
 					   help='Output bar chart of copy-number distribution (<prefix>.bar.pdf/.png)')
 	g_out.add_argument('--tree-plot', action='store_true', default=False,
 					   help='Output species tree with copy-number pie charts at nodes (<prefix>.tree.pdf/.png)')
-	g_out.add_argument('--max-copies', type=int, default=5,
+	g_out.add_argument('--max-copies', type=int, default=5, metavar='INT',
 					   help='Max copy number to track in stats/plot [default=%(default)s]')
 
 def func_hog(**kargs):
