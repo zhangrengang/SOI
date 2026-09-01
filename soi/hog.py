@@ -428,7 +428,19 @@ class HOG:
 		if n_no_split:
 			logger.info(f"Kept {n_no_split} gene sets as single HOGs — do not cross all child branches")
 		logger.info("All HOGs built!")
-		
+
+		# species consistency: tree leaves vs genes actually present in HOGs
+		# (single warning; data-side species were filtered during building)
+		hog_species = set()
+		for hog in self.all_hogs.values():
+			for g in hog["genes"]:
+				hog_species.add(g.split('|')[0] if '|' in g else g.rsplit('_', 1)[0])
+		missing = sorted(set(self.species) - hog_species)
+		if missing:
+			logger.warning('{} species in tree have no genes in HOG data '
+				'(excluded from building or absent from input): {}'.format(
+				len(missing), ', '.join(missing)))
+
 		if write_tsv:
 			with open(self.outtsv, 'w', encoding='utf-8') as f:
 				self.write_all_hogs_in_one_file(f)

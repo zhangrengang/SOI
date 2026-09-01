@@ -241,6 +241,15 @@ class ParalogIndexer:
 		self._pi_rows = []  # (block_id, N, pi_vector) for heatmap
 		self._branch_raw_signal = defaultdict(int)  # raw paralog count per branch (all blocks, even weak)
 
+		# tree leaf species for consistency check (assign must never produce
+		# stats keys for species absent from the tree — write_stats sorts by
+		# _ordered_branches.index(species) and would raise ValueError)
+		tree_species = None
+		if self.sptreefile:
+			from .tree import number_nodes
+			tree_species = set(number_nodes(self.sptreefile).get_leaf_names())
+		excluded_species = defaultdict(lambda: [0, 0])  # sp -> [n_blocks, n_genes]
+
 		for rc in XCollinearity(self.self_synteny, gff=self.gff):
 			if rc.N < self.min_n:
 				continue
@@ -249,6 +258,12 @@ class ParalogIndexer:
 			if self.min_dist and rc.is_tandem(self.min_dist):
 				continue
 			if self.species and rc.species1 not in self.species:
+				continue
+			if tree_species is not None and rc.species1 not in tree_species:
+				# single warning after the loop; never touch filenames
+				ex = excluded_species[rc.species1]
+				ex[0] += 1
+				ex[1] += rc.N
 				continue
 
 			block_pairs = [self._canonical_pair(g1, g2) for g1, g2 in rc.pairs]
@@ -276,6 +291,12 @@ class ParalogIndexer:
 			self._pi_rows.append((rc.id, rc.species1, rc.N,
 								  best_branch, tuple(pi_vector)))
 		self._pi_branches = branches
+		if excluded_species:
+			logger.warning('Excluded {} self-synteny blocks ({} genes) from {} species not in species tree: {}'.format(
+				sum(v[0] for v in excluded_species.values()),
+				sum(v[1] for v in excluded_species.values()),
+				len(excluded_species),
+				', '.join('{} ({} blocks)'.format(sp, v[0]) for sp, v in sorted(excluded_species.items()))))
 		logger.info('Assigned blocks to {} branches'.format(len(assigned)))
 		n_assigned_blocks = sum(len(v) for b, v in assigned.items() if b != 'Unassigned')
 		n_unassigned_blocks = len(assigned.get('Unassigned', []))
