@@ -133,7 +133,7 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 						help=argparse.SUPPRESS) #'Tail percentage clipped by normalization on each side [default=%(default)s]')
 	g_mcl.add_argument('--weight-power', type=float, default=1.0,
 						dest='edge_power', metavar='FLOAT',
-						help='Power exponent applied to edge weights before MCL [default=%(default)s = off]')
+						help='Power exponent applied to edge weights before splitting [default=%(default)s = off]')
 	g_mcl.add_argument('--equal-weight', action='store_true', default=False,
 						dest='equal_weight',
 						help='Force equal edge weights (1.0) before MCL splitting, ignoring input weights [default: off]')

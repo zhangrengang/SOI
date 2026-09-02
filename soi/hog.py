@@ -70,6 +70,20 @@ def oi_shift_normalize(G, target=0.9):
 		d['weight'] = float(np.clip(w - medians[key] + target, 0.0, 1.0))
 
 
+def apply_edge_power(G, power):
+	"""Raise all edge weights to `power` in place (graph-level --weight-power).
+
+	Applied after min_weight filtering and normalization, before any
+	refine method (mcl/divide) so the transform is method-agnostic.
+	"""
+	for u, v, d in G.edges(data=True):
+		w = d.get('weight')
+		if w is None:
+			continue
+		d['weight'] = float(w) ** power
+
+
+
 def normalize_weights(G, anchors):
 	"""Rewrite edge weights in place: 3-anchor piecewise-linear mapping.
 
@@ -96,7 +110,7 @@ def normalize_weights(G, anchors):
 		d['weight'] = w2
 
 
-def mcl_components(G, inflation=1.5, max_iter=200, edge_power=1.0, tol=1e-11):
+def mcl_components(G, inflation=1.5, max_iter=200, tol=1e-11):
 	"""MCL flow clustering on a small graph; returns list of node sets.
 
 	Weak edges (e.g. outparalog contamination) are broken by random-walk
@@ -115,8 +129,6 @@ def mcl_components(G, inflation=1.5, max_iter=200, edge_power=1.0, tol=1e-11):
 	A = np.zeros((n, n))
 	for u, v in G.edges():
 		w = G[u][v].get('weight', 1.0)
-		if edge_power != 1.0:
-			w = w ** edge_power
 		A[idx[u], idx[v]] = A[idx[v], idx[u]] = w
 	A += np.eye(n)  # self-loops: allow walker to stay
 	M = A / A.sum(axis=0, keepdims=True)
@@ -149,7 +161,7 @@ def mcl_components(G, inflation=1.5, max_iter=200, edge_power=1.0, tol=1e-11):
 		clusters[cid] = set(nodes[x] for x in comp)
 	return list(clusters.values())
 
-def mcl_components_mclbin(G, inflation=1.5, edge_power=1.0, **unused):
+def mcl_components_mclbin(G, inflation=1.5, **unused):
 	"""Reference implementation: call external mcl binary on the same subgraph.
 
 	Test/comparison only (SOI_MCL_BIN=path enables it at the mcl_components
@@ -169,8 +181,6 @@ def mcl_components_mclbin(G, inflation=1.5, edge_power=1.0, **unused):
 	with tempfile.NamedTemporaryFile('w', suffix='.abc', delete=False) as f:
 		for u, v in G.edges():
 			w = G[u][v].get('weight', 1.0)
-			if edge_power != 1.0:
-				w = w ** edge_power
 			# mcl --abc requires integer node labels in .abc? no, arbitrary tokens ok,
 			# but '|' in gene ids must be quoted for mcl? mcl treats tab-separated
 			# fields as tokens; '|' is fine.  Use dummy integer labels to be safe.
@@ -292,19 +302,23 @@ class HOG:
 			graph.remove_edges_from(dropped)
 			logger.info('Dropped {} edges with weight < {} (min_weight); {} edges remain'.format(
 				len(dropped), self.min_weight, graph.number_of_edges()))
-		if self.oi_shift_target is not None:
-			logger.info('Shifting OI medians to {} per species pair (--median-weight)'.format(self.oi_shift_target))
-			oi_shift_normalize(graph, target=self.oi_shift_target)
-		elif self.oi_norm == 'shift':
-			raise ValueError('--norm-method shift requires --median-weight (shift target); none given')
-		elif self.oi_norm:
-			logger.info('Normalizing OI weights (tail={}%) per species pair'.format(self.oi_tail))
-			self._anchors = oi_anchors(graph, tail=self.oi_tail)
-			normalize_weights(graph, self._anchors)
 		if self.equal_weight:
 			for u, v, d in graph.edges(data=True):
 				d['weight'] = 1.0
 			logger.info('Equal weights forced (equal_weight=True); input weights ignored')
+		else:
+			if self.oi_shift_target is not None:
+				logger.info('Shifting OI medians to {} per species pair (--median-weight)'.format(self.oi_shift_target))
+				oi_shift_normalize(graph, target=self.oi_shift_target)
+			elif self.oi_norm == 'shift':
+				raise ValueError('--norm-method shift requires --median-weight (shift target); none given')
+			elif self.oi_norm:
+				logger.info('Normalizing OI weights (tail={}%) per species pair'.format(self.oi_tail))
+				self._anchors = oi_anchors(graph, tail=self.oi_tail)
+				normalize_weights(graph, self._anchors)
+			if self.edge_power != 1.0:
+				logger.info('Applying weight power {} to all edge weights (--weight-power)'.format(self.edge_power))
+				apply_edge_power(graph, self.edge_power)
 		# log effective splitting parameters for reproducibility
 		if self.mcl_split:
 			logger.info('MCL split enabled: inflation={}, weight_power={}, '
@@ -384,7 +398,7 @@ class HOG:
 						# refine each component with MCL to break weak outparalog edges
 						if getattr(self, 'mcl_split', True) and len(subset_genes) > 2:
 							refine_fn = mcl_components_mclbin if os.environ.get('SOI_MCL_BIN') else mcl_components
-							refined = refine_fn(hog_subgraph, inflation=self.mcl_inflation, edge_power=self.edge_power)
+							refined = refine_fn(hog_subgraph, inflation=self.mcl_inflation)
 							if len(refined) > 1:
 								logger.debug('MCL split {} into {} clusters'.format(
 									og_id, len(refined)))
