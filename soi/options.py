@@ -112,8 +112,17 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	g_ctl.add_argument('--drop-no-cross', action='store_true', default=False,
 						dest='drop_no_cross',
 						help=argparse.SUPPRESS)  # 'Drop (instead of merge) HOGs whose genes do not span all child branches'
+	g_mcl.add_argument('--refine-method', type=str, default='mcl',
+						dest='refine_method', choices=['mcl', 'divide', 'none'],
+						help='HOG cluster refinement method: mcl = Markov clustering (default), '
+							 'divide = recursive weighted minimum cuts (GETHOGs 1, Altenhoff 2013), '
+							 'none = raw connected components')
+	g_mcl.add_argument('--divide-alpha', type=float, default=0.6,
+						dest='divide_alpha', metavar='FLOAT',
+						help='FRITS reachability threshold for --refine-method divide: cut when below '
+							 '(0.6 = GETHOGs default; raise to force cuts) [default=%(default)s]')
 	g_mcl.add_argument('--no-mcl', dest='mcl_split', action='store_false', default=True,
-						help='Disable MCL refinement; use raw connected components instead [default: MCL on]')
+						help='Deprecated alias for --refine-method none [default: MCL on]')
 	g_mcl.add_argument('--mcl-split', dest='mcl', action='store_true', default=False,
                         help=argparse.SUPPRESS)
 	g_mcl.add_argument('-I', '--inflation', type=float, default=1.5,

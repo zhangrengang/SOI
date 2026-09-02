@@ -13,6 +13,7 @@ from . import style
 from .style import format_species_label
 
 from .RunCmdsMP import logger
+from .divide import divide_components
 
 def xmain(**kargs):
     HOG(**kargs).pipe()
@@ -216,6 +217,7 @@ class HOG:
 		  paralog=False, max_copies=5, out_stats=False, bar_plot=False, tree_plot=False, 
 			min_child_species=1, cross_speciation=False, drop_no_cross=False,
 			enable_root_paralog=False, mcl_split=True, mcl_inflation=1.5, min_species_ratio=0,
+			refine_method='mcl', divide_alpha=0.6,
 			oi_norm=False, oi_tail=2.5, oi_shift_target=0.9, edge_power=1.0, equal_weight=False, min_weight=None, **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
@@ -228,6 +230,12 @@ class HOG:
 		self.drop_no_cross = drop_no_cross
 		self.enable_root_paralog = enable_root_paralog
 		self.mcl_split = mcl_split
+		# --no-mcl (deprecated) maps to refine_method='none'; explicit flag wins
+		if not mcl_split:
+			refine_method = 'none'
+		self.refine_method = refine_method
+		self.divide_alpha = divide_alpha
+		self.divide_diagnostics = []
 		self.mcl_inflation = kargs.get('mcl_inflation', mcl_inflation)
 		self.min_species_ratio = kargs.get('min_species_ratio', min_species_ratio)
 		self.oi_norm = oi_norm  # False | 'quantile' | 'shift'
@@ -395,13 +403,19 @@ class HOG:
 					if do_split:
 						hog_subgraph = subgraph.subgraph(subset_genes)
 						connected_components = list(nx.connected_components(hog_subgraph))
-						# refine each component with MCL to break weak outparalog edges
-						if getattr(self, 'mcl_split', True) and len(subset_genes) > 2:
-							refine_fn = mcl_components_mclbin if os.environ.get('SOI_MCL_BIN') else mcl_components
-							refined = refine_fn(hog_subgraph, inflation=self.mcl_inflation)
+						# refine each component to break weak outparalog edges
+						# (method-agnostic slot: mcl / divide / none)
+						if getattr(self, 'refine_method', 'mcl') != 'none' and len(subset_genes) > 2:
+							method = self.refine_method
+							if method == 'divide':
+								refined = divide_components(hog_subgraph, alpha=self.divide_alpha,
+														diagnostics=self.divide_diagnostics)
+							else:
+								refine_fn = mcl_components_mclbin if os.environ.get('SOI_MCL_BIN') else mcl_components
+								refined = refine_fn(hog_subgraph, inflation=self.mcl_inflation)
 							if len(refined) > 1:
-								logger.debug('MCL split {} into {} clusters'.format(
-									og_id, len(refined)))
+								logger.debug('{} split {} into {} clusters'.format(
+									method, og_id, len(refined)))
 								connected_components = refined
 					else:
 						connected_components = [set(subset_genes)]
