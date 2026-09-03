@@ -260,9 +260,10 @@ def args_paralog(parser):
 	g_out.add_argument('--tree-style', choices=['distance', 'depth', 'cladogram'],
 					   default='distance', dest='tree_style',
 					   help='With --tree-heatmap: tree panel layout. distance: '
-					   			'x = cumulative branch length (default); depth: x = '
+					   			'x = cumulative branch length; depth: x = '
 					   			'topological depth; cladogram: ignore branch lengths, '
-					   			'all tips aligned at equal depth')
+					   			'all tips aligned at equal depth '
+					   			'(default: %(default)s)')
 	g_out.add_argument('--note', type=str, default=None, dest='note',
 					   help='Text label drawn on the heatmap (e.g. key parameters)')
 
