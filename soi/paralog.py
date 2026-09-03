@@ -520,8 +520,16 @@ class ParalogIndexer:
 		cbar_top = cax.get_position().y1 - 0.02  # current anchor from gridspec
 		if ax_line is not None:
 			lg_bbox = lg.get_window_extent().transformed(fig.transFigure.inverted())
+			# the legend itself must also clear the first row; on short
+			# figures its centered position in ax_leg can poke above the floor
+			pos = ax_leg.get_position()
+			if lg_bbox.y1 > floor - 0.02:
+				dy = lg_bbox.y1 - (floor - 0.02)
+				ax_leg.set_position([pos.x0, pos.y0 - dy, pos.width, pos.height])
+				fig.canvas.draw()
+				lg_bbox = lg.get_window_extent().transformed(fig.transFigure.inverted())
 			cbar_top = min(cbar_top, lg_bbox.y1)
-		cbar_top = min(cbar_top, floor - 0.01)  # never overlap the first row
+		cbar_top = min(cbar_top, floor - 0.02)  # never overlap the first row
 		cax.set_position([cax.get_position().x0, cbar_top - cbar_h,
 						  0.4 * cax.get_position().width, cbar_h])
 		if getattr(self, 'note', None):
