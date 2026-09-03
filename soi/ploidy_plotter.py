@@ -62,6 +62,12 @@ def ploidy_args(parser):
 					dest='output', default=None, help="output prefix")
 	g_out.add_argument('--heatmap', action='store_true', default=False, dest='heatmap',
 					help="output ref x qry depth-ratio heatmap with tree on the left")
+	g_out.add_argument('--tree-style', choices=['distance', 'depth', 'cladogram'],
+					default='distance', dest='tree_style',
+					help="with --heatmap and -t: tree panel layout. distance: x = "
+					     "cumulative branch length; depth: x = topological depth; "
+					     "cladogram: ignore branch lengths, all tips aligned "
+					     "(default: %(default)s)")
 	g_out.add_argument('--no-bars', action='store_true', default=False, dest='no_bars',
 					help="skip the per-pair bar plots (heatmap only)")
 	g_out.add_argument('--format', metavar='FORMAT', action='append',
@@ -216,7 +222,8 @@ def _plot_heatmap(ratio, refs, qry, kargs):
 		gs = gridspec.GridSpec(2, 2, width_ratios=[2, 6],
 							   height_ratios=[n_ref, 0.5], wspace=0.005, hspace=0.1)
 		ax_tree = fig.add_subplot(gs[0, 0])
-		_draw_cladogram(ax_tree, sptree, refs)
+		_draw_cladogram(ax_tree, sptree, refs,
+						   tree_style=kargs.get('tree_style', 'distance'))
 	else:
 		gs = gridspec.GridSpec(2, 1, height_ratios=[n_ref, 0.5])
 	ax_hm = fig.add_subplot(gs[0, -1])  # heatmap in last column (tree/no-tree)
@@ -250,51 +257,33 @@ def _plot_heatmap(ratio, refs, qry, kargs):
 		os.path.splitext(outfigs[0])[0]))
 
 
-def _draw_cladogram(ax, sptree, sps):
-	"""Draw a cladogram with Bio.Phylo (vector, tip-aligned) on the given axes.
+def _draw_cladogram(ax, sptree, sps, tree_style='distance'):
+	"""Draw the species tree (pruned to sps) on the given axes.
 
-	Leaf order from the pruned tree matches the heatmap row order (both are
-	the original tree leaf order filtered to the subset).
+	Uses TreePlotter so the layout matches paralog --tree-heatmap
+	(tree_style: distance/depth/cladogram). Leaf order from the pruned tree
+	matches the heatmap row order (both are the original tree leaf order
+	filtered to the subset).
 	"""
-	from Bio import Phylo
-	tree = Phylo.read(sptree, 'newick')
+	from .tree import number_nodes, TreePlotter
+	tree = number_nodes(sptree)
 	keep = set(sps)
-	for t in list(tree.get_terminals()):
+	for t in list(tree.get_leaves()):
 		if t.name not in keep:
-			tree.prune(t)
+			t.delete(prevent_nondicotomic=False)
 	# collapse single-child non-root nodes
 	changed = True
 	while changed:
 		changed = False
-		for n in tree.get_nonterminals():
-			if n is not tree.root and len(n.clades) == 1:
-				n.collapse()
+		for n in tree.traverse():
+			if not n.is_root() and len(n.children) == 1:
+				n.delete(prevent_nondicotomic=False)
 				changed = True
-	Phylo.draw(tree, axes=ax, do_show=False, show_confidence=False,
-			   label_func=lambda x: '')
-	# Phylo.draw leaves ~25% right margin; tighten so tips sit at the edge
-	# dashed tip-alignment lines: from each tip to the rightmost tip x.
-	# tip x = sum of branch lengths from root; y = terminal index order.
-	tips = tree.get_terminals()
-	tip_x = {}
-	for t in tips:
-		x = 0.0
-		for cl in tree.get_path(t):
-			x += cl.branch_length
-		tip_x[t] = x
-	x_end = max(tip_x.values())
-	ax.set_xlim(ax.get_xlim()[0], x_end)
-	n = len(tips)
-	ax.set_ylim(n + 0.5, 0.5)  # remove Phylo y padding; tips align with heatmap rows
-	for i, t in enumerate(tips):
-		# Phylo draws tip i at displayed y = i+1 (1..n, top since y-inverted)
-		ax.plot([tip_x[t], x_end], [i + 1, i + 1],
-				color='0.6', lw=0.6, ls=':', zorder=0)
-	ax.set_xticks([])
-	ax.set_yticks([])
-	for sp in ax.get_xticklabels():
-		sp.set_visible(False)
-	ax.axis('off')
+	row_names = [n.name for n in tree if n.name in keep]  # tree leaf order subset
+	tp = TreePlotter(tree, row_names=row_names, tree_style=tree_style,
+				 leaf_dotted_color='0.6')
+	tp.plot(ax, show_dotted=False)
+	ax.invert_yaxis()  # first tree leaf on top, matching heatmap row order
 
 
 def _outfig(f, ref):
