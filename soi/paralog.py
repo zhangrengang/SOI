@@ -139,7 +139,7 @@ class ParalogIndexer:
 				 self_synteny=None, min_n=0, gff=None, min_dist=None,
 				 pi_cutoff=0.05, nodes=None, species=None,
 				 prefix='paralog_index', box_branch=False, line_plot=False, note=None,
-				 tree_heatmap=False, heatmap_raster=True,
+				 tree_heatmap=False, tree_style='distance', heatmap_raster=True,
 				 **hog_kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
@@ -161,6 +161,7 @@ class ParalogIndexer:
 		self.box_branch = box_branch
 		self.line_plot = line_plot
 		self.tree_heatmap = tree_heatmap
+		self.tree_style = tree_style
 		self.heatmap_raster = heatmap_raster
 		self.hog_kargs = hog_kargs
 
@@ -561,7 +562,7 @@ class ParalogIndexer:
 		tree = number_nodes(self.sptreefile)
 		tp = TreePlotter(tree, row_names=branches,
 						 internal_node_to_present=True,
-						 use_distances=True,
+						 tree_style=self.tree_style,
 						 leaf_dotted_color='tab:green')
 		tp.plot(ax)
 

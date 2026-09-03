@@ -89,7 +89,7 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	"""
 	g_in = parser.add_argument_group('Input for HOG building')
 	g_ctl = parser.add_argument_group('HOG structure control')
-	g_mcl = parser.add_argument_group('MCL refinement')
+	g_mcl = parser.add_argument_group('HOG refinement')
 	g_in.add_argument('-og', '-orthogroup', required=og_required, type=str,
 						dest='ogfile', metavar='FILE',
 						help='Orthogroup file (MCL format)')
@@ -114,7 +114,7 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 						help=argparse.SUPPRESS)  # 'Drop (instead of merge) HOGs whose genes do not span all child branches'
 	g_mcl.add_argument('--refine-method', type=str, default='mcl',
 						dest='refine_method', choices=['mcl', 'divide', 'none'],
-						help='HOG cluster refinement method: mcl = Markov clustering (default), '
+						help='HOG refinement method: mcl = Markov clustering (default), '
 							 'divide = recursive weighted minimum cuts (GETHOGs 1, Altenhoff 2013), '
 							 'none = raw connected components')
 	g_mcl.add_argument('--divide-alpha', type=float, default=0.6,
@@ -122,10 +122,10 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 						help='FRITS reachability threshold for --refine-method divide: cut when below '
 							 '(0.6 = GETHOGs default; raise to force cuts) [default=%(default)s]')
 	g_mcl.add_argument('--no-mcl', dest='mcl_split', action='store_false', default=True,
-						help='Deprecated alias for --refine-method none [default: MCL on]')
+						help=argparse.SUPPRESS) #'Deprecated alias for --refine-method none [default: MCL on]')
 	g_mcl.add_argument('--mcl-split', dest='mcl', action='store_true', default=False,
                         help=argparse.SUPPRESS)
-	g_mcl.add_argument('-I', '--inflation', type=float, default=1.5,
+	g_mcl.add_argument('-I', '--mcl-inflation', type=float, default=1.5,
 						dest='mcl_inflation', metavar='FLOAT',
 						help='MCL inflation for HOG splitting [default=%(default)s]')
 	g_mcl.add_argument('--norm-method', type=str, default=None,
@@ -145,10 +145,10 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 						help='Power exponent applied to edge weights before splitting [default=%(default)s = off]')
 	g_mcl.add_argument('--equal-weight', action='store_true', default=False,
 						dest='equal_weight',
-						help='Force equal edge weights (1.0) before MCL splitting, ignoring input weights [default: off]')
+						help='Force equal edge weights (1.0) before splitting, ignoring input weights [default: off]')
 	g_mcl.add_argument('--min-weight', type=float, default=None,
 						dest='min_weight', metavar='FLOAT',
-						help='Drop edges with weight below this threshold before MCL splitting [default: None = keep all]')
+						help='Drop edges with weight below this threshold before splitting [default: None = keep all]')
 	g_ctl.add_argument('--min-species-ratio', type=float, default=0,
 						dest='min_species_ratio', metavar='FLOAT',
 						help=argparse.SUPPRESS)  # 'Drop clusters whose species occupy < this fraction of the branch (default: 0)'
@@ -257,6 +257,12 @@ def args_paralog(parser):
 					   dest='tree_heatmap',
 					   help='Add a species tree panel on the left of the heatmap '
 					   			'(branches aligned with heatmap rows; -t required)')
+	g_out.add_argument('--tree-style', choices=['distance', 'depth', 'cladogram'],
+					   default='distance', dest='tree_style',
+					   help='With --tree-heatmap: tree panel layout. distance: '
+					   			'x = cumulative branch length (default); depth: x = '
+					   			'topological depth; cladogram: ignore branch lengths, '
+					   			'all tips aligned at equal depth')
 	g_out.add_argument('--note', type=str, default=None, dest='note',
 					   help='Text label drawn on the heatmap (e.g. key parameters)')
 

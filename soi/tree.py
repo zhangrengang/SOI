@@ -104,15 +104,22 @@ class TreePlotter:
 	def __init__(self, tree, row_names=None, internal_node_to_present=False,
 				 use_distances=False, color='k', lw=1.0,
 				 dotted_lw=0.8, dotted_color='0.6', xpad_frac=0.02,
-				 leaf_dotted_color=None):
+				 leaf_dotted_color=None, tree_style=None):
 		"""tree: ete3 Tree (nodes named, e.g. via number_nodes()).
 		row_names: row order list; None = auto (preorder all nodes when
 		internal_node_to_present else leaf names).
 		use_distances: x = time from root (branch lengths) instead of depth.
+		tree_style: 'depth' (x = topological depth, tips not aligned),
+		'distance' (x = cumulative branch length), 'cladogram'
+		(x = remaining depth, all tips aligned) — overrides use_distances.
 		"""
 		self.tree = tree
 		self.internal_node_to_present = internal_node_to_present
-		self.use_distances = use_distances
+		if tree_style is None:
+			tree_style = 'distance' if use_distances else 'depth'
+		assert tree_style in ('depth', 'distance', 'cladogram'), tree_style
+		self.tree_style = tree_style
+		self.use_distances = (tree_style == 'distance')
 		self.color = color
 		self.lw = lw
 		self.dotted_lw = dotted_lw
@@ -134,11 +141,27 @@ class TreePlotter:
 		for i, nm in enumerate(self.row_names):
 			if nm not in row_idx:
 				row_idx[nm] = i
-		max_dist = tree.get_farthest_leaf()[1] if self.use_distances else 0.0
+		max_dist = tree.get_farthest_leaf()[1] if self.tree_style == 'distance' else 0.0
+		if self.tree_style == 'cladogram':
+			# remaining depth per node (post-order): leaves 0, internal
+			# 1 + max(children); used as x so every leaf lands on the same
+			# column and each branch spans exactly the levels its subtree
+			# still descends
+			rem = {}
+			for n in tree.traverse('postorder'):
+				rem[n] = 0 if n.is_leaf() else 1 + max(rem[c] for c in n.children)
+			max_rem = rem[tree]
 		ypos = {}
 		xpos = {}
 		def layout(node, depth):
-			xpos[node] = tree.get_distance(node) if self.use_distances else depth
+			if self.tree_style == 'distance':
+				xpos[node] = tree.get_distance(node)
+			elif self.tree_style == 'cladogram':
+				# x = total levels - remaining: root at 0, every leaf at the
+				# same rightmost column; shallow-side branches stretch
+				xpos[node] = max_rem - rem[node]
+			else:
+				xpos[node] = depth
 			# recurse first (children must be placed before the fallback mean)
 			for ch in node.children:
 				layout(ch, depth + 1)

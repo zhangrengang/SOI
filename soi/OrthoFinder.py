@@ -62,7 +62,7 @@ def catAln(inALNs, outALN, allow_missing=True, idmap=None):
 						'{} in {} not exists in idmap'.format(rc.id, inALN))
 					seq = ''
 					continue
-			if sp in sps:
+			if sp in sps: # the same species in one ALN file
 				logger.warn('{} repeats in {}; ignored'.format(rc.id, inALN))
 				continue
 			seq = str(rc.seq)
