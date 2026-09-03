@@ -206,6 +206,10 @@ class TreePlotter:
 			for node in tree.traverse():
 				if node.is_root():
 					continue
+				# leaf-only mode: skip internal nodes (their mean-of-children
+				# ypos exists but guides there are noise)
+				if not self.internal_node_to_present and not node.is_leaf():
+					continue
 				yp = ypos.get(node)
 				if yp is None:
 					continue
