@@ -394,11 +394,15 @@ class ParalogIndexer:
 		# cumulative x positions (left of each column)
 		x = np.concatenate([[0.0], np.cumsum(w)])
 
-		fig = plt.figure(figsize=(min(7, max(4, 0.02 * M.shape[0])) + (1.8 if self.tree_heatmap else 0),
-									min(7, max(3, 0.4 * len(branches)))))
+		fig_w = min(7, max(4, 0.02 * M.shape[0])) + (1.8 if self.tree_heatmap else 0)
+		fig_h = min(7, max(3, 0.4 * len(branches)))
+		fig = plt.figure(figsize=(fig_w, fig_h))
 		cmap = plt.get_cmap('YlOrRd')
 		from matplotlib import gridspec
-		hr = max(1, 0.3 * len(branches))
+		# second row (cbar + legend) needs a fixed physical height regardless
+		# of branch count, else short figures squeeze it onto the first row
+		cbar_need = 1.1  # inches: legend two rows + cbar + xlabels clearance
+		hr = max(1.0, len(branches) * cbar_need / max(fig_h - cbar_need, 0.1))
 		# tree panel on the left column; heatmap columns shift right by one
 		ncol_tree = 1 if self.tree_heatmap else 0
 		if ncol_tree:
@@ -503,16 +507,23 @@ class ParalogIndexer:
 				self._draw_tree_panel(ax_tree, branches)
 			else:
 				logger.warning('--tree-heatmap requires a valid -t tree file; panel left empty')
+		# cbar top must clear the first row's tight bbox (xlabel included),
+		# else it lands on the 'Syntenic block'/'Number of gene pairs' labels
+		fig.canvas.draw()
+		renderer = fig.canvas.get_renderer()
+		floor = min(ax.get_tightbbox(renderer).y0 for ax in (ax, ax_line) if ax is not None)
+		floor = floor / fig.bbox.height  # display -> figure coords
 		fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(0, 1),
 										   cmap=cmap),
 					 cax=cax, label='BPI', orientation='horizontal')
+		cbar_h = 0.02
+		cbar_top = cax.get_position().y1 - 0.02  # current anchor from gridspec
 		if ax_line is not None:
 			lg_bbox = lg.get_window_extent().transformed(fig.transFigure.inverted())
-			cax.set_position([cax.get_position().x0, lg_bbox.y1,
-							  0.4 * cax.get_position().width, 0.02])
-		else:
-			cax.set_position([cax.get_position().x0, cax.get_position().y1-0.02,
-							  0.4 * cax.get_position().width, 0.02])
+			cbar_top = min(cbar_top, lg_bbox.y1)
+		cbar_top = min(cbar_top, floor - 0.01)  # never overlap the first row
+		cax.set_position([cax.get_position().x0, cbar_top - cbar_h,
+						  0.4 * cax.get_position().width, cbar_h])
 		if getattr(self, 'note', None):
 			fig.text(0.1, 0.1, self.note, fontsize=8, va='bottom', ha='left',
 					 color='0.4', bbox=dict(facecolor='white', alpha=1, edgecolor='none', pad=2))
