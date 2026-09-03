@@ -200,8 +200,9 @@ class TreePlotter:
 		if y_root is not None:
 			ax.plot([x_root - pad, x_root], [y_root, y_root], '-',
 					color=self.color, lw=self.lw, zorder=1)
-		# dotted alignment guides from internal nodes to the right edge
-		if show_dotted and self.internal_node_to_present:
+		# dotted alignment guides to the right edge: internal nodes in row
+		# mode, leaf tips in leaf-only mode (depth heatmap)
+		if show_dotted:
 			for node in tree.traverse():
 				if node.is_root():
 					continue

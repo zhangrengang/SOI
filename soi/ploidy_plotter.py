@@ -282,7 +282,7 @@ def _draw_cladogram(ax, sptree, sps, tree_style='distance'):
 	row_names = [n.name for n in tree if n.name in keep]  # tree leaf order subset
 	tp = TreePlotter(tree, row_names=row_names, tree_style=tree_style,
 				 leaf_dotted_color='0.6')
-	tp.plot(ax, show_dotted=False)
+	tp.plot(ax, show_dotted=True)
 	ax.invert_yaxis()  # first tree leaf on top, matching heatmap row order
 
 
