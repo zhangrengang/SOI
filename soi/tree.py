@@ -164,8 +164,10 @@ class TreePlotter:
 				ypos[node] = row_idx[node.name]
 			else:
 				# name not in row list (e.g. leaves-only mode with unlisted
-				# leaves): fall back to mean of children rows
-				ys = [ypos[ch] for ch in node.children if ch in ypos]
+				# leaves): fall back to mean of children rows; children whose
+				# subtree has no listed descendant are None and must be skipped
+				ys = [ypos[ch] for ch in node.children
+					  if ch in ypos and ypos[ch] is not None]
 				ypos[node] = sum(ys) / len(ys) if ys else None
 		layout(tree, 0)
 		self.ypos = ypos
