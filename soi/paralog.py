@@ -22,12 +22,12 @@ from .RunCmdsMP import logger
 
 class Paralog:
 	def __init__(self, ogfile=None, orthfiles=None, sptreefile=None,
-				 nodes=None, species=None, prefix='paralog', **kargs):
+				 keep_branches=None, focus_branches=None, prefix='paralog', **kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
 		self.sptreefile = sptreefile
-		self.nodes = nodes
-		self.species = species
+		self.keep_branches = keep_branches
+		self.focus_branches = focus_branches
 		self.prefix = prefix
 		self.kargs = kargs
 
@@ -89,8 +89,8 @@ class Paralog:
 		Applies the same --nodes/--species filters as HOG rebuilding.
 		Return ({branch: set of canonical (g1,g2)}, count).
 		"""
-		node_set = set(self.nodes) if self.nodes else None
-		sp_set = set(self.species) if self.species else None
+		node_set = set(self.keep_branches) if self.keep_branches else None
+		sp_set = set(self.focus_branches) if self.focus_branches else None
 		branch_pairs = defaultdict(set)
 		count = 0
 		with open(fpath) as f:
@@ -119,7 +119,7 @@ class Paralog:
 			fout.write('#gene1\tgene2\tnode\tspecies\tHOG_id\n')
 			count = 0
 			for g1, g2, node_id, sp, hog_id in hog.iter_branch_paralogs(
-					self.nodes, self.species):
+					self.keep_branches, self.focus_branches):
 				fout.write('{}\t{}\t{}\t{}\t{}\n'.format(
 					g1, g2, node_id, sp, hog_id))
 				pair = (g1, g2) if g1 < g2 else (g2, g1)
@@ -137,10 +137,10 @@ class ParalogIndexer:
 
 	def __init__(self, ogfile, orthfiles, sptreefile,
 				 self_synteny=None, min_n=0, gff=None, min_dist=None,
-				 pi_cutoff=0.05, nodes=None, species=None,
+				 pi_cutoff=0.05, keep_branches=None, focus_branches=None,
 				 prefix='paralog_index', box_branch=False, line_plot=False, note=None,
 				 tree_heatmap=False, tree_style='distance', heatmap_raster=True,
-				 remove_nodes=None,
+				 remove_branches=None,
 				 **hog_kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
@@ -156,14 +156,14 @@ class ParalogIndexer:
 		self.gff = gff
 		self.min_dist = min_dist
 		self.pi_cutoff = pi_cutoff
-		self.nodes = nodes
-		self.species = species
+		self.keep_branches = keep_branches
+		self.focus_branches = focus_branches
 		self.prefix = prefix
 		self.box_branch = box_branch
 		self.line_plot = line_plot
 		self.tree_heatmap = tree_heatmap
 		self.tree_style = tree_style
-		self.remove_nodes = remove_nodes
+		self.remove_branches = remove_branches
 		self.heatmap_raster = heatmap_raster
 		self.hog_kargs = hog_kargs
 
@@ -176,13 +176,13 @@ class ParalogIndexer:
 
 		None when --species is unset or no tree is available.
 		"""
-		if not self.species or not self.sptreefile:
+		if not self.focus_branches or not self.sptreefile:
 			return None
 		from .tree import number_nodes
 		tree = number_nodes(self.sptreefile)
 		by_name = {n.name: n for n in tree.traverse()}
 		sp_allowed = set()
-		for s in self.species:
+		for s in self.focus_branches:
 			node = by_name.get(s)
 			if node is None:
 				continue
@@ -198,7 +198,8 @@ class ParalogIndexer:
 			return
 		paralog = Paralog(ogfile=self.ogfile, orthfiles=self.orthfiles,
 						  sptreefile=self.sptreefile, prefix=self.prefix,
-						  nodes=self.nodes, species=self._species_leaf_set(),
+						  keep_branches=self.keep_branches,
+						  focus_branches=self._species_leaf_set(),
 						  **self.hog_kargs)
 		self._branch_pairs, self._root_branch = paralog.run()
 		# count paralog pairs per (branch, species)
@@ -228,21 +229,21 @@ class ParalogIndexer:
 		Returns (kept_branches_in_input_order, allowed_leaf_species).
 		"""
 		by_name = {n.name: n for n in tree.traverse()}
-		if self.nodes:
-			missing = [n for n in self.nodes if n not in by_name]
+		if self.keep_branches:
+			missing = [n for n in self.keep_branches if n not in by_name]
 			if missing:
 				logger.warning('--nodes not found in species tree: {}'.format(', '.join(missing)))
-			keep = set(n for n in self.nodes if n in by_name)
+			keep = set(n for n in self.keep_branches if n in by_name)
 		else:
 			keep = set(branches)
 		sp_allowed = None
-		if self.species:
+		if self.focus_branches:
 			keep_sp = set()
-			missing = [s for s in self.species if s not in by_name]
+			missing = [s for s in self.focus_branches if s not in by_name]
 			if missing:
 				logger.warning('--species not found in species tree: {}'.format(', '.join(missing)))
 			sp_allowed = set()
-			for s in self.species:
+			for s in self.focus_branches:
 				if s not in by_name:
 					continue
 				node = by_name[s]
@@ -257,11 +258,11 @@ class ParalogIndexer:
 				else:
 					sp_allowed.add(node.name)
 			keep &= keep_sp
-		if self.remove_nodes:
-			missing = [n for n in self.remove_nodes if n not in by_name]
+		if self.remove_branches:
+			missing = [n for n in self.remove_branches if n not in by_name]
 			if missing:
 				logger.warning('--remove-nodes not found in species tree: {}'.format(', '.join(missing)))
-			keep -= set(self.remove_nodes)
+			keep -= set(self.remove_branches)
 		kept = [b for b in branches if b in keep]
 		return kept, sp_allowed
 
@@ -316,7 +317,7 @@ class ParalogIndexer:
 				continue
 			if self._sp_allowed is not None and rc.species1 not in self._sp_allowed:
 				continue
-			if self.remove_nodes and rc.species1 in self.remove_nodes:
+			if self.remove_branches and rc.species1 in self.remove_branches:
 				# removed leaf nodes: their blocks must not leak into stats
 				continue
 			if tree_species is not None and rc.species1 not in tree_species:
