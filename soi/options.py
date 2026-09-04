@@ -215,10 +215,19 @@ def args_paralog(parser):
 						   #'block_gene_pairs) [default=%(default)s]')
 	g_ix.add_argument('--nodes', metavar='NODE', nargs='+', type=str, default=None,
 					  dest='nodes',
-					  help='Tree nodes to report paralogs for (default: all)')
+					  help='Output only these tree nodes (exact, no expansion): '
+					  			'paralog pairs, heatmap and stats rows are '
+					  			'restricted to them (default: all)')
 	g_ix.add_argument('--species', metavar='SPECIES', nargs='+', type=str, default=None,
 					  dest='species',
-					  help='Species to report paralogs for (default: all)')
+					  help='Output only these nodes and their ancestors + '
+					  			'descendants (inputs may be leaf species or '
+					  			'internal node names); restricts paralog pairs, '
+					  			'blocks, heatmap and stats rows (default: all)')
+	g_ix.add_argument('--remove-nodes', metavar='NODE', nargs='+', type=str, default=None,
+					  dest='remove_nodes',
+					  help='Remove these tree nodes from the output (paralog '
+					  			'pairs, heatmap and stats rows)')
 
 	g_out = parser.add_argument_group('Output')
 	g_out.add_argument('-pre', '-prefix', type=str,

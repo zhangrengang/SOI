@@ -140,6 +140,7 @@ class ParalogIndexer:
 				 pi_cutoff=0.05, nodes=None, species=None,
 				 prefix='paralog_index', box_branch=False, line_plot=False, note=None,
 				 tree_heatmap=False, tree_style='distance', heatmap_raster=True,
+				 remove_nodes=None,
 				 **hog_kargs):
 		self.ogfile = ogfile
 		self.orthfiles = orthfiles
@@ -162,6 +163,7 @@ class ParalogIndexer:
 		self.line_plot = line_plot
 		self.tree_heatmap = tree_heatmap
 		self.tree_style = tree_style
+		self.remove_nodes = remove_nodes
 		self.heatmap_raster = heatmap_raster
 		self.hog_kargs = hog_kargs
 
@@ -169,13 +171,34 @@ class ParalogIndexer:
 		self._branch_pairs = None
 		self._root_branch = None
 
+	def _species_leaf_set(self):
+		"""Expand --species (leaves or internal nodes) to allowed leaf names.
+
+		None when --species is unset or no tree is available.
+		"""
+		if not self.species or not self.sptreefile:
+			return None
+		from .tree import number_nodes
+		tree = number_nodes(self.sptreefile)
+		by_name = {n.name: n for n in tree.traverse()}
+		sp_allowed = set()
+		for s in self.species:
+			node = by_name.get(s)
+			if node is None:
+				continue
+			if node.is_leaf():
+				sp_allowed.add(node.name)
+			else:
+				sp_allowed.update(n.name for n in node if n.is_leaf())
+		return sp_allowed or None
+
 	def _load_branch_pairs(self):
 		"""Load HOGs and paralog pairs via Paralog."""
 		if self._branch_pairs is not None:
 			return
 		paralog = Paralog(ogfile=self.ogfile, orthfiles=self.orthfiles,
 						  sptreefile=self.sptreefile, prefix=self.prefix,
-						  nodes=self.nodes, species=self.species,
+						  nodes=self.nodes, species=self._species_leaf_set(),
 						  **self.hog_kargs)
 		self._branch_pairs, self._root_branch = paralog.run()
 		# count paralog pairs per (branch, species)
@@ -194,6 +217,53 @@ class ParalogIndexer:
 
 	def _canonical_pair(self, g1, g2):
 		return (g1, g2) if g1 < g2 else (g2, g1)
+
+	def _select_branches(self, tree, branches):
+		"""Apply --nodes/--species/--remove-nodes to the branch list.
+
+		--nodes: exact branch set, no ancestor/descendant expansion.
+		--species: each name (leaf OR internal node) expands to itself, its
+		  ancestor chain and all its descendant leaves; input names may mix.
+		--remove-nodes: exact removal after the above.
+		Returns (kept_branches_in_input_order, allowed_leaf_species).
+		"""
+		by_name = {n.name: n for n in tree.traverse()}
+		if self.nodes:
+			missing = [n for n in self.nodes if n not in by_name]
+			if missing:
+				logger.warning('--nodes not found in species tree: {}'.format(', '.join(missing)))
+			keep = set(n for n in self.nodes if n in by_name)
+		else:
+			keep = set(branches)
+		sp_allowed = None
+		if self.species:
+			keep_sp = set()
+			missing = [s for s in self.species if s not in by_name]
+			if missing:
+				logger.warning('--species not found in species tree: {}'.format(', '.join(missing)))
+			sp_allowed = set()
+			for s in self.species:
+				if s not in by_name:
+					continue
+				node = by_name[s]
+				keep_sp.add(node.name)
+				par = node.up
+				while par is not None:  # ancestor chain
+					keep_sp.add(par.name)
+					par = par.up
+				if not node.is_leaf():  # descendants
+					keep_sp.update(n.name for n in node.traverse())
+					sp_allowed.update(n.name for n in node if n.is_leaf())
+				else:
+					sp_allowed.add(node.name)
+			keep &= keep_sp
+		if self.remove_nodes:
+			missing = [n for n in self.remove_nodes if n not in by_name]
+			if missing:
+				logger.warning('--remove-nodes not found in species tree: {}'.format(', '.join(missing)))
+			keep -= set(self.remove_nodes)
+		kept = [b for b in branches if b in keep]
+		return kept, sp_allowed
 
 	def assign(self):
 		"""Assign blocks to branches, return {branch: [(block, sp1, sp2, N, pi), ...]}."""
@@ -219,24 +289,10 @@ class ParalogIndexer:
 			# 列所有物种树 branch（含没旁系的，全 0 也占一列，别缺列）；树外 branch 兜底
 			branches = list(tree_order)
 			branches += sorted(set(self._branch_pairs) - set(branches))
-			# --species 时只保留该物种相关的 branch（该物种 leaf + 含该物种的内部节点）
-			if self.species:
-				sp_set = set(self.species)
-				keep = []
-				for b in branches:
-					node = next((n for n in tree.traverse() if n.name == b), None)
-					if node is None:
-						continue
-					if node.is_leaf():
-						if node.name in sp_set:
-							keep.append(b)
-					else:
-						# internal: keep if any descendant leaf species in sp_set
-						if sp_set & set(node.get_leaf_names()):
-							keep.append(b)
-				branches = keep
+			branches, self._sp_allowed = self._select_branches(tree, branches)
 		else:
 			branches = sorted(self._branch_pairs)
+			self._sp_allowed = None
 		self._pi_branches = branches
 		self._ordered_branches = list(branches)  # internal+leaves in tree order; shared by heatmap/stats
 		self._pi_rows = []  # (block_id, N, pi_vector) for heatmap
@@ -258,7 +314,10 @@ class ParalogIndexer:
 				continue
 			if self.min_dist and rc.is_tandem(self.min_dist):
 				continue
-			if self.species and rc.species1 not in self.species:
+			if self._sp_allowed is not None and rc.species1 not in self._sp_allowed:
+				continue
+			if self.remove_nodes and rc.species1 in self.remove_nodes:
+				# removed leaf nodes: their blocks must not leak into stats
 				continue
 			if tree_species is not None and rc.species1 not in tree_species:
 				# single warning after the loop; never touch filenames
@@ -343,9 +402,12 @@ class ParalogIndexer:
 
 		# TSV output: ordered by (branch, species, block), Unassigned last;
 		# independent of the figure row order (rows/_heatmap_rows keep figure order)
+		# species may be absent from _ordered_branches under --nodes (exact
+		# internal nodes only); park those rows last within their branch
+		ob_idx = {b: i for i, b in enumerate(self._ordered_branches)}
 		tsv_rows = sorted(rows,
 					  key=lambda r: (branch_idx.get(r[3], len(branches)),
-									 self._ordered_branches.index(r[1]),
+									 ob_idx.get(r[1], len(self._ordered_branches)),
 									 r[0]))
 		with open(fpath, 'w') as fout:
 			fout.write('#block\tspecies\tN\tassigned_branch\t' + '\t'.join(branches) + '\n')
@@ -559,10 +621,12 @@ class ParalogIndexer:
 								   'gene_pairs_in_syntenic_blocks	paralog_pairs_in_syntenic_blocks	'
 								   'mean_PI	weighted_PI\n')
 			ordered = {b: i for i, b in enumerate(self._ordered_branches)}
+			ob = self._ordered_branches
+			ob_idx = {b: i for i, b in enumerate(ob)}
 			for (branch, sp), (blocks, gp, pp, sum_pi) in sorted(
 					stats.items(),
 					key=lambda kv: (ordered.get(kv[0][0], len(ordered)),  # Unassigned last
-								  self._ordered_branches.index(kv[0][1]))):
+								  ob_idx.get(kv[0][1], len(ob)))):
 				mean_pi = sum_pi / blocks if blocks else 0.0
 				n_paralogs = self._branch_sp_counts.get((branch, sp), 0)
 				wpi = pp / gp if gp else 0.0
@@ -576,9 +640,25 @@ class ParalogIndexer:
 
 		Fbranch-style: every branch (internal + leaf) sits on its own heatmap
 		row; dotted guides extend internal-node rows to the panel edge.
+		Tree is pruned to the heatmap rows (--nodes/--species/--remove-nodes
+		may drop branches); pruned internal nodes collapse to keep the
+		panel aligned with the surviving rows.
 		"""
 		from .tree import number_nodes, TreePlotter
 		tree = number_nodes(self.sptreefile)
+		rows = set(branches)
+		for n in list(tree.get_leaves()):
+			if n.name not in rows:
+				n.delete(prevent_nondicotomic=False)
+		# collapse unvisited internal nodes (mean-of-children ypos would
+		# place their branches between rows otherwise)
+		changed = True
+		while changed:
+			changed = False
+			for n in tree.traverse():
+				if not n.is_root() and n.name not in rows and len(n.children) <= 1:
+					n.delete(prevent_nondicotomic=False)
+					changed = True
 		tp = TreePlotter(tree, row_names=branches,
 						 internal_node_to_present=True,
 						 tree_style=self.tree_style,
