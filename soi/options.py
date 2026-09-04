@@ -208,11 +208,11 @@ def args_paralog(parser):
 	g_ix.add_argument('-d', '-min_dist', type=int, default=None,
 					  dest='min_dist', metavar='INT',
 					  help='Minimum distance to remove a tandem repeated block [default=None]')
-	g_ix.add_argument('--pi-cutoff', type=float, default=0.05,
+	g_ix.add_argument('--bpi-cutoff', type=float, default=0.05,
 					  dest='pi_cutoff', metavar='FLOAT',
-					  help=argparse.SUPPRESS) #'BPI cutoff: blocks whose best-branch BPI falls below '
-						   #'this are assigned to the root (BPI = branch paralog_pairs / '
-						   #'block_gene_pairs) [default=%(default)s]')
+					  help='BPI cutoff: blocks whose best-branch BPI falls below '
+						   'this are labelled Unassigned (BPI = branch paralog_pairs / '
+						   'block_gene_pairs) [default=%(default)s]')
 	g_ix.add_argument('--keep-branches', metavar='NODE', nargs='+', type=str, default=None,
 					  dest='keep_branches',
 					  help='Output only these tree branches (exact node names, no expansion): '
