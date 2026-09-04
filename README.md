@@ -232,7 +232,8 @@ soi depth -s collinearity.ortho -g ../all_species_gene.gff -r Vitis_vinifera Gin
 # use a species tree: leaf species become ref/qry (or subset with -r/-q)
 soi depth -s collinearity.ortho -g ../all_species_gene.gff -t species.tree --window_size 50
 
-# ref x qry duplicated-window proportion heatmap (tree drawn on the left)
+# ref x qry duplicated-window proportion heatmap (tree drawn on the left;
+# --tree-style distance|depth|cladogram controls the tree layout)
 soi depth -s collinearity.ortho -g ../all_species_gene.gff -t species.tree --heatmap
 
 # parallel depth computation over species pairs
@@ -406,6 +407,12 @@ soi hog -og cluster.mcl -s collinearity.ortho -t species.tree -prefix HOGs --tre
 
 # all outputs combined
 soi hog -og cluster.mcl -s collinearity.ortho -t species.tree -prefix HOGs --out-stats --bar-plot --tree-plot --max-copies 10
+
+# alternative HOG-splitting methods: MCL refinement (default), GETHOGs-style
+# graph division, or no refinement
+soi hog -og cluster.mcl -s collinearity.ortho -t species.tree -prefix HOGs --refine-method mcl
+soi hog -og cluster.mcl -s collinearity.ortho -t species.tree -prefix HOGs --refine-method divide --divide-alpha 0.6
+soi hog -og cluster.mcl -s collinearity.ortho -t species.tree -prefix HOGs --refine-method none
 ```
 
 Output files:
@@ -447,9 +454,14 @@ soi paralog --hog HOGs.tsv -ss self.collinearity.list -pre paralog
 # reuse a --no-index paralog.tsv (fastest; -ss still needed for indexing)
 soi paralog --paralog paralog.pairs.tsv -ss self.collinearity.list -pre paralog
 
-# filter by specific branches or species
+# restrict output to specific branches (exact), or to a clade (ancestors +
+# descendants of the given leaf/node); --remove-branches drops nodes
 soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
-    -pre paralog --nodes N1 N10 --species Arabidopsis_thaliana
+    -pre paralog --keep-branches N1 N10
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
+    -pre paralog --focus-branches Arabidopsis_thaliana
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
+    -pre paralog --remove-branches N3
 
 # raw paralog output only (disable index mode)
 soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
@@ -462,6 +474,11 @@ soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
 # species tree plot with syntenic/non-syntenic paralog pies
 soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
     -ss self.collinearity.list -pre paralog --tree-plot
+
+# heatmap with species-tree panel (cladogram) and per-branch signal lines
+soi paralog -og cluster.mcl -s collinearity.ortho -t species.tree \
+    -ss self.collinearity.list -pre paralog --heatmap --box-branch \
+    --line-plot --tree-heatmap --tree-style cladogram
 ```
 
 Output files:
@@ -475,7 +492,7 @@ Output files:
 
 Index mode (default): for each self-synteny block, compute BPI = (paralog pairs / gene pairs)
 per branch and assign to the branch with the highest BPI.  Blocks whose best-branch BPI
-falls below --pi-cutoff (0.05) fall back to the root node.
+falls below `--pi-cutoff` (0.05) are labelled `Unassigned`.
 
 #### `prune` ####
 The subcommand `prune` purifies orthogroups (OGs) to single-copy per species,
