@@ -736,6 +736,84 @@ class Alignment:
                                        plain=False, format_confidence='%d')
         with open(alignments, 'w') as fout:
             catAln(cdsAlnfiles, fout, idmap=d_idmap)
+
+    def append_cols(self, seqfile, sample, prefix=None, fout=None, **kargs):
+        '''Append assembled sequences as a set of new columns (one per copy).
+
+        seqfile: HybPiper retrieve output. Sequence id = '{sample}-{refgene}',
+        where refgene = reference gene id of a fully-retained copy
+        (bait/gene dir name = '{refsp}{copy_sep}{copy}|{refgeneid}').
+        New column '{sample}_{copy}' gets '{sample}|{refgene}' at rows whose
+        reference copy column contains refgene; unmatched rows get '.'.
+        prefix: output prefix -> {prefix}.alignment.csv + {prefix}.rename.list
+        (default: csv to stdout, no rename.list).'''
+        from Bio import SeqIO
+        copy_sep = kargs.pop('copy_sep', '_')
+        # d_ref: refgene -> (row_index, ref_col_index); keep lines for output
+        d_ref = {}
+        lines = []
+        for line in self:
+            lines.append(line)
+            for i, gene in enumerate(line.genes):
+                if gene is not None and gene not in d_ref:
+                    d_ref[gene] = (len(lines) - 1, i)
+        # d_copy: copy -> {row_index: refgene}
+        d_copy = {}
+        nseq = 0
+        for rc in SeqIO.parse(seqfile, 'fasta'):
+            # seq id = '{sample}-{refsp}{copy_sep}{copy}|{refgeneid}'
+            # directory/gene name = '{refsp}{copy_sep}{copy}|{refgeneid}' where
+            # d_ref keys are full ids '{refsp}|{refgeneid}'
+            refgene = rc.id.split('|')[-1]
+            sample_gene = rc.id.rsplit('|', 1)[0]  # '{sample}-{refsp}{copy_sep}{copy}'
+            if '-' in sample_gene:
+                sample_gene = sample_gene.split('-', 1)[1]  # strip sample prefix
+            refsp = sample_gene.rsplit(copy_sep, 1)[0]
+            refkey = '{}|{}'.format(refsp, refgene)
+            if refkey not in d_ref:
+                logger.warning('{}: {} not in reference genes, skipped'.format(seqfile, rc.id))
+                continue
+            copy = sample_gene.rsplit(copy_sep, 1)[-1]
+            d_copy.setdefault(copy, {})
+            ri = d_ref[refkey][0]
+            if ri in d_copy[copy]:
+                logger.warning('{}: duplicate copy {} at row {}, keep first'.format(
+                    seqfile, copy, ri))
+                continue
+            d_copy[copy][ri] = rc.id  # full seq id, written into the new cell
+            nseq += 1
+        if not d_copy:
+            raise ValueError('No sequences matched reference genes in {}'.format(seqfile))
+        logger.info('Loaded {} seqs, copies: {}'.format(nseq,
+            {c: len(g) for c, g in sorted(d_copy.items())}))
+        # output
+        if prefix:
+            fout = open('{}.alignment.csv'.format(prefix), 'w')
+            f_colnames = open('{}.rename.list'.format(prefix), 'w')
+        elif fout is None:
+            fout = sys.stdout
+            f_colnames = None
+        else:
+            f_colnames = None
+        copies = sorted(d_copy)
+        newcols = ['{}_{}'.format(sample, c) for c in copies]
+        if f_colnames is not None:
+            for i, cn in enumerate(self.colnames):
+                print('{}\t{}'.format(i + 1, cn), file=f_colnames)
+            for j, cn in enumerate(newcols):
+                print('{}\t{}'.format(len(self.colnames) + j + 1, cn), file=f_colnames)
+            f_colnames.close()
+        for li, line in enumerate(lines):
+            genes = list(line.genes)
+            for c in copies:
+                seqid = d_copy[c].get(li)
+                genes.append(seqid if seqid else None)
+            cells = [g if g is not None else '.' for g in genes]
+            print(','.join(cells), file=fout)
+        if prefix:
+            fout.close()
+            logger.info('Written {}.alignment.csv and {}.rename.list'.format(prefix, prefix))
+
     def win_trees(self, pep, gff, win_size=50, win_step=10, min_ratio=0.7,
                   min_seqs=4, tmpdir='tmp', exclude_ref=False, **kargs):
         mkdirs(tmpdir)
@@ -937,6 +1015,9 @@ def main():
     elif subcmd == 'genetrees':
         pep, cds = sys.argv[3:5]
         Alignment(alignment, **kargs).genetrees(pep, cds, **kargs)
+    elif subcmd == 'append_cols':
+        seqfile, sample = sys.argv[3:5]
+        Alignment(alignment, **kargs).append_cols(seqfile, sample, **kargs)
     elif subcmd == 'plot_ak':
         akfile = sys.argv[2]
         AK(akfile).plot(**kargs)
