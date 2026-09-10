@@ -814,6 +814,95 @@ class Alignment:
             fout.close()
             logger.info('Written {}.alignment.csv and {}.rename.list'.format(prefix, prefix))
 
+    def compmap(self, cds, read1, read2=None, ref=None, prefix=None,
+                ncpu=8, **kargs):
+        '''Competitive mapping of reads to reference CDS baits.
+
+        bait = all CDS of species ref (from the alignment csv). Reads are
+        mapped with bwa mem and filtered to primary-only alignments
+        (samtools view -G 12 -F 2304), so each read pair is assigned to at
+        most one reference gene. Depth is summarized per gene and per copy.
+
+        cds: all-species cds fasta (id = sp|geneid)
+        read1/read2: fastq(.gz) reads
+        ref: reference species name; column copies must end with _<copy>
+        prefix: output prefix -> {prefix}.bait.fa {prefix}.bam {prefix}.depth.tsv'''
+        from Bio import SeqIO
+        import subprocess
+        copy_sep = kargs.pop('copy_sep', '_')
+        cov_cutoff = kargs.pop('cov_cutoff', None)
+        # fully-retained copy genes: refgene -> copy; bait = all ref genes
+        d_retain = {}  # refgene -> copy (rows where ALL ref copies are present)
+        idx_copy = []  # (col_index, copy)
+        for i, cn in enumerate(self.colnames):
+            if cn.startswith('{}{}'.format(ref, copy_sep)):
+                idx_copy.append((i, cn[len(ref) + len(copy_sep):]))
+        if not idx_copy:
+            raise ValueError('No columns for ref {} in {}'.format(ref, self.colnames))
+        retained_rows = []
+        for line in self:
+            retained_rows.append(all(line.genes[i] is not None for i, _ in idx_copy))
+            for i, c in idx_copy:
+                g = line.genes[i]
+                if g is not None and retained_rows[-1]:
+                    d_retain[g] = c
+        # all ref genes = bait
+        refs = set()
+        for line in self:
+            for i, _ in idx_copy:
+                g = line.genes[i]
+                if g is not None:
+                    refs.add(g)
+        logger.info('ref {} copies: {}; all ref genes: {}; fully-retained genes: {}'.format(
+            ref, [c for _, c in idx_copy], len(refs), len(d_retain)))
+        # write bait fasta
+        baitfile = '{}.bait.fa'.format(prefix)
+        n = 0
+        with open(baitfile, 'w') as f:
+            for rc in SeqIO.parse(cds, 'fasta'):
+                if rc.id in refs:
+                    SeqIO.write(rc, f, 'fasta')
+                    n += 1
+        logger.info('Written {} baits to {}'.format(n, baitfile))
+        if n < len(refs):
+            logger.warning('{} ref genes not found in {}'.format(len(refs) - n, cds))
+        # bwa index + mem + primary-only filter (identical to HybPiper bwa())
+        bamfile = '{}.bam'.format(prefix)
+        cmds = []
+        if not os.path.isfile(baitfile.replace('.fa', '.amb')):
+            cmds.append('bwa index {}'.format(baitfile))
+        reads = '{} {}'.format(read1, read2) if read2 else read1
+        cmds.append('bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -b -S - > {}'.format(
+            ncpu, baitfile, reads, bamfile))
+        cmds.append('samtools index {}'.format(bamfile))
+        for c in cmds:
+            logger.info(c)
+            run_cmd(c)
+        # depth per gene: mean depth over gene length
+        depthfile = '{}.depth.tsv'.format(prefix)
+        run_cmd("samtools depth -a {} | awk '{{s[$1]+=$3; n[$1]++}} END {{for (g in s) print g, s[g]/n[g]}}' > {}.gene".format(
+            bamfile, depthfile))
+        # summarize per copy
+        d_depth = {}
+        for line in open('{}.gene'.format(depthfile)):
+            g, d = line.split()
+            d_depth[g] = float(d)
+        with open(depthfile, 'w') as f:
+            print('gene\tcopy\tretained\tdepth', file=f)
+            for g, c in sorted(d_retain.items(), key=lambda x: (x[1], x[0])):
+                print('{}\t{}\t{}\t{}'.format(g, c, 1, d_depth.get(g, 0)), file=f)
+            for g in sorted(refs - set(d_retain)):
+                print('{}\tNA\t0\t{}'.format(g, d_depth.get(g, 0)), file=f)
+        os.remove('{}.gene'.format(depthfile))
+        # summary: mean depth per copy (retained only)
+        d_sum = {}
+        for g, c in d_retain.items():
+            d = d_depth.get(g, 0)
+            d_sum.setdefault(c, []).append(d)
+        for c, ds in sorted(d_sum.items()):
+            logger.info('copy {}: mean depth {:.2f} over {} genes'.format(
+                c, sum(ds) / len(ds), len(ds)))
+
     def win_trees(self, pep, gff, win_size=50, win_step=10, min_ratio=0.7,
                   min_seqs=4, tmpdir='tmp', exclude_ref=False, **kargs):
         mkdirs(tmpdir)
@@ -1018,6 +1107,10 @@ def main():
     elif subcmd == 'append_cols':
         seqfile, sample = sys.argv[3:5]
         Alignment(alignment, **kargs).append_cols(seqfile, sample, **kargs)
+    elif subcmd == 'compmap':
+        cds, read1 = sys.argv[3:5]
+        read2 = sys.argv[5] if len(sys.argv) > 5 and not sys.argv[5].count('=') else None
+        Alignment(alignment, **kargs).compmap(cds, read1, read2, **kargs)
     elif subcmd == 'plot_ak':
         akfile = sys.argv[2]
         AK(akfile).plot(**kargs)
