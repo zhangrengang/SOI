@@ -794,7 +794,9 @@ class Alignment:
         other, which is not what the competitive mapping is meant to test.
         Reads are mapped with bwa mem and filtered to primary-only alignments
         (samtools view -G 12 -F 2304), so each read pair is assigned to at most
-        one reference gene. Depth is summarized per gene and per copy.
+        one reference gene. Only the fully-retained baits are kept in the output
+        bam (the all-bait bam is never written to disk) and depth is summarized
+        per retained gene and copy.
 
         Bait ids are '{ref}-{colnum}_XG{row}', i.e. the '{taxon}-{gene}' layout
         HybPiper requires (gene id = the HybPiper gene directory, hence unique
@@ -867,27 +869,34 @@ class Alignment:
         logger.info('Written {} baits to {}'.format(n, baitfile))
         if n < len(refs):
             logger.warning('{} ref genes not found in {}'.format(len(refs) - n, cds))
-        # bwa index + mem + primary-only filter (identical to HybPiper bwa())
+        # bwa index + mem + primary-only + retained-only. The all-bait readings are
+        # filtered on the fly, so the big all-bait bam is never written: only the
+        # retained baits (the ones HybPiper assembles) reach the disk
         bamfile = '{}.bam'.format(prefix)
+        idfile = '{}.kept.ids'.format(prefix)
+        with open(idfile, 'w') as f:
+            for g in d_retain:
+                f.write('{}\n'.format(xid(d_retain[g])))
         # stale index of a previous run would not match the new bait ids
         run_cmd('rm -f {0}.amb {0}.ann {0}.bwt {0}.pac {0}.sa'.format(baitfile))
         cmds = ['bwa index {}'.format(baitfile)]
         reads = '{} {}'.format(read1, read2) if read2 else read1
-        # keep bam unsorted (R1/R2 adjacent, required by HybPiper distribute); sort a
-        # temporary copy only for depth (samtools depth needs position-sorted input)
-        cmds.append('bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -b -S - > {}'.format(
-            ncpu, baitfile, reads, bamfile))
-        cmds.append('samtools sort -@ {} -o {}.sorted {}'.format(ncpu, bamfile, bamfile))
+        # keep bam unsorted (R1/R2 adjacent, required by HybPiper distribute); the sort
+        # needed by samtools depth is piped, no sorted copy on disk
+        cmds.append("bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -b -S - | "
+                    "awk 'NR==FNR{{m[$1]=1; next}} /^@/{{print; next}} ($3 in m){{print}}' {} - | "
+                    "samtools view -b - > {}".format(ncpu, baitfile, reads, idfile, bamfile))
         for c in cmds:
             logger.info(c)
             run_cmd(c)
         # the bwa index stores the sequence names and is of no use downstream
         run_cmd('rm -f {0}.amb {0}.ann {0}.bwt {0}.pac {0}.sa'.format(baitfile))
-        # depth per gene: mean depth over gene length (use sorted copy)
+        os.remove(idfile)
+        # depth per gene: mean depth over gene length (retained baits only, hence
+        # every row of the table is retained=1)
         depthfile = '{}.depth.tsv'.format(prefix)
-        run_cmd("samtools depth -a {}.sorted | awk '{{s[$1]+=$3; n[$1]++}} END {{for (g in s) print g, s[g]/n[g]}}' > {}.gene".format(
-            bamfile, depthfile))
-        run_cmd('rm -f {}.sorted'.format(bamfile))
+        run_cmd("samtools sort -@ {} {} | samtools depth -a - | awk '{{s[$1]+=$3; n[$1]++}} END {{for (g in s) print g, s[g]/n[g]}}' > {}.gene".format(
+            ncpu, bamfile, depthfile))
         # summarize per copy (bam RNAME = bait id -> refgene)
         d_depth = {}
         for line in open('{}.gene'.format(depthfile)):
@@ -898,8 +907,6 @@ class Alignment:
             for g, (r, i) in sorted(d_retain.items(), key=lambda x: (x[1][1], x[0])):
                 print('{}\t{}\t{}\t{}'.format(
                     g, self.colnames[i][len(ref) + len(copy_sep):], 1, d_depth.get(g, 0)), file=f)
-            for g in sorted(refs - set(d_retain)):
-                print('{}\tNA\t0\t{}'.format(g, d_depth.get(g, 0)), file=f)
         os.remove('{}.gene'.format(depthfile))
         # target baits for HybPiper: retained copies, ids identical to the RNAMEs
         bait_ret = '{}.target.cds'.format(prefix)
