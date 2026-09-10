@@ -883,12 +883,14 @@ class Alignment:
         reads = '{} {}'.format(read1, read2) if read2 else read1
         # keep bam unsorted (R1/R2 adjacent, required by HybPiper distribute); the sort
         # needed by samtools depth is piped, no sorted copy on disk
-        cmds.append("bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -b -S - | "
+        # middle stage emits SAM text (no -b): the awk filter below reads text, a BAM
+        # stream makes it emit garbage and the final samtools view -b - fails silently
+        cmds.append("bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -S - | "
                     "awk 'NR==FNR{{m[$1]=1; next}} /^@/{{print; next}} ($3 in m){{print}}' {} - | "
                     "samtools view -b - > {}".format(ncpu, baitfile, reads, idfile, bamfile))
         for c in cmds:
             logger.info(c)
-            run_cmd(c)
+            run_cmd(c, logger=logger, fail_exit=True)
         # the bwa index stores the sequence names and is of no use downstream
         run_cmd('rm -f {0}.amb {0}.ann {0}.bwt {0}.pac {0}.sa'.format(baitfile))
         os.remove(idfile)
