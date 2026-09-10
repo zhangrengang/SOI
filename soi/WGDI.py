@@ -872,16 +872,19 @@ class Alignment:
         if not os.path.isfile(baitfile.replace('.fa', '.amb')):
             cmds.append('bwa index {}'.format(baitfile))
         reads = '{} {}'.format(read1, read2) if read2 else read1
-        cmds.append('bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -b -S - | '
-                    'samtools sort -@ {} -o {}'.format(ncpu, baitfile, reads, ncpu, bamfile))
-        cmds.append('samtools index {}'.format(bamfile))
+        # keep bam unsorted (R1/R2 adjacent, required by HybPiper distribute); sort a
+        # temporary copy only for depth (samtools depth needs position-sorted input)
+        cmds.append('bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -b -S - > {}'.format(
+            ncpu, baitfile, reads, bamfile))
+        cmds.append('samtools sort -@ {} -o {}.sorted {}'.format(ncpu, bamfile, bamfile))
         for c in cmds:
             logger.info(c)
             run_cmd(c)
-        # depth per gene: mean depth over gene length
+        # depth per gene: mean depth over gene length (use sorted copy)
         depthfile = '{}.depth.tsv'.format(prefix)
-        run_cmd("samtools depth -a {} | awk '{{s[$1]+=$3; n[$1]++}} END {{for (g in s) print g, s[g]/n[g]}}' > {}.gene".format(
+        run_cmd("samtools depth -a {}.sorted | awk '{{s[$1]+=$3; n[$1]++}} END {{for (g in s) print g, s[g]/n[g]}}' > {}.gene".format(
             bamfile, depthfile))
+        run_cmd('rm -f {}.sorted'.format(bamfile))
         # summarize per copy
         d_depth = {}
         for line in open('{}.gene'.format(depthfile)):
