@@ -397,6 +397,9 @@ class Alignment:
         except:
             self.idmap = None
         self.colnames = self.parse_colnames(colnames)  # names    * repeat allowed
+        if self.indice is not None and colnames is not None:
+            # cut colnames along with indice, keep consistent with line.genes
+            self.colnames = [self.colnames[i] for i in sorted(self.indice)]
 
     def __iter__(self):
         return self._parse()
