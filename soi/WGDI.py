@@ -897,6 +897,16 @@ class Alignment:
             for g in sorted(refs - set(d_retain)):
                 print('{}\tNA\t0\t{}'.format(g, d_depth.get(g, 0)), file=f)
         os.remove('{}.gene'.format(depthfile))
+        # bait (fully-retained copies, original gene ids) + rename map for HybPiper
+        bait_ret = '{}.retained.cds'.format(prefix)
+        with open(bait_ret, 'w') as f, open('{}.rename.tsv'.format(prefix), 'w') as f2:
+            for rc in SeqIO.parse(cds, 'fasta'):
+                if rc.id in d_retain:
+                    c = d_retain[rc.id]
+                    SeqIO.write(rc, f, 'fasta')
+                    f2.write('{}\t{}{}{}|{}\n'.format(
+                        rc.id, ref, copy_sep, c, rc.id.split('|')[-1]))
+        logger.info('Written {} (retained-copy baits) and {}.rename.tsv'.format(bait_ret, prefix))
         # summary: mean depth per copy (retained only)
         d_sum = {}
         for g, c in d_retain.items():
