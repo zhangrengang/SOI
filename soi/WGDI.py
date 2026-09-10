@@ -872,8 +872,8 @@ class Alignment:
         if not os.path.isfile(baitfile.replace('.fa', '.amb')):
             cmds.append('bwa index {}'.format(baitfile))
         reads = '{} {}'.format(read1, read2) if read2 else read1
-        cmds.append('bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -b -S - > {}'.format(
-            ncpu, baitfile, reads, bamfile))
+        cmds.append('bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -b -S - | '
+                    'samtools sort -@ {} -o {}'.format(ncpu, baitfile, reads, ncpu, bamfile))
         cmds.append('samtools index {}'.format(bamfile))
         for c in cmds:
             logger.info(c)
