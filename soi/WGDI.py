@@ -404,6 +404,13 @@ class Alignment:
     def __iter__(self):
         return self._parse()
 
+    def indexed(self, start=1):
+        '''Iterate lines together with their row number (1-based). This is the
+        numbering behind the 'XG' ids shared by compmap and genetrees, so ids
+        of the same row agree across subcommands.'''
+        for i, line in enumerate(self._parse(), start):
+            yield i, line
+
     def _parse(self):
         for line in open(self.alignment):
             yield AlignmentLine(line, self.indice)
@@ -674,9 +681,7 @@ class Alignment:
             len(d_pep), len(d_cds)))
         cdsTreefiles, cdsAlnfiles = [], []
         cmd_list = []
-        i = 0
-        for line in self:
-            i += 1
+        for i, line in self.indexed():
             genes = [g for g in line.genes if g is not None]
             if len(genes) < 4:
                 continue
@@ -740,137 +745,133 @@ class Alignment:
     def append_cols(self, seqfile, sample, prefix=None, fout=None, **kargs):
         '''Append assembled sequences as a set of new columns (one per copy).
 
-        seqfile: HybPiper retrieve output. Sequence id = '{sample}-{refgene}',
-        where refgene = reference gene id of a fully-retained copy
-        (bait/gene dir name = '{refsp}{copy_sep}{copy}|{refgeneid}').
-        New column '{sample}_{copy}' gets '{sample}|{refgene}' at rows whose
-        reference copy column contains refgene; unmatched rows get '.'.
+        seqfile: HybPiper retrieve output. Sequence id = '{sample}-{colnum}_XG{row}',
+        the bait id written by compmap: colnum = column number in the colnames
+        file, row = alignment row number (same XG numbering as genetrees).
+        New column '{sample}_{copy}' takes that sequence at row 'row' of column
+        'colnum'; unmatched rows get '.'.
         prefix: output prefix -> {prefix}.alignment.csv + {prefix}.rename.list
         (default: csv to stdout, no rename.list).'''
         from Bio import SeqIO
+        import re
         copy_sep = kargs.pop('copy_sep', '_')
-        # d_ref: refgene -> (row_index, ref_col_index); keep lines for output
-        d_ref = {}
-        lines = []
-        for line in self:
-            lines.append(line)
-            for i, gene in enumerate(line.genes):
-                if gene is not None and gene not in d_ref:
-                    d_ref[gene] = (len(lines) - 1, i)
-        # d_copy: copy -> {row_index: refgene}
-        d_copy = {}
+        lines = list(self)
+        pat = re.compile(r'^(\d+)_XG(\d+)$')
+        d_copy = {}  # copy -> {row_index: seq id}
         nseq = 0
         for rc in SeqIO.parse(seqfile, 'fasta'):
-            # seq id = '{sample}-{refsp}{copy_sep}{copy}|{refgeneid}'
-            # directory/gene name = '{refsp}{copy_sep}{copy}|{refgeneid}' where
-            # d_ref keys are full ids '{refsp}|{refgeneid}'
-            refgene = rc.id.split('|')[-1]
-            sample_gene = rc.id.rsplit('|', 1)[0]  # '{sample}-{refsp}{copy_sep}{copy}'
-            if '-' in sample_gene:
-                sample_gene = sample_gene.split('-', 1)[1]  # strip sample prefix
-            refsp = sample_gene.rsplit(copy_sep, 1)[0]
-            refkey = '{}|{}'.format(refsp, refgene)
-            if refkey not in d_ref:
-                logger.warning('{}: {} not in reference genes, skipped'.format(seqfile, rc.id))
+            # id = '{sample}-{colnum}_XG{row}' (the HybPiper gene directory name)
+            gname = rc.id[len(sample) + 1:] if rc.id.startswith('{}-'.format(sample)) else rc.id
+            m = pat.match(gname)
+            if m is None:
+                logger.warning('{}: unexpected id {}, skipped'.format(seqfile, rc.id))
                 continue
-            copy = sample_gene.rsplit(copy_sep, 1)[-1]
+            col, row = int(m.group(1)), int(m.group(2))
+            if not 1 <= col <= len(self.colnames) or not 1 <= row <= len(lines):
+                logger.warning('{}: {} out of range, skipped'.format(seqfile, rc.id))
+                continue
+            if lines[row - 1].genes[col - 1] is None:
+                logger.warning('{}: {} points to an empty cell, skipped'.format(seqfile, rc.id))
+                continue
+            copy = self.colnames[col - 1].rsplit(copy_sep, 1)[-1]
             d_copy.setdefault(copy, {})
-            ri = d_ref[refkey][0]
-            if ri in d_copy[copy]:
+            if row - 1 in d_copy[copy]:
                 logger.warning('{}: duplicate copy {} at row {}, keep first'.format(
-                    seqfile, copy, ri))
+                    seqfile, copy, row - 1))
                 continue
-            d_copy[copy][ri] = rc.id  # full seq id, written into the new cell
+            d_copy[copy][row - 1] = rc.id  # full seq id, written into the new cell
             nseq += 1
         if not d_copy:
-            raise ValueError('No sequences matched reference genes in {}'.format(seqfile))
+            raise ValueError('No sequences matched reference cells in {}'.format(seqfile))
         logger.info('Loaded {} seqs, copies: {}'.format(nseq,
             {c: len(g) for c, g in sorted(d_copy.items())}))
-        # output
-        if prefix:
-            fout = open('{}.alignment.csv'.format(prefix), 'w')
-            f_colnames = open('{}.rename.list'.format(prefix), 'w')
-        elif fout is None:
-            fout = sys.stdout
-            f_colnames = None
-        else:
-            f_colnames = None
-        copies = sorted(d_copy)
-        newcols = ['{}_{}'.format(sample, c) for c in copies]
-        if f_colnames is not None:
-            for i, cn in enumerate(self.colnames):
-                print('{}\t{}'.format(i + 1, cn), file=f_colnames)
-            for j, cn in enumerate(newcols):
-                print('{}\t{}'.format(len(self.colnames) + j + 1, cn), file=f_colnames)
-            f_colnames.close()
-        for li, line in enumerate(lines):
-            genes = list(line.genes)
-            for c in copies:
-                seqid = d_copy[c].get(li)
-                genes.append(seqid if seqid else None)
-            cells = [g if g is not None else '.' for g in genes]
-            print(','.join(cells), file=fout)
-        if prefix:
-            fout.close()
-            logger.info('Written {}.alignment.csv and {}.rename.list'.format(prefix, prefix))
-
     def compmap(self, cds, read1, read2=None, ref=None, prefix=None,
                 ncpu=8, **kargs):
         '''Competitive mapping of reads to reference CDS baits.
 
-        bait = all CDS of species ref (from the alignment csv). Reads are
-        mapped with bwa mem and filtered to primary-only alignments
-        (samtools view -G 12 -F 2304), so each read pair is assigned to at
-        most one reference gene. Depth is summarized per gene and per copy.
+        bait = all CDS of species ref (from the alignment csv), one sequence per
+        gene: duplicated baits of identical sequence would compete with each
+        other, which is not what the competitive mapping is meant to test.
+        Reads are mapped with bwa mem and filtered to primary-only alignments
+        (samtools view -G 12 -F 2304), so each read pair is assigned to at most
+        one reference gene. Depth is summarized per gene and per copy.
+
+        Bait ids are '{ref}-{colnum}_XG{row}', i.e. the '{taxon}-{gene}' layout
+        HybPiper requires (gene id = the HybPiper gene directory, hence unique
+        and '-' free), using the same XG numbering as genetrees. The bam is
+        therefore ready for HybPiper reads_first.py --bwa --no-blast, which
+        wants it named '{prefix}.bam' in the working directory, and the bwa
+        index is dropped once the mapping is done.
 
         cds: all-species cds fasta (id = sp|geneid)
         read1/read2: fastq(.gz) reads
         ref: reference species name; column copies must end with _<copy>
-        prefix: output prefix -> {prefix}.bait.fa {prefix}.bam {prefix}.depth.tsv'''
+        prefix: output prefix -> {prefix}.bait.fa {prefix}.bam {prefix}.depth.tsv
+                {prefix}.target.cds'''
         from Bio import SeqIO
         import subprocess
         copy_sep = kargs.pop('copy_sep', '_')
         cov_cutoff = kargs.pop('cov_cutoff', None)
-        # fully-retained copy genes: refgene -> copy; bait = all ref genes
-        d_retain = {}  # refgene -> copy (rows where ALL ref copies are present)
         idx_copy = []  # (col_index, copy)
         for i, cn in enumerate(self.colnames):
             if cn.startswith('{}{}'.format(ref, copy_sep)):
                 idx_copy.append((i, cn[len(ref) + len(copy_sep):]))
         if not idx_copy:
             raise ValueError('No columns for ref {} in {}'.format(ref, self.colnames))
-        retained_rows = []
-        for line in self:
-            retained_rows.append(all(line.genes[i] is not None for i, _ in idx_copy))
-            for i, c in idx_copy:
-                g = line.genes[i]
-                if g is not None and retained_rows[-1]:
-                    d_retain[g] = c
-        # all ref genes = bait
-        refs = set()
-        for line in self:
+        # one cell per reference gene, preferring fully-retained rows so that a
+        # gene keeps the same id as its target bait below
+        d_cell = {}      # refgene -> (row, col_index), first occurrence in a retained row
+        d_cell_all = {}  # refgene -> (row, col_index), first occurrence anywhere
+        retained_rows = set()
+        for r, line in self.indexed():
+            keep = all(line.genes[i] is not None for i, _ in idx_copy)
+            if keep:
+                retained_rows.add(r)
             for i, _ in idx_copy:
                 g = line.genes[i]
-                if g is not None:
-                    refs.add(g)
+                if g is None:
+                    continue
+                if g not in d_cell_all:
+                    d_cell_all[g] = (r, i)
+                if keep and g not in d_cell:
+                    d_cell[g] = (r, i)
+        for g, c in d_cell_all.items():
+            d_cell.setdefault(g, c)
+        refs = set(d_cell_all)
+        d_retain = {g: c for g, c in d_cell.items() if c[0] in retained_rows}
         logger.info('ref {} copies: {}; all ref genes: {}; fully-retained genes: {}'.format(
             ref, [c for _, c in idx_copy], len(refs), len(d_retain)))
-        # write bait fasta
+        # ref itself may contain '-', so it is sanitized for the taxon slot; gene
+        # ids never enter the id, so they may contain any character
+        taxon = ref.replace('-', '_')
+        def xid(cell):
+            r, i = cell
+            return '{}-{}_XG{}'.format(taxon, i + 1, r)
+        # write bait fasta: all ref genes, one sequence per gene
         baitfile = '{}.bait.fa'.format(prefix)
+        d_bait_gene = {}  # bait id (bam RNAME) -> refgene
+        s_written = set()
         n = 0
         with open(baitfile, 'w') as f:
             for rc in SeqIO.parse(cds, 'fasta'):
-                if rc.id in refs:
-                    SeqIO.write(rc, f, 'fasta')
-                    n += 1
+                gene = rc.id
+                if gene not in d_cell or gene in s_written:
+                    continue
+                bid = xid(d_cell[gene])
+                rc.id = bid
+                rc.description = bid
+                SeqIO.write(rc, f, 'fasta')
+                d_bait_gene[bid] = gene
+                s_written.add(gene)
+                n += 1
         logger.info('Written {} baits to {}'.format(n, baitfile))
         if n < len(refs):
             logger.warning('{} ref genes not found in {}'.format(len(refs) - n, cds))
         # bwa index + mem + primary-only filter (identical to HybPiper bwa())
         bamfile = '{}.bam'.format(prefix)
-        cmds = []
-        if not os.path.isfile(baitfile.replace('.fa', '.amb')):
-            cmds.append('bwa index {}'.format(baitfile))
+        # stale index of a previous run would not match the new bait ids
+        run_cmd('rm -f {0}.amb {0}.ann {0}.bwt {0}.pac {0}.sa'.format(baitfile))
+        cmds = ['bwa index {}'.format(baitfile)]
         reads = '{} {}'.format(read1, read2) if read2 else read1
         # keep bam unsorted (R1/R2 adjacent, required by HybPiper distribute); sort a
         # temporary copy only for depth (samtools depth needs position-sorted input)
@@ -880,38 +881,42 @@ class Alignment:
         for c in cmds:
             logger.info(c)
             run_cmd(c)
+        # the bwa index stores the sequence names and is of no use downstream
+        run_cmd('rm -f {0}.amb {0}.ann {0}.bwt {0}.pac {0}.sa'.format(baitfile))
         # depth per gene: mean depth over gene length (use sorted copy)
         depthfile = '{}.depth.tsv'.format(prefix)
         run_cmd("samtools depth -a {}.sorted | awk '{{s[$1]+=$3; n[$1]++}} END {{for (g in s) print g, s[g]/n[g]}}' > {}.gene".format(
             bamfile, depthfile))
         run_cmd('rm -f {}.sorted'.format(bamfile))
-        # summarize per copy
+        # summarize per copy (bam RNAME = bait id -> refgene)
         d_depth = {}
         for line in open('{}.gene'.format(depthfile)):
             g, d = line.split()
-            d_depth[g] = float(d)
+            d_depth[d_bait_gene.get(g, g)] = float(d)
         with open(depthfile, 'w') as f:
             print('gene\tcopy\tretained\tdepth', file=f)
-            for g, c in sorted(d_retain.items(), key=lambda x: (x[1], x[0])):
-                print('{}\t{}\t{}\t{}'.format(g, c, 1, d_depth.get(g, 0)), file=f)
+            for g, (r, i) in sorted(d_retain.items(), key=lambda x: (x[1][1], x[0])):
+                print('{}\t{}\t{}\t{}'.format(
+                    g, self.colnames[i][len(ref) + len(copy_sep):], 1, d_depth.get(g, 0)), file=f)
             for g in sorted(refs - set(d_retain)):
                 print('{}\tNA\t0\t{}'.format(g, d_depth.get(g, 0)), file=f)
         os.remove('{}.gene'.format(depthfile))
-        # bait (fully-retained copies, original gene ids) + rename map for HybPiper
+        # target baits for HybPiper: retained copies, ids identical to the RNAMEs
         bait_ret = '{}.target.cds'.format(prefix)
-        with open(bait_ret, 'w') as f, open('{}.rename.tsv'.format(prefix), 'w') as f2:
+        with open(bait_ret, 'w') as f:
             for rc in SeqIO.parse(cds, 'fasta'):
-                if rc.id in d_retain:
-                    c = d_retain[rc.id]
-                    SeqIO.write(rc, f, 'fasta')
-                    f2.write('{}\t{}{}{}|{}\n'.format(
-                        rc.id, ref, copy_sep, c, rc.id.split('|')[-1]))
-        logger.info('Written {} (retained-copy baits) and {}.rename.tsv'.format(bait_ret, prefix))
+                if rc.id not in d_retain:
+                    continue
+                bid = xid(d_retain[rc.id])
+                rc.id = bid
+                rc.description = bid
+                SeqIO.write(rc, f, 'fasta')
+        logger.info('Written {} (retained-copy baits)'.format(bait_ret))
         # summary: mean depth per copy (retained only)
         d_sum = {}
-        for g, c in d_retain.items():
+        for g, (r, i) in d_retain.items():
             d = d_depth.get(g, 0)
-            d_sum.setdefault(c, []).append(d)
+            d_sum.setdefault(self.colnames[i][len(ref) + len(copy_sep):], []).append(d)
         for c, ds in sorted(d_sum.items()):
             logger.info('copy {}: mean depth {:.2f} over {} genes'.format(
                 c, sum(ds) / len(ds), len(ds)))
