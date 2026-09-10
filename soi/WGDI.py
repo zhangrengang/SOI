@@ -898,7 +898,7 @@ class Alignment:
                 print('{}\tNA\t0\t{}'.format(g, d_depth.get(g, 0)), file=f)
         os.remove('{}.gene'.format(depthfile))
         # bait (fully-retained copies, original gene ids) + rename map for HybPiper
-        bait_ret = '{}.retained.cds'.format(prefix)
+        bait_ret = '{}.target.cds'.format(prefix)
         with open(bait_ret, 'w') as f, open('{}.rename.tsv'.format(prefix), 'w') as f2:
             for rc in SeqIO.parse(cds, 'fasta'):
                 if rc.id in d_retain:
