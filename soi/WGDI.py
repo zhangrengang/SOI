@@ -487,7 +487,7 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, all_genes=Fal
     if ref and sample:
         # 左 = 测序物种（reads），右 = 参考物种（其亚基因组拷贝）；用 / 分隔，整串可斜体
         t, tstyle = format_species_title('{} / {}'.format(sample, ref), sep=' / ')
-        ax.set_title(t, fontstyle=tstyle, pad=20)
+#        ax.set_title(t, fontstyle=tstyle, pad=20)
 #        ax.text(0.5, 1.01, sub, transform=ax.transAxes,
 #                ha='center', va='bottom', fontsize=9)
     elif ref:
@@ -881,7 +881,12 @@ class Alignment:
         nseq = 0
         for rc in SeqIO.parse(seqfile, 'fasta'):
             # id = '{sample}-{colnum}_XG{row}' (the HybPiper gene directory name)
-            gname = rc.id[len(sample) + 1:] if rc.id.startswith('{}-'.format(sample)) else rc.id
+            # HybPiper 的基因目录名 = <prefix>-<col>_XG<row>，取最后一个 '-' 之后的部分
+            # （prefix 可以带 ref/模式后缀，如 Neesia_sp.Durio_zibethinus.all-18_XG2661）
+            if not rc.id.startswith(sample):
+                logger.warning('{}: id {} 不以样本名 {} 开头，仍按最后一个 - 解析'.format(
+                    seqfile, rc.id, sample))
+            gname = rc.id.rsplit('-', 1)[-1]
             m = pat.match(gname)
             if m is None:
                 logger.warning('{}: unexpected id {}, skipped'.format(seqfile, rc.id))
