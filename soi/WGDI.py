@@ -11,7 +11,7 @@ from .OrthoFinder import catAln, format_id_for_iqtree
 from lazy_property import LazyWritableProperty as lazyproperty
 from .small_tools import mkdirs, flatten, test_s, test_f, parse_kargs
 from .RunCmdsMP import run_cmd, run_job, logger
-from .style import format_species_label
+from .style import format_species_label, format_species_title
 
 sg_colors = ['#f9c00c', '#00b9f1', '#7200da', '#f9320c', '#00b8a9']
 
@@ -458,12 +458,20 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
     ax.set_xticklabels(copies)
     ax.set_xlabel('Subgenome')
     ax.set_ylabel('Normalized depth' if normalize else 'Depth')
-    if ref:
+    sub = 'reads competitively mapped onto the reference subgenomes'
+    if normalize:
+        sub += '; depth normalized to the mean'
+    if ref and sample:
+        # 左 = 测序物种（reads），右 = 参考物种（亚基因组），箭头表示比对方向
+        t, tstyle = format_species_title('{} \u2192 {}'.format(sample, ref), sep=' \u2192 ')
+        ax.set_title(t, fontstyle=tstyle, pad=20)
+        ax.text(0.5, 1.01, sub, transform=ax.transAxes,
+                ha='center', va='bottom', fontsize=9)
+    elif ref:
         t, tstyle = format_species_label(ref)
         ax.set_title(t, fontstyle=tstyle, pad=20)
-        sub = 'normalized subgenome depth' if normalize else 'subgenome depth'
-        ax.text(0.5, 1.01, sub + (' ({})'.format(sample) if sample else ''),
-                transform=ax.transAxes, ha='center', va='bottom', fontsize=9)
+        ax.text(0.5, 1.01, sub, transform=ax.transAxes,
+                ha='center', va='bottom', fontsize=9)
     elif sample:
         ax.set_title(sample, pad=20)
     if outfigs:
