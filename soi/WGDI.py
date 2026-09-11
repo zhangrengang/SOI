@@ -451,9 +451,16 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, drop_zero=Tru
     from scipy.stats import gaussian_kde
     ygrid = np.linspace(lo, hi, 256)
     fig, ax = plt.subplots(figsize=figsize)
+    n_out = 0
     for i, c in enumerate(copies):
         v = d_arr[c] / mu
-        dens = gaussian_kde(v)(ygrid)
+        # KDE 只用窗口内的点：长尾（靶向捕获）会把 Scott 规则的核宽撑到极大，
+        # 窗口内密度近似常数 -> 小提琴变等粗柱子。中值/均值仍按全量数据算。
+        vw = v[(v >= lo) & (v <= hi)]
+        n_out += len(v) - len(vw)
+        if len(vw) < 2:
+            vw = v
+        dens = gaussian_kde(vw)(ygrid)
         w = dens / dens.max() * 0.4        # 每把琴按自身峰值定宽
         ax.fill_betweenx(ygrid, i + 1 - w, i + 1 + w,
                          facecolor=colors[i % len(colors)], alpha=alpha,
@@ -464,8 +471,9 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, drop_zero=Tru
         logger.info('copy {}: n={} mean {:.2f}x median {:.3f}x'.format(
             c, len(d_arr[c]), d_arr[c].mean() / mu, m))
     ax.set_ylim(lo, hi)
-    logger.info('depth violin: {} x {} loci/copy, norm_by={} (divisor {:.3f}), ylim {:.3f}-{:.3f}'.format(
-        len(copies), nloci, norm_by, mu, lo, hi))
+    logger.info('depth violin: {} x {} loci/copy, norm_by={} (divisor {:.3f}), ylim {:.3f}-{:.3f}; '
+        '{} loci outside the window used only for median/mean'.format(
+        len(copies), nloci, norm_by, mu, lo, hi, n_out))
     ax.axhline(1.0, color='#888888', ls='--', lw=0.8, zorder=1)
     ax.set_xticks(range(1, len(copies) + 1))
     ax.set_xticklabels(copies)
