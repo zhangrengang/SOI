@@ -462,8 +462,8 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
     if normalize:
         sub += '; depth normalized to the mean'
     if ref and sample:
-        # 左 = 测序物种（reads），右 = 参考物种（亚基因组），箭头表示比对方向
-        t, tstyle = format_species_title('{} \u2192 {}'.format(sample, ref), sep=' \u2192 ')
+        # 左 = 测序物种（reads），右 = 参考物种（其亚基因组拷贝）；用 / 分隔，整串可斜体
+        t, tstyle = format_species_title('{} / {}'.format(sample, ref), sep=' / ')
         ax.set_title(t, fontstyle=tstyle, pad=20)
         ax.text(0.5, 1.01, sub, transform=ax.transAxes,
                 ha='center', va='bottom', fontsize=9)
