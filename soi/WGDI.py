@@ -932,7 +932,7 @@ class Alignment:
         if prefix:
             fout.close()
             logger.info('Written {}.alignment.csv and {}.rename.list'.format(prefix, prefix))
-    def compmap(self, cds, read1, read2=None, ref=None, prefix=None,
+    def compmap(self, cds, read1, read2=None, all_genes=False, ref=None, prefix=None,
                 ncpu=8, **kargs):
         '''Competitive mapping of reads to reference CDS baits.
 
@@ -990,6 +990,11 @@ class Alignment:
         d_retain = {g: c for g, c in d_cell.items() if c[0] in retained_rows}
         logger.info('ref {} copies: {}; all ref genes: {}; fully-retained genes: {}'.format(
             ref, [c for _, c in idx_copy], len(refs), len(d_retain)))
+        # all_genes=1：不做"完全保留"过滤 —— bam / 深度表 / target.cds 一致地用全部基因
+        all_genes = bool(all_genes) and str(all_genes).lower() not in ('0', 'false', 'no', '')
+        d_rows = d_retain if not all_genes else d_cell
+        logger.info('all_genes={} -> {} genes used ({} fully-retained)'.format(
+            all_genes, len(d_rows), len(d_retain)))
         # ref itself may contain '-', so it is sanitized for the taxon slot; gene
         # ids never enter the id, so they may contain any character
         taxon = ref.replace('-', '_')
@@ -1022,8 +1027,8 @@ class Alignment:
         bamfile = '{}.bam'.format(prefix)
         idfile = '{}.kept.ids'.format(prefix)
         with open(idfile, 'w') as f:
-            for g in d_retain:
-                f.write('{}\n'.format(xid(d_retain[g])))
+            for g in d_rows:
+                f.write('{}\n'.format(xid(d_rows[g])))
         # stale index of a previous run would not match the new bait ids
         run_cmd('rm -f {0}.amb {0}.ann {0}.bwt {0}.pac {0}.sa'.format(baitfile))
         cmds = ['bwa index {}'.format(baitfile)]
@@ -1053,17 +1058,18 @@ class Alignment:
             d_depth[d_bait_gene.get(g, g)] = float(d)
         with open(depthfile, 'w') as f:
             print('gene\tcopy\tretained\tdepth', file=f)
-            for g, (r, i) in sorted(d_retain.items(), key=lambda x: (x[1][1], x[0])):
+            for g, (r, i) in sorted(d_rows.items(), key=lambda x: (x[1][1], x[0])):
                 print('{}\t{}\t{}\t{}'.format(
-                    g, self.colnames[i][len(ref) + len(copy_sep):], 1, d_depth.get(g, 0)), file=f)
+                    g, self.colnames[i][len(ref) + len(copy_sep):],
+                    1 if g in d_retain else 0, d_depth.get(g, 0)), file=f)
         os.remove('{}.gene'.format(depthfile))
         # target baits for HybPiper: retained copies, ids identical to the RNAMEs
         bait_ret = '{}.target.cds'.format(prefix)
         with open(bait_ret, 'w') as f:
             for rc in SeqIO.parse(cds, 'fasta'):
-                if rc.id not in d_retain:
+                if rc.id not in d_rows:
                     continue
-                bid = xid(d_retain[rc.id])
+                bid = xid(d_rows[rc.id])
                 rc.id = bid
                 rc.description = bid
                 SeqIO.write(rc, f, 'fasta')
