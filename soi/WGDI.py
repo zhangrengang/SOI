@@ -387,8 +387,8 @@ def group_genes(genes, d_genes, max_dist=50):
 
 
 def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=True,
-                      ylim=(None, 2.5), ylim_lower_pct=0.5, colors=None, alpha=0.5,
-                      ref=None, sample=None, figsize=(5.5, 5), dpi=300, **kargs):
+                      ylim=(0, 2.5), colors=None, alpha=0.5, ref=None, sample=None,
+                      figsize=None, dpi=300, **kargs):
     '''每个亚基因组拷贝的深度分布：小提琴图 + 中值线（compmap 深度表专用）。
 
     depthfile: soi-wgdi compmap 产出的 <prefix>.depth.tsv，列 gene/copy/retained/depth。
@@ -426,8 +426,11 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
     nloci = min(len(d_arr[c]) for c in copies)
     # 深度分布有长尾（本例最大 131.8x）：y 轴上限定死，下界按分位取（数据驱动）
     pooled = np.concatenate([d_arr[c] for c in copies])
-    lo = float(np.percentile(pooled, ylim_lower_pct)) / mu if (not ylim or ylim[0] is None) else float(ylim[0])
+    lo = 0.0 if (not ylim or ylim[0] is None) else float(ylim[0])
     hi = float(pooled.max()) / mu if (not ylim or ylim[1] is None) else float(ylim[1])
+    if figsize is None:
+        # 宽度随亚基因组数量调节（每个拷贝 0.75 英寸 + 两侧余量），整体比原来小
+        figsize = (0.75 * len(copies) + 1.3, 3.6)
     if colors is None:
         colors = sg_colors
     # 自己算 KDE 并用 fill_betweenx 画：matplotlib 的 violinplot 把密度网格铺在
@@ -444,7 +447,8 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
                          facecolor=colors[i % len(colors)], alpha=alpha,
                          edgecolor='#333333', linewidth=0.6, zorder=2)
         m = float(np.median(v))
-        ax.hlines(m, i + 0.68, i + 1.32, color='#d62728', lw=1.6, zorder=3)
+        ax.plot([i + 1], [m], marker='o', color='black', markersize=4.2,
+                linestyle='none', zorder=4)
         logger.info('copy {}: n={} mean {:.2f}x median {:.3f}x'.format(
             c, len(d_arr[c]), d_arr[c].mean() / mu, m))
     ax.set_ylim(lo, hi)
@@ -452,8 +456,8 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
     ax.axhline(1.0, color='#888888', ls='--', lw=0.8, zorder=1)
     ax.set_xticks(range(1, len(copies) + 1))
     ax.set_xticklabels(copies)
-    ax.set_xlabel('Subgenome copy')
-    ax.set_ylabel('Normalized depth ({})'.format('depth / mean depth' if normalize else 'depth'))
+    ax.set_xlabel('Subgenome')
+    ax.set_ylabel('Normalized depth' if normalize else 'Depth')
     if ref:
         t, tstyle = format_species_label(ref)
         ax.set_title(t, fontstyle=tstyle, pad=20)

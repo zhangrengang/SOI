@@ -112,7 +112,7 @@ def _add_shared_hog_args(parser, og_required=True, s_required=True,
 	g_ctl.add_argument('--drop-no-cross', action='store_true', default=False,
 						dest='drop_no_cross',
 						help=argparse.SUPPRESS)  # 'Drop (instead of merge) HOGs whose genes do not span all child branches'
-	g_mcl.add_argument('--refine-method', type=str, default='mcl',
+	g_mcl.add_argument('-m', '--refine-method', type=str, default='mcl',
 						dest='refine_method', choices=['mcl', 'divide', 'none'],
 						help='HOG refinement method: mcl = Markov clustering (default), '
 							 'divide = recursive weighted minimum cuts (GETHOGs 1, Altenhoff 2013), '
@@ -274,7 +274,7 @@ def args_paralog(parser):
 					   			'all tips aligned at equal depth '
 					   			'(default: %(default)s)')
 	g_out.add_argument('--note', type=str, default=None, dest='note',
-					   help='Text label drawn on the heatmap (e.g. key parameters)')
+					   help=argparse.SUPPRESS) #'Text label drawn on the heatmap (e.g. key parameters)')
 
 def func_paralog(**kargs):
 	from .paralog import xmain as paralog_main
