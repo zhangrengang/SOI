@@ -387,8 +387,8 @@ def group_genes(genes, d_genes, max_dist=50):
 
 
 def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=True,
-                      ylim=(None, 2.5), ylim_lower_pct=0.5, colors=None, ref=None,
-                      sample=None, figsize=(5.5, 5), dpi=300, **kargs):
+                      ylim=(None, 2.5), ylim_lower_pct=0.5, colors=None, alpha=0.5,
+                      ref=None, sample=None, figsize=(5.5, 5), dpi=300, **kargs):
     '''每个亚基因组拷贝的深度分布：小提琴图 + 中值线（compmap 深度表专用）。
 
     depthfile: soi-wgdi compmap 产出的 <prefix>.depth.tsv，列 gene/copy/retained/depth。
@@ -430,14 +430,20 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
     hi = float(pooled.max()) / mu if (not ylim or ylim[1] is None) else float(ylim[1])
     if colors is None:
         colors = sg_colors
+    # 自己算 KDE 并用 fill_betweenx 画：matplotlib 的 violinplot 把密度网格铺在
+    # 数据全量程上（本例 0-131x），可见窗口里只剩两三个采样点 -> 平滑曲线变折线；
+    # 这里把网格固定铺在 [lo, hi]（256 点），数据仍用全量（不在边界堆积）
+    from scipy.stats import gaussian_kde
+    ygrid = np.linspace(lo, hi, 256)
     fig, ax = plt.subplots(figsize=figsize)
-    parts = ax.violinplot([d_arr[c] / mu for c in copies], showextrema=False, widths=0.85)
-    for i, (body, c) in enumerate(zip(parts['bodies'], copies)):
-        body.set_facecolor(colors[i % len(colors)])
-        body.set_edgecolor('#333333')
-        body.set_linewidth(0.6)
-        body.set_alpha(0.85)
-        m = float(np.median(d_arr[c] / mu))
+    for i, c in enumerate(copies):
+        v = d_arr[c] / mu
+        dens = gaussian_kde(v)(ygrid)
+        w = dens / dens.max() * 0.4        # 每把琴按自身峰值定宽
+        ax.fill_betweenx(ygrid, i + 1 - w, i + 1 + w,
+                         facecolor=colors[i % len(colors)], alpha=alpha,
+                         edgecolor='#333333', linewidth=0.6, zorder=2)
+        m = float(np.median(v))
         ax.hlines(m, i + 0.68, i + 1.32, color='#d62728', lw=1.6, zorder=3)
         logger.info('copy {}: n={} mean {:.2f}x median {:.3f}x'.format(
             c, len(d_arr[c]), d_arr[c].mean() / mu, m))
