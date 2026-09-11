@@ -785,6 +785,33 @@ class Alignment:
             raise ValueError('No sequences matched reference cells in {}'.format(seqfile))
         logger.info('Loaded {} seqs, copies: {}'.format(nseq,
             {c: len(g) for c, g in sorted(d_copy.items())}))
+        # output: new columns {sample}_{copy} appended after the reference columns
+        if prefix:
+            fout = open('{}.alignment.csv'.format(prefix), 'w')
+            f_colnames = open('{}.rename.list'.format(prefix), 'w')
+        elif fout is None:
+            fout = sys.stdout
+            f_colnames = None
+        else:
+            f_colnames = None
+        copies = sorted(d_copy)
+        newcols = ['{}_{}'.format(sample, c) for c in copies]
+        if f_colnames is not None:
+            for i, cn in enumerate(self.colnames):
+                print('{}\t{}'.format(i + 1, cn), file=f_colnames)
+            for j, cn in enumerate(newcols):
+                print('{}\t{}'.format(len(self.colnames) + j + 1, cn), file=f_colnames)
+            f_colnames.close()
+        for li, line in enumerate(lines):
+            genes = list(line.genes)
+            for c in copies:
+                seqid = d_copy[c].get(li)
+                genes.append(seqid if seqid else None)
+            cells = [g if g is not None else '.' for g in genes]
+            print(','.join(cells), file=fout)
+        if prefix:
+            fout.close()
+            logger.info('Written {}.alignment.csv and {}.rename.list'.format(prefix, prefix))
     def compmap(self, cds, read1, read2=None, ref=None, prefix=None,
                 ncpu=8, **kargs):
         '''Competitive mapping of reads to reference CDS baits.
