@@ -386,9 +386,9 @@ def group_genes(genes, d_genes, max_dist=50):
 
 
 
-def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=True,
-                      ylim=(0, 2.5), colors=None, alpha=0.5, ref=None, sample=None,
-                      figsize=None, dpi=300, **kargs):
+def plot_depth_violin(depthfile, outfigs=None, retained_only=True, drop_zero=True,
+                      normalize=True, norm_by='mean', ylim=(0, 2.5), colors=None,
+                      alpha=0.5, ref=None, sample=None, figsize=None, dpi=300, **kargs):
     '''每个亚基因组拷贝的深度分布：小提琴图 + 中值线（compmap 深度表专用）。
 
     depthfile: soi-wgdi compmap 产出的 <prefix>.depth.tsv，列 gene/copy/retained/depth。
@@ -400,6 +400,7 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
     outfigs 给 .pdf 路径，同时出同名 .png；返回 [(copy, 中值), ...]。
     '''
     d_copy = {}
+    nzero = 0
     for line in open(depthfile):
         arr = line.rstrip('\n').split('\t')
         if len(arr) < 4:
@@ -415,17 +416,28 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
             d = float(depth)
         except ValueError:
             continue
+        if drop_zero and d == 0:      # 深度 0 = 该位点在这份 reads 里没覆盖，画分布要剔掉
+            nzero += 1
+            continue
         d_copy.setdefault(copy, []).append(d)
     if not d_copy:
         raise ValueError('no retained depth records in {}'.format(depthfile))
+    if nzero:
+        logger.info('depth violin: dropped {} zero-depth loci'.format(nzero))
     copies = list(d_copy)        # 保持表内出现顺序（= rename.list 的拷贝顺序）
     d_arr = {c: np.array(d_copy[c], dtype=float) for c in copies}
-    mu = np.concatenate([d_arr[c] for c in copies]).mean()
-    if not normalize:
-        mu = 1.0
     nloci = min(len(d_arr[c]) for c in copies)
     # 深度分布有长尾（本例最大 131.8x）：y 轴上限定死，下界按分位取（数据驱动）
     pooled = np.concatenate([d_arr[c] for c in copies])
+    if normalize:
+        if norm_by == 'median':          # 长尾（靶向捕获效率差异大）时用中位数当分母更稳
+            mu = float(np.median(pooled))
+        elif norm_by == 'mean':
+            mu = float(pooled.mean())
+        else:
+            raise ValueError("norm_by must be 'mean' or 'median', got {}".format(norm_by))
+    else:
+        mu = 1.0
     lo = 0.0 if (not ylim or ylim[0] is None) else float(ylim[0])
     hi = float(pooled.max()) / mu if (not ylim or ylim[1] is None) else float(ylim[1])
     if figsize is None:
@@ -452,7 +464,8 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
         logger.info('copy {}: n={} mean {:.2f}x median {:.3f}x'.format(
             c, len(d_arr[c]), d_arr[c].mean() / mu, m))
     ax.set_ylim(lo, hi)
-    logger.info('depth violin ylim: {:.3f}x - {:.3f}x ({} loci/copy)'.format(lo, hi, nloci))
+    logger.info('depth violin: {} x {} loci/copy, norm_by={} (divisor {:.3f}), ylim {:.3f}-{:.3f}'.format(
+        len(copies), nloci, norm_by, mu, lo, hi))
     ax.axhline(1.0, color='#888888', ls='--', lw=0.8, zorder=1)
     ax.set_xticks(range(1, len(copies) + 1))
     ax.set_xticklabels(copies)
@@ -460,13 +473,13 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
     ax.set_ylabel('Normalized depth' if normalize else 'Depth')
     sub = 'reads competitively mapped onto the reference subgenomes'
     if normalize:
-        sub += '; depth normalized to the mean'
+        sub += '; depth normalized to the {}'.format(norm_by)
     if ref and sample:
         # 左 = 测序物种（reads），右 = 参考物种（其亚基因组拷贝）；用 / 分隔，整串可斜体
         t, tstyle = format_species_title('{} / {}'.format(sample, ref), sep=' / ')
         ax.set_title(t, fontstyle=tstyle, pad=20)
-        ax.text(0.5, 1.01, sub, transform=ax.transAxes,
-                ha='center', va='bottom', fontsize=9)
+#        ax.text(0.5, 1.01, sub, transform=ax.transAxes,
+#                ha='center', va='bottom', fontsize=9)
     elif ref:
         t, tstyle = format_species_label(ref)
         ax.set_title(t, fontstyle=tstyle, pad=20)
