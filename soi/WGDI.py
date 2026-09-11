@@ -387,8 +387,8 @@ def group_genes(genes, d_genes, max_dist=50):
 
 
 def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=True,
-                      clip=(0.5, 99.5), ref=None, sample=None, figsize=(5.5, 5),
-                      dpi=300, **kargs):
+                      ylim=(None, 2.5), ylim_lower_pct=0.5, colors=None, ref=None,
+                      sample=None, figsize=(5.5, 5), dpi=300, **kargs):
     '''每个亚基因组拷贝的深度分布：小提琴图 + 中值线（compmap 深度表专用）。
 
     depthfile: soi-wgdi compmap 产出的 <prefix>.depth.tsv，列 gene/copy/retained/depth。
@@ -424,28 +424,25 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
     if not normalize:
         mu = 1.0
     nloci = min(len(d_arr[c]) for c in copies)
-    # 深度分布有长尾（本例最大 131.8x），不裁的话小提琴会被压成细条：
-    # 默认裁到 0.5-99.5 分位（数据驱动，非固定阈值），图注里写明
-    if clip:
-        lo, hi = [float(x) / mu for x in np.percentile(
-            np.concatenate([d_arr[c] for c in copies]), clip)]
-    else:
-        lo, hi = [float(x) / mu for x in (np.min(np.concatenate(
-            [d_arr[c] for c in copies])), np.max(np.concatenate(
-            [d_arr[c] for c in copies])))]
-    d_violin = {c: np.clip(d_arr[c] / mu, lo, hi) for c in copies}
+    # 深度分布有长尾（本例最大 131.8x）：y 轴上限定死，下界按分位取（数据驱动）
+    pooled = np.concatenate([d_arr[c] for c in copies])
+    lo = float(np.percentile(pooled, ylim_lower_pct)) / mu if (not ylim or ylim[0] is None) else float(ylim[0])
+    hi = float(pooled.max()) / mu if (not ylim or ylim[1] is None) else float(ylim[1])
+    if colors is None:
+        colors = sg_colors
     fig, ax = plt.subplots(figsize=figsize)
-    ax.violinplot([d_violin[c] for c in copies], showextrema=False, widths=0.85)
-    logger.info('depth violin y-range: {:.3f}x - {:.3f}x{}'.format(
-        lo, hi, '' if clip else ' (no clipping)'))
-    for i, c in enumerate(copies):
+    parts = ax.violinplot([d_arr[c] / mu for c in copies], showextrema=False, widths=0.85)
+    for i, (body, c) in enumerate(zip(parts['bodies'], copies)):
+        body.set_facecolor(colors[i % len(colors)])
+        body.set_edgecolor('#333333')
+        body.set_linewidth(0.6)
+        body.set_alpha(0.85)
         m = float(np.median(d_arr[c] / mu))
         ax.hlines(m, i + 0.68, i + 1.32, color='#d62728', lw=1.6, zorder=3)
-        ax.text(i + 1, m, '{:.3f}'.format(m), color='#d62728', ha='center',
-                va='bottom', fontsize=8, zorder=4)
         logger.info('copy {}: n={} mean {:.2f}x median {:.3f}x'.format(
             c, len(d_arr[c]), d_arr[c].mean() / mu, m))
     ax.set_ylim(lo, hi)
+    logger.info('depth violin ylim: {:.3f}x - {:.3f}x ({} loci/copy)'.format(lo, hi, nloci))
     ax.axhline(1.0, color='#888888', ls='--', lw=0.8, zorder=1)
     ax.set_xticks(range(1, len(copies) + 1))
     ax.set_xticklabels(copies)
@@ -459,9 +456,6 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=Tru
                 transform=ax.transAxes, ha='center', va='bottom', fontsize=9)
     elif sample:
         ax.set_title(sample, pad=20)
-    ax.text(0.5, -0.17, '{} fully-retained loci per copy{}'.format(
-        nloci, '; y clipped to {:g}-{:g} percentile'.format(*clip) if clip else ''),
-            transform=ax.transAxes, ha='center', va='top', fontsize=8, color='#555555')
     if outfigs:
         fig.savefig(outfigs, bbox_inches='tight')
         fig.savefig(str(outfigs)[:-4] + '.png', dpi=dpi, bbox_inches='tight')
