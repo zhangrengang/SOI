@@ -386,7 +386,7 @@ def group_genes(genes, d_genes, max_dist=50):
 
 
 
-def plot_depth_violin(depthfile, outfigs=None, retained_only=True, drop_zero=True,
+def plot_depth_violin(depthfile, outfigs=None, retained_only=True, all_genes=False, drop_zero=True,
                       normalize=True, norm_by='mean', ylim=(0, 3), colors=None,
                       alpha=0.5, ref=None, sample=None, figsize=None, dpi=300, **kargs):
     '''每个亚基因组拷贝的深度分布：小提琴图 + 中值线（compmap 深度表专用）。
@@ -399,6 +399,8 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, drop_zero=Tru
     WGD，反之不成立）。
     outfigs 给 .pdf 路径，同时出同名 .png；返回 [(copy, 中值), ...]。
     '''
+    if all_genes:          # 不过滤保留性：用表里所有 (基因,拷贝) 行（默认关）
+        retained_only = False
     d_copy = {}
     nzero = 0
     for line in open(depthfile):
