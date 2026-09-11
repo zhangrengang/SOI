@@ -11,6 +11,7 @@ from .OrthoFinder import catAln, format_id_for_iqtree
 from lazy_property import LazyWritableProperty as lazyproperty
 from .small_tools import mkdirs, flatten, test_s, test_f, parse_kargs
 from .RunCmdsMP import run_cmd, run_job, logger
+from .style import format_species_label
 
 sg_colors = ['#f9c00c', '#00b9f1', '#7200da', '#f9320c', '#00b8a9']
 
@@ -383,6 +384,90 @@ def group_genes(genes, d_genes, max_dist=50):
         last_chrom, last_index = chrom, index
     return max(bins, key=lambda x: len(x))
 
+
+
+def plot_depth_violin(depthfile, outfigs=None, retained_only=True, normalize=True,
+                      clip=(0.5, 99.5), ref=None, sample=None, figsize=(5.5, 5),
+                      dpi=300, **kargs):
+    '''每个亚基因组拷贝的深度分布：小提琴图 + 中值线（compmap 深度表专用）。
+
+    depthfile: soi-wgdi compmap 产出的 <prefix>.depth.tsv，列 gene/copy/retained/depth。
+        新版（流式）表带表头且只含完全保留行；旧版（非流式）表无表头、含全部参考基因
+        （非保留行 copy=NA、retained=0），两种都吃。
+    默认只取 retained==1（完全保留）的位点，并先标准化：深度 / 所选位点深度的总平均。
+    于是各拷贝可直接横向比较：中值齐平在 1 附近 = 深度均匀（单向判据，不均匀 -> 不共享
+    WGD，反之不成立）。
+    outfigs 给 .pdf 路径，同时出同名 .png；返回 [(copy, 中值), ...]。
+    '''
+    d_copy = {}
+    for line in open(depthfile):
+        arr = line.rstrip('\n').split('\t')
+        if len(arr) < 4:
+            continue
+        gene, copy, retained, depth = arr[:4]
+        if gene == 'gene' and copy == 'copy':       # 表头
+            continue
+        if retained_only and retained != '1':
+            continue
+        if copy in ('', 'NA'):
+            continue
+        try:
+            d = float(depth)
+        except ValueError:
+            continue
+        d_copy.setdefault(copy, []).append(d)
+    if not d_copy:
+        raise ValueError('no retained depth records in {}'.format(depthfile))
+    copies = list(d_copy)        # 保持表内出现顺序（= rename.list 的拷贝顺序）
+    d_arr = {c: np.array(d_copy[c], dtype=float) for c in copies}
+    mu = np.concatenate([d_arr[c] for c in copies]).mean()
+    if not normalize:
+        mu = 1.0
+    nloci = min(len(d_arr[c]) for c in copies)
+    # 深度分布有长尾（本例最大 131.8x），不裁的话小提琴会被压成细条：
+    # 默认裁到 0.5-99.5 分位（数据驱动，非固定阈值），图注里写明
+    if clip:
+        lo, hi = [float(x) / mu for x in np.percentile(
+            np.concatenate([d_arr[c] for c in copies]), clip)]
+    else:
+        lo, hi = [float(x) / mu for x in (np.min(np.concatenate(
+            [d_arr[c] for c in copies])), np.max(np.concatenate(
+            [d_arr[c] for c in copies])))]
+    d_violin = {c: np.clip(d_arr[c] / mu, lo, hi) for c in copies}
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.violinplot([d_violin[c] for c in copies], showextrema=False, widths=0.85)
+    logger.info('depth violin y-range: {:.3f}x - {:.3f}x{}'.format(
+        lo, hi, '' if clip else ' (no clipping)'))
+    for i, c in enumerate(copies):
+        m = float(np.median(d_arr[c] / mu))
+        ax.hlines(m, i + 0.68, i + 1.32, color='#d62728', lw=1.6, zorder=3)
+        ax.text(i + 1, m, '{:.3f}'.format(m), color='#d62728', ha='center',
+                va='bottom', fontsize=8, zorder=4)
+        logger.info('copy {}: n={} mean {:.2f}x median {:.3f}x'.format(
+            c, len(d_arr[c]), d_arr[c].mean() / mu, m))
+    ax.set_ylim(lo, hi)
+    ax.axhline(1.0, color='#888888', ls='--', lw=0.8, zorder=1)
+    ax.set_xticks(range(1, len(copies) + 1))
+    ax.set_xticklabels(copies)
+    ax.set_xlabel('Subgenome copy')
+    ax.set_ylabel('Normalized depth ({})'.format('depth / mean depth' if normalize else 'depth'))
+    if ref:
+        t, tstyle = format_species_label(ref)
+        ax.set_title(t, fontstyle=tstyle, pad=20)
+        sub = 'normalized subgenome depth' if normalize else 'subgenome depth'
+        ax.text(0.5, 1.01, sub + (' ({})'.format(sample) if sample else ''),
+                transform=ax.transAxes, ha='center', va='bottom', fontsize=9)
+    elif sample:
+        ax.set_title(sample, pad=20)
+    ax.text(0.5, -0.17, '{} fully-retained loci per copy{}'.format(
+        nloci, '; y clipped to {:g}-{:g} percentile'.format(*clip) if clip else ''),
+            transform=ax.transAxes, ha='center', va='top', fontsize=8, color='#555555')
+    if outfigs:
+        fig.savefig(outfigs, bbox_inches='tight')
+        fig.savefig(str(outfigs)[:-4] + '.png', dpi=dpi, bbox_inches='tight')
+        logger.info('Written {} (+ .png)'.format(outfigs))
+    plt.close(fig)
+    return [(c, float(np.median(d_arr[c] / mu))) for c in copies]
 
 class Alignment:
     '''Parser for WGDI -a output (alignment file)'''
@@ -956,6 +1041,9 @@ class Alignment:
         for c, ds in sorted(d_sum.items()):
             logger.info('copy {}: mean depth {:.2f} over {} genes'.format(
                 c, sum(ds) / len(ds), len(ds)))
+        # 每个亚基因组的深度分布：小提琴 + 中值（默认只用完全保留位点、除以总平均）
+        plot_depth_violin(depthfile, outfigs='{}.depth.pdf'.format(prefix),
+                          ref=ref, sample=os.path.basename(prefix.rstrip('/')))
 
     def win_trees(self, pep, gff, win_size=50, win_step=10, min_ratio=0.7,
                   min_seqs=4, tmpdir='tmp', exclude_ref=False, **kargs):
@@ -1165,6 +1253,9 @@ def main():
         cds, read1 = sys.argv[3:5]
         read2 = sys.argv[5] if len(sys.argv) > 5 and not sys.argv[5].count('=') else None
         Alignment(alignment, **kargs).compmap(cds, read1, read2, **kargs)
+    elif subcmd == 'depthplot':
+        # 只画图：soi-wgdi depthplot <深度表> [输出.pdf] [ref=物种] [sample=名字]
+        plot_depth_violin(alignment, outfigs=(sys.argv[3] if len(sys.argv) > 3 else None), **kargs)
     elif subcmd == 'plot_ak':
         akfile = sys.argv[2]
         AK(akfile).plot(**kargs)
