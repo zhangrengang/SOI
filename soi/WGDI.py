@@ -429,6 +429,10 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, all_genes=Fal
     copies = list(d_copy)        # 保持表内出现顺序（= rename.list 的拷贝顺序）
     d_arr = {c: np.array(d_copy[c], dtype=float) for c in copies}
     nloci = min(len(d_arr[c]) for c in copies)
+    # 压掉 matplotlib/fontTools 写 PDF 时的字体子集化 INFO 噪音（maxp pruned / glyph subsetted 之类）
+    import logging as _logging
+    for _n in ('fontTools', 'matplotlib.font_manager'):
+        _logging.getLogger(_n).setLevel(_logging.WARNING)
     # 深度分布有长尾（本例最大 131.8x）：y 轴上限定死，下界按分位取（数据驱动）
     pooled = np.concatenate([d_arr[c] for c in copies])
     if normalize:
