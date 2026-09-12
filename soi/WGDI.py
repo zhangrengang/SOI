@@ -886,6 +886,8 @@ class Alignment:
 
         # 不套任何过滤：tmp 里有哪些 SG 的文件就合并哪些（max_missing 是 genetrees 的事）
         import glob
+        anchor = kargs.get('anchor', 'P_MK')   # 锚定物种
+        n_noanchor = 0
         d_line = {i: line for i, line in self.indexed()}
         d_sub, d_idmap, n_skip = {}, {}, 0
         tmpl = '{}/XG*.cds.aln.trimal.treefile'.format(tmpdir)
@@ -900,9 +902,11 @@ class Alignment:
                 n_skip += 1
                 continue
             genes = [(g, cn) for g, cn in zip(line.genes, self.colnames) if g is not None]
-            refgene = next((g for g, cn in genes if g in d_chrom), None)
+            # 染色体归属取「锚定物种」那一列的基因（默认 P_MK）；先前是"行里第一个能查到的基因"，
+            # 缺锚定基因的行会静默退到别的物种、把 SG 分到错的染色体
+            refgene = next((g for g, cn in genes if cn == anchor and g in d_chrom), None)
             if refgene is None:
-                n_skip += 1
+                n_noanchor += 1
                 continue
             chrom = d_chrom[refgene]
             d_sub.setdefault(chrom, ([], []))
@@ -932,7 +936,58 @@ class Alignment:
                 catAln(als, fout, idmap=d_idmap)
             logger.info('chrsplit {}: {} SGs -> {} + {}'.format(chrom, len(tfs), outg, outa))
         logger.info('chrsplit done: {} chromosomes, {} SGs skipped'.format(
-            len(d_sub), n_skip))
+            len(d_sub), n_skip, n_noanchor, anchor))
+
+
+    def swapcols(self, gff, chroms, col1, col2, out=None, anchor='P_MK', **kargs):
+        '''按染色体把两列的基因互换，写出【新】矩阵（原文件不动）。
+
+        gff    : all_species_gene.gff（第 1 列染色体，第 2 列基因）
+        chroms : 逗号分隔的染色体名，如 Pr2,Pr4
+        col1/2 : 要互换的两个列名（须在 colnames 里）
+        out    : 输出 csv 路径（必填）
+        anchor : 行归属用的锚定物种列名，默认 P_MK（不能取"行里第一个能查到的基因"）
+        '''
+        d_chrom = {g: gl.chrom for g, gl in Gff(gff).get_genes().items()}
+        if not self.colnames:
+            raise ValueError('swapcols: 没有解析到列名（colnames= 没给对）')
+        try:
+            i1, i2 = self.colnames.index(col1), self.colnames.index(col2)
+        except ValueError:
+            raise ValueError('swapcols: 列名 {!r}/{!r} 不在 colnames 里；解析到的是: {}'.format(
+                col1, col2, self.colnames))
+        if anchor not in self.colnames:
+            raise ValueError('swapcols: 锚定列 {!r} 不在 colnames 里；解析到的是: {}'.format(
+                anchor, self.colnames))
+        ia = self.colnames.index(anchor)
+        if not out:
+            raise ValueError('swapcols: 需要 out=<输出 csv 路径>')
+        chroms = set(x for x in chroms.split(',') if x)
+        n_hit = n_swap = n_noanchor = 0
+        fout = open(out, 'w')
+        for raw in open(self.alignment):
+            line = raw.rstrip('\n')
+            if not line:
+                continue
+            head, tab, tail = line.partition('\t')   # head = 逗号列表；tail 原样保留
+            genes = head.split(',')
+            if len(genes) <= max(i1, i2):
+                fout.write(raw)
+                continue
+            ga = genes[ia] or None                    # 锚定物种那一列的基因
+            if ga is None:
+                n_noanchor += 1
+            if ga is not None and d_chrom.get(ga) in chroms:
+                n_hit += 1
+                genes[i1], genes[i2] = genes[i2], genes[i1]
+                n_swap += 1
+                fout.write(','.join(genes) + (tab + tail if tab else '') + '\n')
+            else:
+                fout.write(raw)
+        fout.close()
+        logger.info('swapcols: {} 命中 {} 行 / 对调 {} 行 / 锚定({})缺失 {} 行 -> {}'.format(
+            ','.join(sorted(chroms)), n_hit, n_swap, anchor, n_noanchor, out))
+        return n_swap
 
 
     def append_cols(self, seqfile, sample, prefix=None, fout=None, **kargs):
@@ -1375,6 +1430,9 @@ def main():
     elif subcmd == 'chrsplit':
         tmpdir, gff, refsp = sys.argv[3:6]
         Alignment(alignment, **kargs).chrsplit(tmpdir, gff, refsp, **kargs)
+    elif subcmd == 'swapcols':
+        gff, chroms, col1, col2 = sys.argv[3:7]
+        Alignment(alignment, **kargs).swapcols(gff, chroms, col1, col2, **kargs)
     elif subcmd == 'depthplot':
         # 只画图：soi-wgdi depthplot <深度表> <输出.pdf> [kargs]
         # 输出 pdf 必填 —— 缺了就直接报错，不许静默不出图
