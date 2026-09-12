@@ -1345,6 +1345,25 @@ def main():
         alignment, bed,  gff = sys.argv[2:5]
         simples = sys.argv[5:]
         set_color_for_jcvi(alignment, bed,  gff, simples)
+    # ---- kargs 白名单校验：写错参数名必须当场报错，不许被静默吞掉 ----
+    import inspect
+    _FUNCS = {
+        'genetrees': Alignment.genetrees, 'append_cols': Alignment.append_cols,
+        'compmap': Alignment.compmap, 'chrsplit': Alignment.chrsplit,
+        'high_retain': Alignment.get_high_retain, 'high_loss': Alignment.get_high_loss,
+        'stat_sgs': Alignment.stat_sgs, 'stat_sps': Alignment.stat_sps,
+        'to_bimat': Alignment.to_bimat, 'depthplot': plot_depth_violin,
+        'plot_ak': AK.plot, 'anc2jcvi': AK.to_jcvi, 'set_color_for_jcvi': set_color_for_jcvi,
+    }
+    if subcmd in _FUNCS:
+        ok = set(inspect.signature(_FUNCS[subcmd]).parameters)
+        ok |= set(inspect.signature(Alignment.__init__).parameters)
+        ok |= set(inspect.signature(AK.__init__).parameters)
+        ok -= {'self'}
+        bad = [k for k in kargs if k not in ok]
+        if bad:
+            raise SystemExit('ERROR: 未知参数 {}（{} 可用：{}）'.format(
+                ', '.join(sorted(bad)), subcmd, ', '.join(sorted(ok))))
     elif subcmd == 'stat_sgs':
         alignment = sys.argv[2]
         Alignment(alignment, **kargs).stat_sgs()
@@ -1372,8 +1391,11 @@ def main():
         tmpdir, gff, refsp = sys.argv[3:6]
         Alignment(alignment, **kargs).chrsplit(tmpdir, gff, refsp, **kargs)
     elif subcmd == 'depthplot':
-        # 只画图：soi-wgdi depthplot <深度表> [输出.pdf] [ref=物种] [sample=名字]
-        plot_depth_violin(alignment, outfigs=(sys.argv[3] if len(sys.argv) > 3 else None), **kargs)
+        # 只画图：soi-wgdi depthplot <深度表> <输出.pdf> [kargs]
+        # 输出 pdf 必填 —— 缺了就直接报错，不许静默不出图
+        if len(sys.argv) < 4 or sys.argv[3].count('='):
+            raise SystemExit('ERROR: depthplot 需要输出路径：soi-wgdi depthplot <深度表> <输出.pdf> [kargs]')
+        plot_depth_violin(alignment, outfigs=sys.argv[3], **kargs)
     elif subcmd == 'plot_ak':
         akfile = sys.argv[2]
         AK(akfile).plot(**kargs)
