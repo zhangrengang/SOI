@@ -908,12 +908,9 @@ class Alignment:
             raise ValueError('chrsplit needs prefix= (输出前缀)')
         for chrom, (tfs, als) in sorted(d_sub.items()):
             outg = '{}.{}.genetrees'.format(prefix, chrom)
-            outa = '{}.{}.alignments'.format(prefix, chrom)
             ColinearGroups().cat_genetrees(tfs, outg, idmap=d_idmap,
                                            plain=False, format_confidence='%d')
-            with open(outa, 'w') as fout:
-                catAln(als, fout, idmap=d_idmap)
-            logger.info('chrsplit {}: {} SGs -> {}'.format(chrom, len(tfs), outg))
+            logger.info('chrsplit {}: {} gene trees -> {}'.format(chrom, len(tfs), outg))
         logger.info('chrsplit done: {} chromosomes, {} SGs skipped'.format(
             len(d_sub), n_skip))
 
