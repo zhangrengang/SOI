@@ -867,6 +867,8 @@ class Alignment:
         '''按染色体合并 genetrees 的产物（每染色体一套，格式与 genetrees 一致）。
 
         tmpdir : genetrees 的中间目录（含 XG<i>.cds.aln.trimal[.treefile]，文件名自带 SG id）
+        **矩阵/colnames 必须与那次 genetrees 用的完全一致**（通常是 <ref>-appended.alignment.csv
+        + <ref>-appended.rename.list）；否则 idmap 与文件里的 id 对不上，会静默产出错文件（已加校验）
         gff    : all_species_gene.gff —— 第 1 列取染色体（原样），第 2 列是基因 id（形如 <refsp>|<gene>）
         refsp  : 参考物种（矩阵行基因所属物种），用它在 GFF 里取染色体归属
         prefix : 输出前缀 -> {prefix}.<chrom>.genetrees + {prefix}.<chrom>.alignments
@@ -904,6 +906,17 @@ class Alignment:
             d_sub[chrom][1].append(al)
             for g, cn in genes:
                 d_idmap[format_id_for_iqtree(cn + '.' + g)] = cn
+        # 响亮校验：idmap 必须能命中文件里的 id（否则是 colnames 给错/没给）
+        _probe = sorted(glob.glob('{}/XG*.cds.aln.trimal'.format(tmpdir)))[:1]
+        if _probe:
+            _ids = [rc.id for rc in SeqIO.parse(_probe[0], 'fasta')]
+            _hit = sum(1 for x in _ids if x in d_idmap)
+            if _ids and _hit == 0:
+                raise ValueError(
+                    'idmap 与 {} 的 id 全不匹配（检查 colnames= 是否给了正确的列名表）：'
+                    ' 文件例 {} / idmap 例 {}'.format(_probe[0], _ids[0], list(d_idmap)[:1]))
+            logger.info('chrsplit idmap check: {}/{} ids matched in {}'.format(
+                _hit, len(_ids), os.path.basename(_probe[0])))
         if not prefix:
             raise ValueError('chrsplit needs prefix= (输出前缀)')
         for chrom, (tfs, als) in sorted(d_sub.items()):
