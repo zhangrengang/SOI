@@ -862,6 +862,62 @@ class Alignment:
         with open(alignments, 'w') as fout:
             catAln(cdsAlnfiles, fout, idmap=d_idmap)
 
+
+    def chrsplit(self, tmpdir, gff, refsp, prefix=None, **kargs):
+        '''按染色体合并 genetrees 的产物（每染色体一套，格式与 genetrees 一致）。
+
+        tmpdir : genetrees 的中间目录（含 XG<i>.cds.aln.trimal[.treefile]，文件名自带 SG id）
+        gff    : all_species_gene.gff —— 第 1 列取染色体（原样），第 2 列是基因 id（形如 <refsp>|<gene>）
+        refsp  : 参考物种（矩阵行基因所属物种），用它在 GFF 里取染色体归属
+        prefix : 输出前缀 -> {prefix}.<chrom>.genetrees + {prefix}.<chrom>.alignments
+        只做拆分/合并：复用 genetrees 里同一套 cat_genetrees / catAln。
+        '''
+        d_gl = Gff(gff).get_genes()      # 复用现成 GFF 解析类（GffLine: .chrom/.gene/.species）
+        d_chrom = {g: gl.chrom for g, gl in d_gl.items()}
+        logger.info('chrsplit: {} genes with chromosome; refsp={} (仅用于记录)'.format(len(d_chrom), refsp))
+        if not d_chrom:
+            raise ValueError('no genes parsed from {} (第 2 列应为基因 id)'.format(gff))
+
+        # 不套任何过滤：tmp 里有哪些 SG 的文件就合并哪些（max_missing 是 genetrees 的事）
+        import glob
+        d_line = {i: line for i, line in self.indexed()}
+        d_sub, d_idmap, n_skip = {}, {}, 0
+        tmpl = '{}/XG*.cds.aln.trimal.treefile'.format(tmpdir)
+        for tf in sorted(glob.glob(tmpl), key=lambda x: int(os.path.basename(x)[2:].split('.')[0])):
+            al = tf[:-len('.treefile')]
+            if not test_s(al):
+                n_skip += 1
+                continue
+            i = int(os.path.basename(tf)[2:].split('.')[0])
+            line = d_line.get(i)
+            if line is None:
+                n_skip += 1
+                continue
+            genes = [(g, cn) for g, cn in zip(line.genes, self.colnames) if g is not None]
+            refgene = next((g for g, cn in genes if g in d_chrom), None)
+            if refgene is None:
+                n_skip += 1
+                continue
+            chrom = d_chrom[refgene]
+            d_sub.setdefault(chrom, ([], []))
+            d_sub[chrom][0].append(tf)
+            d_sub[chrom][1].append(al)
+            for g, cn in genes:
+                d_idmap[format_id_for_iqtree(cn + '.' + g)] = cn
+        if not prefix:
+            raise ValueError('chrsplit needs prefix= (输出前缀)')
+        for chrom, (tfs, als) in sorted(d_sub.items()):
+            outg = '{}.{}.genetrees'.format(prefix, chrom)
+            outa = '{}.{}.alignments'.format(prefix, chrom)
+            ColinearGroups().cat_genetrees(tfs, outg, idmap=d_idmap,
+                                           plain=False, format_confidence='%d')
+            with open(outa, 'w') as fout:
+                catAln(als, fout, idmap=d_idmap)
+            logger.info('chrsplit {}: {} SGs -> {}'.format(chrom, len(tfs), outg))
+        logger.info('chrsplit done: {} chromosomes, {} SGs skipped'.format(
+            len(d_sub), n_skip))
+
+
     def append_cols(self, seqfile, sample, prefix=None, fout=None, **kargs):
         '''Append assembled sequences as a set of new columns (one per copy).
 
@@ -1299,6 +1355,9 @@ def main():
         cds, read1 = sys.argv[3:5]
         read2 = sys.argv[5] if len(sys.argv) > 5 and not sys.argv[5].count('=') else None
         Alignment(alignment, **kargs).compmap(cds, read1, read2, **kargs)
+    elif subcmd == 'chrsplit':
+        tmpdir, gff, refsp = sys.argv[3:6]
+        Alignment(alignment, **kargs).chrsplit(tmpdir, gff, refsp, **kargs)
     elif subcmd == 'depthplot':
         # 只画图：soi-wgdi depthplot <深度表> [输出.pdf] [ref=物种] [sample=名字]
         plot_depth_violin(alignment, outfigs=(sys.argv[3] if len(sys.argv) > 3 else None), **kargs)
