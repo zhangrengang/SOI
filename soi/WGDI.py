@@ -774,7 +774,12 @@ class Alignment:
                     print('\t'.join(line), file=fout)
 
     def genetrees(self, pep, cds=None, outdir='genetrees', genetrees='sg.genetrees',
-                  prefix=None, alignments='sg.alignments', max_missing=0.5, ncpu=50, **kargs):
+                  prefix=None, alignments='sg.alignments', max_missing=0.5, ncpu=50,
+                  tree_from='cds', **kargs):
+        # tree_from: 'cds'(默认, pal2nal 出密码子比对建树) / 'pep'(只用蛋白比对建树, 跳过 CDS)
+        use_pep = str(tree_from).lower() == 'pep'
+        if use_pep:
+            cds = None
         if prefix:
             genetrees = f'{prefix}.genetrees'
             alignments = f'{prefix}.alignments'
@@ -790,10 +795,11 @@ class Alignment:
         self.tmpdir = outdir
         d_idmap = {}
         d_pep = seq2dict(pep)
-        d_cds = seq2dict(cds)
+        d_cds = seq2dict(cds) if cds else {}
         logger.info('Loaded {} pep, {} cds sequences'.format(
             len(d_pep), len(d_cds)))
         cdsTreefiles, cdsAlnfiles = [], []
+        pepTreefiles, pepAlnfiles = [], []      # tree_from=pep 时用
         cmd_list = []
         for i, line in self.indexed():
             genes = [g for g in line.genes if g is not None]
@@ -805,7 +811,7 @@ class Alignment:
             pepSeq = '{}/{}.pep'.format(self.tmpdir, ogid)
             cdsSeq = '{}/{}.cds'.format(self.tmpdir, ogid)
             f_pep = open(pepSeq, 'w')
-            f_cds = open(cdsSeq, 'w')
+            f_cds = open(cdsSeq, 'w') if not use_pep else None
             for gene, colname in zip(line.genes, self.colnames):
                 if gene is None:
                     continue
@@ -814,18 +820,20 @@ class Alignment:
                 rc.id = format_id_for_iqtree(xid)
                 d_idmap[rc.id] = colname
                 SeqIO.write(rc, f_pep, 'fasta')
-                rc = d_cds[gene]
-                rc.id = format_id_for_iqtree(xid)
-                SeqIO.write(rc, f_cds, 'fasta')
+                if not use_pep:
+                    rc = d_cds[gene]
+                    rc.id = format_id_for_iqtree(xid)
+                    SeqIO.write(rc, f_cds, 'fasta')
             f_pep.close()
-            f_cds.close()
+            if f_cds:
+                f_cds.close()
             pepAln = pepSeq + '.aln'
             cdsAln = cdsSeq + '.aln'
             pepTrim = pepAln + '.trimal'
             cdsTrim = cdsAln + '.trimal'
             pepTreefile = pepTrim + '.treefile'
             cdsTreefile = cdsTrim + '.treefile'
-            treefile = cdsTreefile
+            treefile = pepTreefile if use_pep else cdsTreefile
             cmd = '[ ! -s {} ]'.format(treefile)
             cmds = [cmd]
             cmd = mafft_template.format(pepSeq, pepAln)
@@ -833,28 +841,38 @@ class Alignment:
             iqtree_opts0 = ''  # ' -o {} '.format(root) if root else ''
             pep = True
             iqtree_opts = iqtree_opts0
-            cmd = pal2nal_template.format(pepAln, cdsSeq, cdsAln)
-            cmds += [cmd]
-            cmd = trimal_template.format(cdsAln, cdsTrim)
-            cmds += [cmd]
-            cmd = iqtree_template.format(cdsTrim, iqtree_opts)
-            cmds += [cmd]
-            cdsTreefiles += [cdsTreefile]
-            cdsAlnfiles += [cdsTrim]
+            if use_pep:
+                cmd = trimal_template.format(pepAln, pepTrim)
+                cmds += [cmd]
+                cmd = iqtree_template.format(pepTrim, iqtree_opts)
+                cmds += [cmd]
+                pepTreefiles += [pepTreefile]
+                pepAlnfiles += [pepTrim]
+            else:
+                cmd = pal2nal_template.format(pepAln, cdsSeq, cdsAln)
+                cmds += [cmd]
+                cmd = trimal_template.format(cdsAln, cdsTrim)
+                cmds += [cmd]
+                cmd = iqtree_template.format(cdsTrim, iqtree_opts)
+                cmds += [cmd]
+                cdsTreefiles += [cdsTreefile]
+                cdsAlnfiles += [cdsTrim]
             cmds = ' && '.join(cmds)
             cmd_list += [cmds]
 
-        logger.info('Filtered {} total SGs -> {} kept (min_genes>=4, max_missing<={})'.format(
-            i, len(cdsAlnfiles), max_missing))
+        used_alns = pepAlnfiles if use_pep else cdsAlnfiles
+        used_trees = pepTreefiles if use_pep else cdsTreefiles
+        logger.info('Filtered {} total SGs -> {} kept (min_genes>=4, max_missing<={}; tree_from={})'.format(
+            i, len(used_alns), max_missing, 'pep' if use_pep else 'cds'))
         nbin = 10
-        cmd_file = '{}/{}.cmds.list'.format(self.tmpdir, 'cds')
+        cmd_file = '{}/{}.cmds.list'.format(self.tmpdir, 'pep' if use_pep else 'cds')
         run_job(cmd_file, cmd_list=cmd_list, tc_tasks=ncpu, by_bin=nbin,
                 fail_exit=False)
-        treefiles = cdsTreefiles
+        treefiles = used_trees
         ColinearGroups().cat_genetrees(treefiles, genetrees, idmap=d_idmap,
                                        plain=False, format_confidence='%d')
         with open(alignments, 'w') as fout:
-            catAln(cdsAlnfiles, fout, idmap=d_idmap)
+            catAln(used_alns, fout, idmap=d_idmap)
 
 
     def chrsplit(self, tmpdir, gff, refsp, prefix=None, **kargs):
