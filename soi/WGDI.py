@@ -388,7 +388,7 @@ def group_genes(genes, d_genes, max_dist=50):
 
 def plot_depth_violin(depthfile, outfigs=None, retained_only=True, all_genes=False, drop_zero=True,
                       normalize=True, norm_by='mean', ylim=(0, 3), colors=None,
-                      alpha=0.5, ref=None, sample=None, figsize=None, dpi=300, **kargs):
+                      alpha=0.5, ref=None, title=None, figsize=None, dpi=300, **kargs):
     '''每个亚基因组拷贝的深度分布：小提琴图 + 中值线（compmap 深度表专用）。
 
     depthfile: soi-wgdi compmap 产出的 <prefix>.depth.tsv，列 gene/copy/retained/depth。
@@ -488,8 +488,8 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, all_genes=Fal
     sub = 'reads competitively mapped onto the reference subgenomes'
     if normalize:
         sub += '; depth normalized to the {}'.format(norm_by)
-    if sample:                                   # 只认显式传入的 sample；缺省不画 title
-        t, tstyle = format_species_title(sample)
+    if title:                                    # 只认显式传入的 title；缺省不画
+        t, tstyle = format_species_title(title)
         ax.set_title(t, fontstyle=tstyle, pad=20)
     if outfigs:
         fig.savefig(outfigs, bbox_inches='tight')
@@ -1055,7 +1055,7 @@ class Alignment:
         if prefix:
             fout.close()
             logger.info('Written {}.alignment.csv and {}.rename.list'.format(prefix, prefix))
-    def compmap(self, cds, read1, read2=None, all_genes=False, ref=None, prefix=None, sample=None,
+    def compmap(self, cds, read1, read2=None, all_genes=False, ref=None, prefix=None, title=None,
                 ncpu=8, **kargs):
         '''Competitive mapping of reads to reference CDS baits.
 
@@ -1206,8 +1206,8 @@ class Alignment:
             logger.info('copy {}: mean depth {:.2f} over {} genes'.format(
                 c, sum(ds) / len(ds), len(ds)))
         # 每个亚基因组的深度分布：小提琴 + 中值（默认只用完全保留位点、除以总平均）
-        # sample 只认显式传入（不再从 prefix 提取：换 prefix 会静默出错）
-        plot_depth_violin(depthfile, outfigs='{}.depth.pdf'.format(prefix), ref=ref, sample=sample)
+        # title 只认显式传入（不再从 prefix/sample 提取：换 prefix 会静默出错）
+        plot_depth_violin(depthfile, outfigs='{}.depth.pdf'.format(prefix), ref=ref, title=title)
 
     def win_trees(self, pep, gff, win_size=50, win_step=10, min_ratio=0.7,
                   min_seqs=4, tmpdir='tmp', exclude_ref=False, **kargs):
