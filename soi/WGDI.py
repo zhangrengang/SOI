@@ -488,20 +488,9 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, all_genes=Fal
     sub = 'reads competitively mapped onto the reference subgenomes'
     if normalize:
         sub += '; depth normalized to the {}'.format(norm_by)
-    if ref and sample:
-        # 左 = 测序物种（reads），右 = 参考物种（其亚基因组拷贝）；用 / 分隔，整串可斜体
-#        t, tstyle = format_species_title('{} / {}'.format(sample, ref), sep=' / ')
+    if sample:                                   # 只认显式传入的 sample；缺省不画 title
         t, tstyle = format_species_title(sample)
         ax.set_title(t, fontstyle=tstyle, pad=20)
-#        ax.text(0.5, 1.01, sub, transform=ax.transAxes,
-#                ha='center', va='bottom', fontsize=9)
-    elif ref:
-        t, tstyle = format_species_label(ref)
-        ax.set_title(t, fontstyle=tstyle, pad=20)
-        ax.text(0.5, 1.01, sub, transform=ax.transAxes,
-                ha='center', va='bottom', fontsize=9)
-    elif sample:
-        ax.set_title(sample, pad=20)
     if outfigs:
         fig.savefig(outfigs, bbox_inches='tight')
         fig.savefig(str(outfigs)[:-4] + '.png', dpi=dpi, bbox_inches='tight')
@@ -1066,7 +1055,7 @@ class Alignment:
         if prefix:
             fout.close()
             logger.info('Written {}.alignment.csv and {}.rename.list'.format(prefix, prefix))
-    def compmap(self, cds, read1, read2=None, all_genes=False, ref=None, prefix=None,
+    def compmap(self, cds, read1, read2=None, all_genes=False, ref=None, prefix=None, sample=None,
                 ncpu=8, **kargs):
         '''Competitive mapping of reads to reference CDS baits.
 
@@ -1217,9 +1206,8 @@ class Alignment:
             logger.info('copy {}: mean depth {:.2f} over {} genes'.format(
                 c, sum(ds) / len(ds), len(ds)))
         # 每个亚基因组的深度分布：小提琴 + 中值（默认只用完全保留位点、除以总平均）
-        # title 只画物种名：prefix = <物种id>.<参考物种>，取第一段（物种id 不含 '.'）
-        plot_depth_violin(depthfile, outfigs='{}.depth.pdf'.format(prefix), ref=ref,
-                          sample=os.path.basename(prefix.rstrip('/')).split('.')[0])
+        # sample 只认显式传入（不再从 prefix 提取：换 prefix 会静默出错）
+        plot_depth_violin(depthfile, outfigs='{}.depth.pdf'.format(prefix), ref=ref, sample=sample)
 
     def win_trees(self, pep, gff, win_size=50, win_step=10, min_ratio=0.7,
                   min_seqs=4, tmpdir='tmp', exclude_ref=False, **kargs):
