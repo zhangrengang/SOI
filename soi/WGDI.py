@@ -490,8 +490,9 @@ def plot_depth_violin(depthfile, outfigs=None, retained_only=True, all_genes=Fal
         sub += '; depth normalized to the {}'.format(norm_by)
     if ref and sample:
         # 左 = 测序物种（reads），右 = 参考物种（其亚基因组拷贝）；用 / 分隔，整串可斜体
-        t, tstyle = format_species_title('{} / {}'.format(sample, ref), sep=' / ')
-#        ax.set_title(t, fontstyle=tstyle, pad=20)
+#        t, tstyle = format_species_title('{} / {}'.format(sample, ref), sep=' / ')
+        t, tstyle = format_species_title(sample)
+        ax.set_title(t, fontstyle=tstyle, pad=20)
 #        ax.text(0.5, 1.01, sub, transform=ax.transAxes,
 #                ha='center', va='bottom', fontsize=9)
     elif ref:
@@ -1216,8 +1217,9 @@ class Alignment:
             logger.info('copy {}: mean depth {:.2f} over {} genes'.format(
                 c, sum(ds) / len(ds), len(ds)))
         # 每个亚基因组的深度分布：小提琴 + 中值（默认只用完全保留位点、除以总平均）
-        plot_depth_violin(depthfile, outfigs='{}.depth.pdf'.format(prefix),
-                          ref=ref, sample=os.path.basename(prefix.rstrip('/')))
+        # title 只画物种名：prefix = <物种id>.<参考物种>，取第一段（物种id 不含 '.'）
+        plot_depth_violin(depthfile, outfigs='{}.depth.pdf'.format(prefix), ref=ref,
+                          sample=os.path.basename(prefix.rstrip('/')).split('.')[0])
 
     def win_trees(self, pep, gff, win_size=50, win_step=10, min_ratio=0.7,
                   min_seqs=4, tmpdir='tmp', exclude_ref=False, **kargs):
