@@ -387,7 +387,7 @@ def group_genes(genes, d_genes, max_dist=50):
 
 
 def plot_depth_violin(depthfile, outfigs=None, retained_only=True, all_genes=False, drop_zero=True,
-                      normalize=True, norm_by='mean', ylim=(0, 3), colors=None,
+                      normalize=True, norm_by='median', ylim=(0, 3), colors=None,
                       alpha=0.5, ref=None, title=None, figsize=None, dpi=300, **kargs):
     '''每个亚基因组拷贝的深度分布：小提琴图 + 中值线（compmap 深度表专用）。
 
