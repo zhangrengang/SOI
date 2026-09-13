@@ -3610,7 +3610,7 @@ class ToAstral(ColinearGroups):
 					cmds += [cmd]
 				cdsTreefiles += [cdsTreefile]
 				cdsAlnfiles += [cdsTrim]
-				pep = True if (self.both or not self.cds) else False      # cds=0 时也要建 pep 树
+				pep = True if self.both else False
 			if pep and not self.onlyaln:
 				cmd = trimal_template.format(pepAln, pepTrim)
 				cmds += [cmd]
