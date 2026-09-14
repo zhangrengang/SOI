@@ -212,11 +212,21 @@ def plot_hist(d_data, outFig, order=None, normed=False, xlabel='Ks',
 								  np.mean(data), np.median(data), peak_ks, ci95])))
 
 	ax.cla()
+	# one legend entry per label (grouped --pair gives repeated group names)
+	_seen = set()
+	_style_of = {}
+	for _lab, _st in zip(pair_list, label_styles):
+		_style_of.setdefault(_lab, _st)
 	for i in range(len(pair_list)):
-		ax.plot(x_list[i], y_list[i], label=pair_list[i], linewidth=1.5,
+		_lab = pair_list[i]
+		if _lab in _seen:
+			_lab = '_nolegend_'
+		else:
+			_seen.add(_lab)
+		ax.plot(x_list[i], y_list[i], label=_lab, linewidth=1.5,
 				color=(d_color or {}).get(pair_keys[i]))
-	for t, s in zip(ax.legend(fontsize='x-small').get_texts(), label_styles):
-		t.set_fontstyle(s)
+	for t in ax.legend(fontsize='x-small').get_texts():
+		t.set_fontstyle(_style_of.get(t.get_text(), 'normal'))
 	ax.minorticks_on()
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
@@ -238,6 +248,7 @@ def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3, d_color=None
 	xs = np.linspace(0, max_ks, 500)
 
 	label_styles = []
+	_seen = set()
 	for pair in order:
 		data = np.array(d_data[pair])
 		data = data[(data > 0) & (data <= max_ks)]
@@ -249,20 +260,26 @@ def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3, d_color=None
 		except np.linalg.LinAlgError:
 			continue
 		label, lstyle = generate_label(pair)
-		label_styles.append(lstyle)
+		label_styles.append((label, lstyle))
+		# one legend entry per label (grouped --pair repeats group names)
+		_lab = label if label not in _seen else '_nolegend_'
+		_seen.add(label)
 		# Distinguish orthologs vs paralogs by line style
 		if len(set(pair[:2])) == 1:
-			ax.plot(xs, ys, label=label, linewidth=1.5, linestyle='--',
+			ax.plot(xs, ys, label=_lab, linewidth=1.5, linestyle='--',
 					color=(d_color or {}).get(tuple(pair)))
 		else:
-			ax.plot(xs, ys, label=label, linewidth=1.5,
+			ax.plot(xs, ys, label=_lab, linewidth=1.5,
 					color=(d_color or {}).get(tuple(pair)))
 
 	ax.set_xlabel(xlabel)
 	ax.set_ylabel('Density')
 	ax.set_xlim(0, max_ks)
-	for t, s in zip(ax.legend(fontsize='x-small').get_texts(), label_styles):
-		t.set_fontstyle(s)
+	_style_of = {}
+	for _lab, _st in label_styles:
+		_style_of.setdefault(_lab, _st)
+	for t in ax.legend(fontsize='x-small').get_texts():
+		t.set_fontstyle(_style_of.get(t.get_text(), 'normal'))
 	ax.minorticks_on()
 	if str(outFig).endswith('.pdf'):
 		plt.savefig(str(outFig)[:-4] + '.png', dpi=300)
