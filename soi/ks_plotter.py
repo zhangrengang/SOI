@@ -114,8 +114,9 @@ def main(kaks=None, pair=None, blocks=None, block_branches=None, figure=None,
 			plot_others=plot_others)
 
 	if homology_class_map is not None and pairs is not None:
+		_porder = {(p[0], p[1]): i for i, p in enumerate(pairs)}
 		pairs = sorted(sorted(d_ks.keys()),
-					   key=lambda x: pairs.index((x[0], x[1])))
+					   key=lambda x: _porder.get((x[0], x[1]), len(_porder)))
 
 	if out_data:
 		out_data_file = figure + '.data.xls'
@@ -127,12 +128,20 @@ def main(kaks=None, pair=None, blocks=None, block_branches=None, figure=None,
 	nbins = int(max_ks * bins_per_ks)
 
 	# one colour per species pair, shared by all plot types (keyed by pair,
-	# not by plotting position: density/ridge drop groups with <3 points)
+	# not by plotting position: density/ridge drop groups with <3 points).
+	# With a grouped --pair file (3rd column) pairs of the same group share
+	# a colour; ungrouped pairs each keep their own.
 	if pairs is not None:
 		_order = list(pairs)
 	else:
 		_order = sorted(d_ks.keys())
-	d_color = {tuple(p): c for p, c in zip(_order, Colors(len(_order)).colors)}
+	_gkeys = [p[2] if len(p) > 2 else p for p in _order]
+	_groups = []
+	for _g in _gkeys:
+		if _g not in _groups:
+			_groups.append(_g)
+	_gcolor = {g: c for g, c in zip(_groups, Colors(len(_groups)).colors)}
+	d_color = {tuple(p): _gcolor[g] for p, g in zip(_order, _gkeys)}
 
 	# Draw selected plot types
 	for ptype in plot_type:
@@ -242,7 +251,7 @@ def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3, d_color=None
 		label, lstyle = generate_label(pair)
 		label_styles.append(lstyle)
 		# Distinguish orthologs vs paralogs by line style
-		if len(set(pair)) == 1:
+		if len(set(pair[:2])) == 1:
 			ax.plot(xs, ys, label=label, linewidth=1.5, linestyle='--',
 					color=(d_color or {}).get(tuple(pair)))
 		else:
@@ -429,6 +438,11 @@ def parse_homology_class(homology_class):
 
 
 def parse_pair(pair):
+	'''Read a species-pair control file: 'sp1 sp2 [group]' per line.
+
+	A third column groups pairs (same group -> same colour in the plots
+	and the group name is used as the curve label/category).
+	'''
 	if pair is None:
 		return None
 	pairs = []
@@ -436,8 +450,9 @@ def parse_pair(pair):
 		if line.startswith('#'):
 			continue
 		temp = line.strip().split()
-		p1, p2 = temp[:2]
-		pairs.append((p1, p2))
+		if len(temp) < 2:
+			continue
+		pairs.append(tuple(temp[:3]))  # (sp1, sp2[, group])
 	return pairs
 
 
@@ -456,7 +471,12 @@ def parse_kaks(kaks, pairs=None, max_ks=None, fdtv=False, yn00=False,
 	from .mcscan import KaKs, XKaKsParser
 
 	if pairs is not None:
-		pairs = set(pairs)
+		# key by the first two columns so a control file with an optional
+		# group column still matches; the full tuple (with group) is the key
+		d_pairs = {}
+		for _p in pairs:
+			d_pairs[(_p[0], _p[1])] = _p
+			d_pairs[(_p[1], _p[0])] = _p
 	d_ks = {}
 	for rc in XKaKsParser(kaks):
 		rc.parse_pair()
@@ -468,11 +488,8 @@ def parse_kaks(kaks, pairs=None, max_ks=None, fdtv=False, yn00=False,
 		if pairs is None:
 			pair = (sp1, sp2)
 		else:
-			if (sp1, sp2) in pairs:
-				pair = (sp1, sp2)
-			elif (sp2, sp1) in pairs:
-				pair = (sp2, sp1)
-			else:
+			pair = d_pairs.get((sp1, sp2))
+			if pair is None:
 				continue
 		if rc.ks is None or rc.ks <= 0:
 			continue
