@@ -4,7 +4,7 @@ from collections import OrderedDict
 import numpy as np
 import matplotlib as mpl
 
-from .style import format_species_title
+from .style import format_species_title, display
 from .colors import Colors
 from .RunCmdsMP import logger
 
@@ -228,8 +228,9 @@ def plot_hist(d_data, outFig, order=None, normed=False, xlabel='Ks',
 	for t in ax.legend(fontsize='x-small').get_texts():
 		t.set_fontstyle(_style_of.get(t.get_text(), 'normal'))
 	ax.minorticks_on()
-	plt.xlabel(xlabel)
-	plt.ylabel(ylabel)
+	ax.set_xlabel(display(xlabel))
+	ax.set_ylabel(ylabel)
+	ax.set_xlim(0, max_ks)  # no padding around the Ks range
 	if str(outFig).endswith('.pdf'):
 		plt.savefig(str(outFig)[:-4] + '.png', dpi=300)
 	plt.savefig(outFig)
@@ -272,7 +273,7 @@ def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3, d_color=None
 			ax.plot(xs, ys, label=_lab, linewidth=1.5,
 					color=(d_color or {}).get(tuple(pair)))
 
-	ax.set_xlabel(xlabel)
+	ax.set_xlabel(display(xlabel))
 	ax.set_ylabel('Density')
 	ax.set_xlim(0, max_ks)
 	_style_of = {}
@@ -353,7 +354,7 @@ def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3, d_color=None):
 		for spine in ['left', 'right', 'top']:
 			ax.spines[spine].set_visible(False)
 
-	axes[-1].set_xlabel(xlabel)
+	axes[-1].set_xlabel(display(xlabel))
 	axes[-1].spines['bottom'].set_visible(True)
 
 	# Hide bottom spines for upper axes

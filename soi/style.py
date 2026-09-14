@@ -17,6 +17,12 @@ def setup_mpl():
 		'ps.fonttype': 42,
 		'font.family': 'sans-serif',
 		'font.sans-serif': [DEFAULT_FONT, 'DejaVu Sans'],  # DEFAULT_FONT optional; DejaVu fallback
+		# mathtext (e.g. italic K with upright S subscript) uses the same
+		# family as the rest of the figure instead of DejaVu
+		'mathtext.fontset': 'custom',
+		'mathtext.rm': DEFAULT_FONT,
+		'mathtext.it': DEFAULT_FONT + ':italic',
+		'mathtext.bf': DEFAULT_FONT + ':bold',
 	})
 
 
@@ -53,6 +59,24 @@ STYLE = {
         'edge_gap_ratio': 0.15,   # gap between triangle tip and plot edge (fraction of h)
     },
 }
+
+
+# Central display strings for figures: plain key -> typeset label.
+# Keys are the plain names used on the command line, so filenames/logs stay
+# ASCII; values are what is actually drawn (mathtext allowed). Add or edit a
+# key here instead of hard-coding a label inside a plotting function.
+DISPLAY = {
+	'Ks': r'$\mathit{K}_{\mathrm{S}}$',              # italic K, upright S subscript
+	'Ka': r'$\mathit{K}_{\mathrm{A}}$',
+	'Ka/Ks': r'$\mathit{K}_{\mathrm{A}}/\mathit{K}_{\mathrm{S}}$',
+	'4dTV': '4DTv',
+	'Density': 'Density',
+}
+
+
+def display(key):
+	'''Typeset label for a plain key (see DISPLAY); unknown keys pass through.'''
+	return DISPLAY.get(key, key)
 
 
 # Latin binomial: Genus_species
