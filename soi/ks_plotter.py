@@ -147,7 +147,7 @@ def main(kaks=None, pair=None, blocks=None, block_branches=None, figure=None,
 						 max_ks=max_ks)
 		elif ptype == 'ridge':
 			outfig = figure + '.ridge.pdf'
-			plot_ridge(d_ks, outfig, order=pairs, xlabel=xlabel,
+			plot_ridge(d_ks, outfig, order=pairs, d_color=d_color, xlabel=xlabel,
 					   max_ks=max_ks)
 
 
@@ -294,8 +294,13 @@ def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3, d_color=None):
 		return
 
 	n = len(curves)
+	# row height shrinks with the number of groups so the figure stays
+	# printable (~<=12 in tall); labels keep a fixed 8 pt, so their size
+	# relative to the figure grows with n instead of shrinking when the
+	# tall figure is scaled down for a page
+	row_h = 1.0 if n <= 10 else max(0.35, 11.0 / n)
 	fig, axes = plt.subplots(n, 1, sharex=True,
-							 figsize=(8, n * 1.0 + 1),
+							 figsize=(8, row_h * n + 1),
 							 gridspec_kw={'hspace': 0})
 	if n == 1:
 		axes = [axes]
