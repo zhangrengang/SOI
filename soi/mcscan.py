@@ -56,6 +56,19 @@ class Gene():
 		return int(re.compile(r'[^\d\s]+(\d+)').match(self.chr).groups()[0])
 
 
+_warned_pair_format = [False]  # warn once per run
+
+
+def _warn_unparsable_pair(sequence):
+	'''One-off warning for Ks records without a SPECIES|GENE pair.'''
+	if not _warned_pair_format[0]:
+		logger.warning('Ks record "{}" is not in SPECIES|GENE-SPECIES|GENE '
+					   'format; such records cannot be grouped by species and are '
+					   'kept as (None, None). Label gene IDs with species prefixes '
+					   '(see README, Ks table format).'.format(sequence))
+		_warned_pair_format[0] = True
+
+
 class KaKs():
 	'''Parser of Kaks Line'''
 
@@ -71,12 +84,13 @@ class KaKs():
 			self.parse_ks()
 		else:
 			print('unrecognized Ks format')
-		#self.parse_pair()
+#		if not wgdi:
+#			self.parse_pair()
 
 	def parse_4dtv(self):
 		(Sequence, fD_Sites, Identical_Sites, TS_Sites,
 		 TV_Sites, fDS, fDTS, fDTV, Corrected_4DTV) = self.info
-		self.pair = self.sequence = Sequence
+		self.sequence = Sequence
 		try:
 			self.ks = float(Corrected_4DTV)
 		except ValueError:
@@ -85,7 +99,7 @@ class KaKs():
 	def parse_yn00(self, method='NG86'):
 		(Sequence, dS_YN00, dN_YN00, dS_NG86, dN_NG86,
 		 dS_LWL85, dN_LWL85, dS_LWL85m, dN_LWL85m, dS_LPB93, dN_LPB93) = self.info
-		self.pair = self.sequence = Sequence
+		self.sequence = Sequence
 		d = {'YN00': dS_YN00, 'NG86': dS_NG86, 'LWL85': dS_LWL85, 'LWL85m': dS_LWL85m,
 			 'LPB93': dS_LPB93}
 		ks = d[method.upper()]
@@ -107,7 +121,7 @@ class KaKs():
 				self.pair = (None, None)
 			self.ks = None
 			return
-		self.pair = (g1, g2)
+		self.pair = self.sequence = (g1, g2)
 		d = {'YN00': dS_YN00, 'NG86': dS_NG86}
 		ks = d[method.upper()]
 		try:
@@ -125,19 +139,36 @@ class KaKs():
 		 GC, ML_Score, AICc, Akaike_Weight, Model) = self.info
 		self.sequence = Sequence
 		self.method = Method
-		self.pair = Sequence
+		#self.pair = Sequence
 		try:
 			self.ks = float(Ks)
 		except ValueError:
 			self.ks = 0  # too few substitution, NA
-
+	@lazyproperty
+	def pair(self):
+		return self.parse_pair()
 	def parse_pair(self):
-		if not hasattr(self, 'pair'):
+		'''Split the Sequence column into a gene pair.
+
+		KaKsCalculator/yn00/4DTV records label the pair as
+		SPECIES|GENE-SPECIES|GENE, which is what species grouping in
+		ksplot/dotplot relies on.  WGDI records already carry a (g1, g2)
+		sequence and are returned as is.  A record whose IDs do not follow
+		this convention cannot be grouped by species: warn once and fall
+		back to (None, None).
+		'''
+		if not isinstance(getattr(self, 'sequence', None), str):
+			return self.sequence  # WGDI: already a (g1, g2) tuple
 #			pattern = r'(\S+)\-([A-Z][a-z]*[_\-]\S+\|\S+)'
-			pattern = r'(\S+\|\S+)\-(\S+\|\S+)'
-			self.pair = re.compile(pattern).match(
-				self.sequence).groups()  # tuple(Sequence.split('-'))
-		self.species = self.gene2species(self.pair)
+		pattern = r'(\S+\|\S+)\-(\S+\|\S+)'
+		match = re.compile(pattern).match(self.sequence)
+		if match is None:
+			_warn_unparsable_pair(self.sequence)
+			return (None, None)
+		return match.groups()  # tuple(Sequence.split('-'))
+	@lazyproperty
+	def species(self):
+		return self.gene2species(self.pair)
 
 	def gene2species(self, gene_pair):
 		sp1, sp2 = gene_pair if gene_pair == (None, None) else \
@@ -1113,7 +1144,9 @@ class Collinearity():
 			return d
 		for kaks in KaKsParser(self.kaks, **kargs):
 			ks = kaks  # KaKs Obj
-			d[kaks.pair] = ks
+			#d[kaks.pair] = ks
+			pair = kaks.sequence
+			d[pair] = ks
 			#d[tuple(reversed(kaks.pair))] = ks
 		return d
 

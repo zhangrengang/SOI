@@ -9,7 +9,9 @@ from .RunCmdsMP import logger
 
 def add_ksplot_args(parser):
 	parser.add_argument('--kaks', metavar='FILE', type=str, nargs='+', default=None,
-		help='KaKs input file(s) [required]')
+		help='KaKs input file(s). Formats: WGDI, or KaKsCalculator/yn00/4DTV whose '
+			 'Sequence IDs are labelled SPECIES|GENE-SPECIES|GENE (curves are '
+			 'grouped by the species pair parsed from those IDs) [required]')
 	parser.add_argument('--blocks', metavar='FILE', type=str, nargs='+', default=None,
 		help='Paralog blocks file(s), Ks joined from --kaks [optional]')
 	parser.add_argument('--block-branches', metavar='NAME', type=str, nargs='+', default=None,

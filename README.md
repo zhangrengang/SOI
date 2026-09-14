@@ -646,7 +646,13 @@ However, **WGDI call-synteny (`-icl`)** uses the gene-index column
 re-sorting; incorrect index values will produce scrambled synteny blocks.
 
 #### Ks table format ####
-The outputs from [KaKsCalculator](https://sourceforge.net/projects/kakscalculator2/) and WGDI are supported:
+The outputs from [KaKsCalculator](https://sourceforge.net/projects/kakscalculator2/) and WGDI are supported.
+In KaKsCalculator/yn00/4DTV tables, `ksplot` groups the Ks curves by species pair,
+which it parses from the `Sequence` column; those IDs must therefore be labelled as
+`SPECIES|GENE-SPECIES|GENE` (e.g. `Arabidopsis_thaliana|AT1G29430-Oryza_sativa|LOC_Os09g37470`).
+Records without the `SPECIES|` prefix cannot be grouped by species: they are reported
+once and dropped from the plot. `dotplot` only matches the pair string against synteny
+blocks, so it accepts such IDs as they are.
 ```
 # KaKsCalculator:
 Sequence        Method  Ka      Ks      Ka/Ks   P-Value(Fisher) Length  S-Sites N-Sites Fold-Sites(0:2:4)       Substitutions   S-Substitutions N-Substitutions Fold-S-Substitutions(0:2:4)      Fold-N-Substitutions(0:2:4)     Divergence-Time Substitution-Rate-Ratio(rTC:rAG:rTA:rCG:rTG:rCA/rCA)    GC(1:2:3)       ML-Score        AICc    Akaike-Weight   Model
