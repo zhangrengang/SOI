@@ -312,7 +312,14 @@ def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3, d_color=None):
 		except np.linalg.LinAlgError:
 			continue
 		curves.append(ys)
-		labels.append(generate_label(pair))  # (text, style)
+		# ridge rows are individual species pairs: label by species (the
+		# colour already carries the group); self-pairs show one name only
+		from .style import format_species_label
+		_sp = pair[:2] if len(pair) > 2 else pair
+		if len(set(_sp)) == 1:
+			labels.append(format_species_label(_sp[0]))
+		else:
+			labels.append(generate_label(_sp))
 		pair_keys.append(tuple(pair))
 
 	if not curves:
