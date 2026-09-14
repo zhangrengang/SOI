@@ -784,6 +784,7 @@ class Alignment:
             genetrees = f'{prefix}.genetrees'
             alignments = f'{prefix}.alignments'
         self.trimal_opts, self.iqtree_opts = '-gappyout', '-mset GTR'
+        self.iqtree_opts = '-mset GTR' if tree_from=='cds' else '-mset JTT'
         mafft_template = '. ~/.bashrc; mafft --auto {} > {} 2> /dev/null'
         pal2nal_template = 'pal2nal.pl -output fasta {} {} > {}'
         trimal_template = 'trimal %s -in {} -out {} > /dev/null' % (
