@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib as mpl
 
 from .style import format_species_title
+from .colors import Colors
 from .RunCmdsMP import logger
 
 def add_ksplot_args(parser):
@@ -125,16 +126,24 @@ def main(kaks=None, pair=None, blocks=None, block_branches=None, figure=None,
 
 	nbins = int(max_ks * bins_per_ks)
 
+	# one colour per species pair, shared by all plot types (keyed by pair,
+	# not by plotting position: density/ridge drop groups with <3 points)
+	if pairs is not None:
+		_order = list(pairs)
+	else:
+		_order = sorted(d_ks.keys())
+	d_color = {tuple(p): c for p, c in zip(_order, Colors(len(_order)).colors)}
+
 	# Draw selected plot types
 	for ptype in plot_type:
 		if ptype == 'hist':
 			outfig = figure + '.hist.pdf'
-			plot_hist(d_ks, outfig, order=pairs, normed=normed,
+			plot_hist(d_ks, outfig, order=pairs, d_color=d_color, normed=normed,
 					  nbins=nbins, xlabel=xlabel, out_data=out_data_file,
 					  max_ks=max_ks)
 		elif ptype == 'density':
 			outfig = figure + '.density.pdf'
-			plot_density(d_ks, outfig, order=pairs, xlabel=xlabel,
+			plot_density(d_ks, outfig, order=pairs, d_color=d_color, xlabel=xlabel,
 						 max_ks=max_ks)
 		elif ptype == 'ridge':
 			outfig = figure + '.ridge.pdf'
@@ -148,7 +157,7 @@ def main(kaks=None, pair=None, blocks=None, block_branches=None, figure=None,
 
 def plot_hist(d_data, outFig, order=None, normed=False, xlabel='Ks',
 			  nbins=300, ylabel=' of syntenic gene pairs', out_data=None,
-			  max_ks=3):
+			  max_ks=3, d_color=None):
 	"""Histogram-based line plot (original behavior)."""
 	import matplotlib.pyplot as plt
 
@@ -163,6 +172,7 @@ def plot_hist(d_data, outFig, order=None, normed=False, xlabel='Ks',
 	x_list = []
 	y_list = []
 	pair_list = []
+	pair_keys = []
 	label_styles = []
 
 	print('\t'.join(['species1', 'species2', 'category', 'genePairNumber',
@@ -171,6 +181,7 @@ def plot_hist(d_data, outFig, order=None, normed=False, xlabel='Ks',
 		data = np.array(d_data[pair])
 		label, lstyle = generate_label(pair)
 		pair_list.append(label)
+		pair_keys.append(tuple(pair))
 		label_styles.append(lstyle)
 		data2 = np.concatenate([[0, max_ks], data])
 		n, bins, patches = ax.hist(data2, bins=nbins, density=normed,
@@ -193,7 +204,8 @@ def plot_hist(d_data, outFig, order=None, normed=False, xlabel='Ks',
 
 	ax.cla()
 	for i in range(len(pair_list)):
-		ax.plot(x_list[i], y_list[i], label=pair_list[i], linewidth=1.5)
+		ax.plot(x_list[i], y_list[i], label=pair_list[i], linewidth=1.5,
+				color=(d_color or {}).get(pair_keys[i]))
 	for t, s in zip(ax.legend(fontsize='x-small').get_texts(), label_styles):
 		t.set_fontstyle(s)
 	ax.minorticks_on()
@@ -205,7 +217,7 @@ def plot_hist(d_data, outFig, order=None, normed=False, xlabel='Ks',
 	plt.close()
 
 
-def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
+def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3, d_color=None):
 	"""Density plot using scipy.stats.gaussian_kde (pure Python, no R)."""
 	from scipy.stats import gaussian_kde
 	import matplotlib.pyplot as plt
@@ -231,9 +243,11 @@ def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 		label_styles.append(lstyle)
 		# Distinguish orthologs vs paralogs by line style
 		if len(set(pair)) == 1:
-			ax.plot(xs, ys, label=label, linewidth=1.5, linestyle='--')
+			ax.plot(xs, ys, label=label, linewidth=1.5, linestyle='--',
+					color=(d_color or {}).get(tuple(pair)))
 		else:
-			ax.plot(xs, ys, label=label, linewidth=1.5)
+			ax.plot(xs, ys, label=label, linewidth=1.5,
+					color=(d_color or {}).get(tuple(pair)))
 
 	ax.set_xlabel(xlabel)
 	ax.set_ylabel('Density')
@@ -247,7 +261,7 @@ def plot_density(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 	plt.close()
 
 
-def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
+def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3, d_color=None):
 	"""Ridge plot (山岭图) — stacked density curves per species pair."""
 	from scipy.stats import gaussian_kde
 	import matplotlib.pyplot as plt
@@ -258,6 +272,7 @@ def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 	# Precompute KDE for each group
 	curves = []
 	labels = []
+	pair_keys = []
 	xs = np.linspace(0, max_ks, 500)
 	for pair in order:
 		data = np.array(d_data[pair])
@@ -272,6 +287,7 @@ def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 			continue
 		curves.append(ys)
 		labels.append(generate_label(pair))  # (text, style)
+		pair_keys.append(tuple(pair))
 
 	if not curves:
 		print("Warning: no valid data for ridge plot", file=sys.stderr)
@@ -284,10 +300,9 @@ def plot_ridge(d_data, outFig, order=None, xlabel='Ks', max_ks=3):
 	if n == 1:
 		axes = [axes]
 
-	colors = plt.cm.tab10(np.linspace(0, 1, n))
-
-	for i, (ax, ys, label, color) in enumerate(zip(axes, curves, labels, colors)):
+	for i, (ax, ys, label) in enumerate(zip(axes, curves, labels)):
 		text, lstyle = label
+		color = (d_color or {}).get(pair_keys[i])
 		ax.fill_between(xs, ys, alpha=0.5, color=color)
 		ax.plot(xs, ys, color='black', linewidth=0.5)
 		ax.set_yticks([])
