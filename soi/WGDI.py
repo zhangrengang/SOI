@@ -1180,7 +1180,8 @@ class Alignment:
         # middle stage emits SAM text (no -b): the awk filter below reads text, a BAM
         # stream makes it emit garbage and the final samtools view -b - fails silently
         cmds.append("bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -S - | "
-                    "awk 'NR==FNR{{m[$1]=1; next}} /^@/{{print; next}} ($3 in m){{print}}' {} - | "
+                    "awk 'NR==FNR{{m[$1]=1; next}} /^@/{{print; next}}"
+                    " ($3 in m) || ($7 in m){{print}}' {} - | "
                     "samtools view -b - > {}".format(ncpu, baitfile, reads, idfile, bamfile))
         for c in cmds:
             logger.info(c)
