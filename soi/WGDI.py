@@ -1181,7 +1181,7 @@ class Alignment:
         # stream makes it emit garbage and the final samtools view -b - fails silently
         cmds.append("bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -S - | "
                     "awk 'NR==FNR{{m[$1]=1; next}} /^@/{{print; next}}"
-                    " {{N++; line[N]=$0; id=$1; sub(/\\/[12]$/,\"\",id); rid[N]=id; x=$3;"
+                    " {{N++; line[N]=$0; id=$1; rid[N]=id; x=$3;"
                     "    if(id in s2){{b2[id]=x}} else {{a2[id]=x; s2[id]=1; na[++nid]=id}}}}"
                     " END{{ for(k=1;k<=nid;k++){{ id=na[k]; x=a2[id];"
                     "    if(id in b2){{ y=b2[id];"
