@@ -1179,29 +1179,16 @@ class Alignment:
         # needed by samtools depth is piped, no sorted copy on disk
         # middle stage emits SAM text (no -b): the awk filter below reads text, a BAM
         # stream makes it emit garbage and the final samtools view -b - fails silently
-        # compmap 的 bam 过滤按 read name 成对判定（bwa mem 输出中一对 mate 同名且相邻）：
-        #   both mapped, same RNAME (in m)  -> keep
-        #   both mapped, different RNAME    -> drop the whole pair (cross-gene pair)
-        #   one mapped, one unmapped        -> keep
-        #   otherwise (both unmapped, or mapped to a non-kept bait) -> drop
-        # NOTE on unmapped detection: it tests RNAME == '*'. bwa mem writes the *mate's*
-        # reference name into RNAME for an unmapped mate (RNAME is '*' only when both mates
-        # are unmapped), so "one mapped + one unmapped" pairs match the "same RNAME" branch
-        # and are kept -- identical to a FLAG&0x4 test on this data (91,986 pairs measured).
-        # With an aligner that sets RNAME='*' for a single unmapped mate, such a pair would
-        # be misread as a cross-gene pair and dropped (known limitation; not the case here).
+        # compmap 的 bam 过滤：逐条判，判据是 RNAME + RNEXT（mate 的参考名），流式、常数内存
+        #   自己 RNAME 不在保留集(m)          -> 丢
+        #   RNEXT == '*'（mate 未比上）        -> 留   （单端测序就是这种：FLAG 无 0x1, RNEXT='*'）
+        #   RNEXT == '=' 或 == RNAME（mate 同基因）-> 留
+        #   RNEXT 是别的基因名                  -> 丢   （跨基因对；一对的两条会各自独立判成"丢"）
+        # 注：SAM 允许在同一参考时把 RNEXT 写成 '=' 或参考名本身，故两种都判。
         cmds.append("bwa mem -t {} {} {} | samtools view -G 12 -F 2304 -h -S - | "
                     "awk 'NR==FNR{{m[$1]=1; next}} /^@/{{print; next}}"
-                    " {{N++; line[N]=$0; id=$1; rid[N]=id; x=$3;"
-                    "    if(id in s2){{b2[id]=x}} else {{a2[id]=x; s2[id]=1; na[++nid]=id}}}}"
-                    " END{{ for(k=1;k<=nid;k++){{ id=na[k]; x=a2[id];"
-                    "    if(id in b2){{ y=b2[id];"
-                    "       if(x==\"*\" && y==\"*\") keep=0;"
-                    "       else if(x==\"*\" || y==\"*\") keep=(((x==\"*\")?y:x) in m);"
-                    "       else keep=((x==y && (x in m))?1:0) }}"
-                    "    else keep=(x in m);"
-                    "    kp[id]=keep }}"
-                    " for(i=1;i<=N;i++) if(kp[rid[i]]) print line[i] }}' {} - | "
+                    " {{r=$3; if(!(r in m)) next; x=$7;"
+                    "    if(x==\"*\" || x==\"=\" || x==r) print}}' {} - | "
                     "samtools view -b - > {}".format(ncpu, baitfile, reads, idfile, bamfile))
         for c in cmds:
             logger.info(c)
