@@ -289,7 +289,7 @@ class XCollinearity:
                         'Files empty or not exists: {}'.format(_unknown))
 		if len(collinearities) == 0:
 			logger.error('No collinearity file(s) are recognized. Please check the input.')
-			sys.exit()
+			sys.exit(1)
 		return collinearities
 
 	def _parse(self):
