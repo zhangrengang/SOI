@@ -51,8 +51,15 @@ def filter_chrs(inChrList, refSP, qrySP, min_genes=200,
 	ref_total_genes, ref_filtered_genes = 0, 0
 	qry_total_genes, qry_filtered_genes = 0, 0
 	for line in open(inChrList):
+		
 		temp = line.strip().split('\t')
-		chr, CHR, SP, geneN = temp[:4]
+		if not temp:
+			continue
+		try: chr, CHR, SP, geneN = temp[:4]
+		except Exception as e:
+			print(temp, file=sys.stderr)
+#			raise Exception(e)
+			continue
 		geneN = int(geneN)
 #		total_genes += geneN
 #		if geneN < min_genes:
@@ -62,7 +69,7 @@ def filter_chrs(inChrList, refSP, qrySP, min_genes=200,
 #			print >>sys.stderr, SP,qrySP,chr, CHR, is_chr0(CHR), is_chr0(chr, raw=False)
 		if is_chr0(CHR) or is_chr0(chr, raw=False):
 			continue
-		pattern = '\w{1,2}\d+'
+		pattern = '\w+?\d+'
 		if not re.compile(pattern).match(chr):
 			continue
 		pattern = '{}\d+'.format(refSP)
