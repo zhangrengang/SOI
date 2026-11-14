@@ -1105,15 +1105,9 @@ class Alignment:
             'ambiguous' in the audit table
           * the same sample gene picked by several ref genes of ONE column is kept
         '''
+        import glob
         import networkx as nx
         from .mcscan import XOrthology
-        # ref must be explicit: one matrix belongs to exactly one ref, while the
-        # design lists the samples of ALL refs (so the design alone cannot say
-        # which ref this matrix is about)
-        ref = kargs.pop('ref', None)
-        if not ref:
-            raise ValueError('orthomap: need ref=<ref species id> (the ref of this '
-                             'matrix; design alone is ambiguous)')
         if design is None:
             raise ValueError('orthomap: need design=<species.design>')
         # ---- design: ref -> [samples]
@@ -1132,24 +1126,55 @@ class Alignment:
                 d_samples[rf].append(sp)
         if not d_samples:
             raise ValueError('orthomap: no 3-column row in design {}'.format(design))
+        # ---- ref = design ref that is also in the orthology results AND has a
+        #      column in this matrix (the only species triple that can be meant);
+        #      ref= only overrides it
+        of_sps = set()
+        for d in glob.glob('{}/Orthologues/*'.format(orthologs)):
+            b = os.path.basename(d)
+            if os.path.isdir(d) and b.startswith('Orthologues_'):
+                of_sps.add(b[len('Orthologues_'):])
+            elif b.endswith('.tsv'):
+                of_sps.add(b[:-4])
+        if not of_sps:
+            raise ValueError('orthomap: no Orthologues/ in {}; not an OrthoFinder '
+                             'results directory'.format(orthologs))
+        ref = kargs.pop('ref', None)
+        if ref is None:
+            cands = [rf for rf in d_samples
+                     if rf in of_sps
+                     and [c for c in self.colnames
+                          if c == rf or c.startswith(rf + '_')]]
+            if len(cands) != 1:
+                raise ValueError(
+                    'orthomap: cannot pin down the ref of this matrix: {} of the '
+                    'design refs are in {} and have a column here; give ref= to '
+                    'choose'.format(cands, orthologs))
+            ref = cands[0]
+            logger.info('orthomap: ref inferred from design+results+matrix: {}'.format(ref))
         if ref not in d_samples:
-            raise ValueError('orthomap: ref {} (from the matrix directory) has no row '
-                             'in design {}; design refs are {}'.format(
-                                 ref, design, ', '.join(list(d_samples)[:8])))
+            raise ValueError('orthomap: ref {} has no row in design {}'.format(ref, design))
         # ---- only NEW species: skip those that already have a column
         def cols_of(sp):
             return [c for c in self.colnames
                     if c == sp or (c.startswith(sp + '_')
                                    and '_' not in c[len(sp) + 1:])]
-        new_samples = [sp for sp in d_samples[ref] if not cols_of(sp)]
+        absent = [sp for sp in d_samples[ref] if sp not in of_sps]
+        if absent:
+            logger.info('orthomap: {} samples of ref {} are not in {} -> skipped: {}'
+                        .format(len(absent), ref, orthologs,
+                                ' '.join(absent[:6]) + (' ...' if len(absent) > 6 else '')))
+        new_samples = [sp for sp in d_samples[ref]
+                       if sp in of_sps and not cols_of(sp)]
         skipped = [sp for sp in d_samples[ref] if cols_of(sp)]
         if skipped:
             logger.info('orthomap: {} samples already have columns -> untouched: {}'
                         .format(len(skipped), ' '.join(skipped[:6])
                                 + (' ...' if len(skipped) > 6 else '')))
         if not new_samples:
-            raise ValueError('orthomap: every sample of ref {} already has a column '
-                             'in {}; nothing to add'.format(ref, self.alignment))
+            raise ValueError('orthomap: nothing to add for ref {}: every sample that '
+                             'is in {} already has a column in {}'.format(
+                                 ref, orthologs, self.alignment))
         # ---- ref copy columns
         d_refid, d_cols = {}, {}
         for rf in [ref]:
@@ -1249,7 +1274,7 @@ class Alignment:
                         continue
                     if g in d_conflict:
                         for sp in new_samples:
-                            log_rows.append((r, rf, cn, copy, g, sp, '.', 0, 0, 1, 1))
+                            log_rows.append((r, rf, cn, copy, g, sp, '.', 0, 0, 1, 0))
                         continue
                     comp = d_comp.get(g)
                     for sp in new_samples:
@@ -1296,9 +1321,10 @@ class Alignment:
             d_idx[nm] = len(names)
             names.append(nm)
             d_newcol[d_idx[nm]] = (sp, copy)
+        raw = [l.rstrip('\r\n') for l in open(self.alignment)]   # keep cells byte-exact
         with open(out, 'w') as f:
-            for r, line in rows:
-                cells = [g if g is not None else '.' for g in line.genes]
+            for (r, line), src in zip(rows, raw):
+                cells = src.split(',')      # original text as-is ('' stays '')
                 cells += ['.'] * (len(names) - len(cells))
                 for k, key in d_newcol.items():
                     g = d_new[key].get(r)
