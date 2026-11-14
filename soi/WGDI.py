@@ -1074,6 +1074,251 @@ class Alignment:
         if prefix:
             fout.close()
             logger.info('Written {}.alignment.csv and {}.rename.list'.format(prefix, prefix))
+    def orthomap(self, orthologs, design=None, out=None, prefix=None, **kargs):
+        '''Fill sample columns of an alignment matrix from orthology assignments.
+
+        Unlike compmap (reads -> competitive mapping -> HybPiper assembly), the
+        sample sequences already exist: this only decides, for every reference
+        gene row and every sample, which sample gene goes into the matrix cell.
+        Output is the same alignment csv + rename.list format, so genetrees and
+        the tree pipeline take it without any change.
+
+        design : 3-column TSV (<acc> <species id> <ref>), i.e. species.design.
+                 Only the rows whose 3rd column == ref are used, and only the
+                 species that have NO column in the matrix yet are added (new
+                 species only; existing columns are never touched).
+        ref    : ref species of this matrix [required] -- one matrix = one ref,
+                 while the design lists the samples of every ref.
+        out    : output csv (default <alignment>-orthomap.csv)
+        prefix : prefix of the side outputs (default = out without .csv)
+
+        Rules (user-defined, 2026-11-14):
+          * every sample gets as many columns as its ref has copy columns
+            (ref has _Dh/_Dr -> each sample gets _Dh/_Dr)
+          * orthology pairs go into an undirected graph (edge weight = number of
+            ortholog groups the pair appears in; in practice almost always 1)
+          * per connected component: if its ref genes come from >= 2 different
+            ref columns (different copies, or different refs), the whole
+            component is discarded and its cells stay '.'
+          * otherwise, per row x sample, pick the gene with the highest weight to
+            the ref gene; ties are broken by gene id (deterministic) and flagged
+            'ambiguous' in the audit table
+          * the same sample gene picked by several ref genes of ONE column is kept
+        '''
+        import networkx as nx
+        from .mcscan import XOrthology
+        # ref must be explicit: one matrix belongs to exactly one ref, while the
+        # design lists the samples of ALL refs (so the design alone cannot say
+        # which ref this matrix is about)
+        ref = kargs.pop('ref', None)
+        if not ref:
+            raise ValueError('orthomap: need ref=<ref species id> (the ref of this '
+                             'matrix; design alone is ambiguous)')
+        if design is None:
+            raise ValueError('orthomap: need design=<species.design>')
+        # ---- design: ref -> [samples]
+        d_samples = OrderedDict()
+        for line in open(design):
+            if line.startswith('#'):
+                continue
+            tmp = line.rstrip('\n').split('\t')
+            if len(tmp) < 3:
+                continue
+            sp, rf = tmp[1].strip(), tmp[2].strip()
+            if not sp or not rf:
+                continue
+            d_samples.setdefault(rf, [])
+            if sp not in d_samples[rf]:
+                d_samples[rf].append(sp)
+        if not d_samples:
+            raise ValueError('orthomap: no 3-column row in design {}'.format(design))
+        if ref not in d_samples:
+            raise ValueError('orthomap: ref {} (from the matrix directory) has no row '
+                             'in design {}; design refs are {}'.format(
+                                 ref, design, ', '.join(list(d_samples)[:8])))
+        # ---- only NEW species: skip those that already have a column
+        def cols_of(sp):
+            return [c for c in self.colnames
+                    if c == sp or (c.startswith(sp + '_')
+                                   and '_' not in c[len(sp) + 1:])]
+        new_samples = [sp for sp in d_samples[ref] if not cols_of(sp)]
+        skipped = [sp for sp in d_samples[ref] if cols_of(sp)]
+        if skipped:
+            logger.info('orthomap: {} samples already have columns -> untouched: {}'
+                        .format(len(skipped), ' '.join(skipped[:6])
+                                + (' ...' if len(skipped) > 6 else '')))
+        if not new_samples:
+            raise ValueError('orthomap: every sample of ref {} already has a column '
+                             'in {}; nothing to add'.format(ref, self.alignment))
+        # ---- ref copy columns
+        d_refid, d_cols = {}, {}
+        for rf in [ref]:
+            cands = [c for c in self.colnames if c == rf or c.startswith(rf + '_')]
+            if not cands:
+                continue
+            # column == ref means a single copy ('1'); otherwise the copy is the
+            # last '_' token and the matrix id is what precedes it
+            parsed = []
+            for i, c in enumerate(self.colnames):
+                if c not in cands:
+                    continue
+                if c == rf:
+                    parsed.append((i, c, rf, '1'))
+                else:
+                    rid = c.rsplit('_', 1)[0]
+                    parsed.append((i, c, rid, c[len(rid):].lstrip('_') or '1'))
+            refid = Counter(x[2] for x in parsed).most_common(1)[0][0]
+            cols = [(i, c, copy) for i, c, rid, copy in parsed if rid == refid]
+            if cols:
+                d_refid[rf], d_cols[rf] = refid, cols
+        if not d_cols:
+            raise ValueError('orthomap: none of the design refs ({}) has a column in '
+                             '{}; columns are {}'.format(', '.join(list(d_samples)[:5]),
+                                                         self.alignment, self.colnames))
+        for rf in d_cols:
+            logger.info('orthomap: ref {} = matrix id {}, copies {}, {} new samples'
+                        .format(rf, d_refid[rf], [c for _, _, c in d_cols[rf]],
+                                len(new_samples)))
+        # ---- anchor ref genes: gene -> {matrix column name}
+        rows = list(self.indexed())
+        d_ref = {}
+        for r, line in rows:
+            for rf in d_cols:
+                for i, cn, copy in d_cols[rf]:
+                    g = line.genes[i]
+                    if g is None:
+                        continue
+                    d_ref.setdefault(g, set()).add(cn)
+        bad = [g for g in d_ref if '|' not in g]
+        if bad:
+            raise ValueError(
+                'orthomap: ref column genes do not look like "Species|gene" '
+                '(e.g. {}); cannot align them with ortholog ids'.format(bad[0]))
+        # ---- orthology graph over {refs} + {samples} (sample-sample edges kept so
+        #      that ref copies joined through a sample gene are still detected)
+        wanted = set(d_cols) | set(new_samples)
+        G = nx.Graph()
+        n_pair = 0
+        for rc in XOrthology(orthologs):
+            s1, s2 = rc.species1, rc.species2
+            if s1 == s2 or s1 not in wanted or s2 not in wanted:
+                continue
+            g1, g2 = rc.gene1, rc.gene2
+            n_pair += 1
+            if G.has_edge(g1, g2):
+                G[g1][g2]['w'] += 1
+            else:
+                G.add_edge(g1, g2, w=1)
+        logger.info('orthomap: {} ortholog pairs, {} nodes in the graph'.format(
+            n_pair, G.number_of_nodes()))
+        if n_pair == 0:
+            raise ValueError('orthomap: no ortholog pair among the design refs ({}) '
+                             'and their samples; check that design ids match the '
+                             'species names in {}'.format(', '.join(d_cols), orthologs))
+        # ---- per component: conflict when refs of >1 matrix column meet
+        d_conflict, d_comp, n_conflict = set(), {}, 0
+        for comp in nx.connected_components(G):
+            refs = [n for n in comp if n in d_ref]
+            if not refs:
+                continue
+            cols = set()
+            for n in refs:
+                cols |= d_ref[n]
+            if len(cols) > 1:
+                d_conflict.update(refs)
+                n_conflict += 1
+                continue
+            for n in refs:
+                d_comp[n] = comp
+        logger.info('orthomap: {} ref genes, {} discarded in {} conflicting '
+                    'components (mixed ref columns)'.format(
+                        len(d_ref), len(d_conflict), n_conflict))
+        # ---- pick one sample gene per (row, ref column, sample)
+        d_new = OrderedDict()      # (sample, copy) -> {row: cell id}
+        for rf in d_cols:
+            for sp in new_samples:
+                for i, cn, copy in d_cols[rf]:
+                    d_new.setdefault((sp, copy), {})
+        log_rows = []
+        n_amb = 0
+        for r, line in rows:
+            for rf in d_cols:
+                for i, cn, copy in d_cols[rf]:
+                    g = line.genes[i]
+                    if g is None:
+                        continue
+                    if g in d_conflict:
+                        for sp in new_samples:
+                            log_rows.append((r, rf, cn, copy, g, sp, '.', 0, 0, 1, 1))
+                        continue
+                    comp = d_comp.get(g)
+                    for sp in new_samples:
+                        mine = []
+                        if comp is not None:
+                            for n in comp:
+                                if n.split('|', 1)[0] != sp:
+                                    continue
+                                w = G[g][n]['w'] if G.has_edge(g, n) else 0
+                                mine.append((w, n))
+                        if not mine:
+                            log_rows.append((r, rf, cn, copy, g, sp, '.', 0, 0, 0, 0))
+                            continue
+                        mine.sort(key=lambda x: (-x[0], x[1]))
+                        w, picked = mine[0]
+                        amb = 1 if sum(1 for w2, _ in mine if w2 == w) > 1 else 0
+                        n_amb += amb
+                        # cell id: HybPiper samples use the original id
+                        # ('<sample>.<ref>-...'); annotation-style ids keep the
+                        # full 'Species|gene' form -- both match the pep headers
+                        rest = picked[len(sp) + 1:] if picked.startswith(sp + '|') else None
+                        cell = rest if (rest and rest.startswith(sp + '.')) else picked
+                        d_new.setdefault((sp, copy), {})[r] = cell
+                        log_rows.append((r, rf, cn, copy, g, sp, picked, w,
+                                         len(mine), 0, amb))
+        n_filled = sum(len(v) for v in d_new.values())
+        if n_filled == 0:
+            raise ValueError('orthomap: nothing assigned; check design ids / matrix')
+        # ---- write matrix (original columns kept; sample columns appended, or
+        #      rewritten in place when the name already exists)
+        if out is None:
+            out = re.sub(r'\.csv$', '', self.alignment) + '-orthomap.csv'
+        if prefix is None:
+            prefix = re.sub(r'\.csv$', '', out)
+        names = list(self.colnames)
+        d_idx = {n: k for k, n in enumerate(names)}
+        d_newcol = OrderedDict()
+        for (sp, copy) in d_new:
+            nm = '{}_{}'.format(sp, copy)
+            # new species only: a name clash means the species is not new -> bug
+            if nm in d_idx:
+                raise ValueError('orthomap: column {} already exists; orthomap only '
+                                 'adds new species (never overwrites)'.format(nm))
+            d_idx[nm] = len(names)
+            names.append(nm)
+            d_newcol[d_idx[nm]] = (sp, copy)
+        with open(out, 'w') as f:
+            for r, line in rows:
+                cells = [g if g is not None else '.' for g in line.genes]
+                cells += ['.'] * (len(names) - len(cells))
+                for k, key in d_newcol.items():
+                    g = d_new[key].get(r)
+                    if g is not None:
+                        cells[k] = g
+                print(','.join(cells), file=f)
+        with open(prefix + '.rename.list', 'w') as f:
+            for k, nm in enumerate(names, start=1):
+                print('{}\t{}'.format(k, nm), file=f)
+        with open(prefix + '.orthomap.tsv', 'w') as f:
+            print('row\tref\tref_column\tcopy\tref_gene\tsample\tpicked\tweight'
+                  '\tn_cand\tconflict\tambiguous', file=f)
+            for t in log_rows:
+                print('\t'.join(map(str, t)), file=f)
+        logger.info('orthomap: {} cells filled -> {}\n  columns: {}\n  audit: {}'.format(
+            n_filled, out, prefix + '.rename.list', prefix + '.orthomap.tsv'))
+        logger.info('orthomap: {} ambiguous picks (ties by gene id); next: '
+                    'soi-wgdi genetrees {} <pep> <cds> colnames={}.rename.list'.format(
+                        n_amb, out, prefix))
+
     def compmap(self, cds, read1, read2=None, all_genes=False, ref=None, prefix=None, title=None,
                 ncpu=8, **kargs):
         '''Competitive mapping of reads to reference CDS baits.
@@ -1444,6 +1689,9 @@ def main():
         cds, read1 = sys.argv[3:5]
         read2 = sys.argv[5] if len(sys.argv) > 5 and not sys.argv[5].count('=') else None
         Alignment(alignment, **kargs).compmap(cds, read1, read2, **kargs)
+    elif subcmd == 'orthomap':
+        orthologs = sys.argv[3]
+        Alignment(alignment, **kargs).orthomap(orthologs, **kargs)
     elif subcmd == 'chrsplit':
         tmpdir, gff, refsp = sys.argv[3:6]
         Alignment(alignment, **kargs).chrsplit(tmpdir, gff, refsp, **kargs)
