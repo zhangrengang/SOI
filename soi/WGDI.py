@@ -1269,6 +1269,20 @@ class Alignment:
                 for rg in refs:
                     if G.has_edge(n, rg):
                         cand.append((G[n][rg]['w'], n, rg))
+        # ---- 分配质量分类（按样本基因的候选集）：unique=唯一候选（高质）；
+        #      same=多候选但都在同一拷贝列；conflict=候选跨 ≥2 个拷贝列（真冲突）
+        d_cand_gene = {}
+        for w, n, rg in cand:
+            d_cand_gene.setdefault(n, []).append((w, d_gene_row[rg][1]))
+        d_kind = {}
+        for g, cl in d_cand_gene.items():
+            cols = {cn for _, cn in cl}
+            if len(cl) == 1:
+                d_kind[g] = 'unique'
+            elif len(cols) > 1:
+                d_kind[g] = 'conflict'
+            else:
+                d_kind[g] = 'same'
         # 权重相同（实测几乎全是 1）时【随机】决定谁先抢 —— 原先按 ref 基因 id 字典序，
         # 会系统性偏向某个拷贝列（实测 R:H = 1.78:1，R 的 scaffold 编号更靠前）。
         # seed 固定 ⇒ 结果可复现；换 seed 可做随机性检验。
@@ -1284,17 +1298,21 @@ class Alignment:
                 for i, cn, copy in d_cols[rf]:
                     d_new.setdefault((sp, copy), {})
         used_gene, occupied, log_rows = set(), set(), []
+        d_stat = {}       # species -> Counter(kind)
+        d_conftie = {}    # species -> 冲突里靠随机平手的个数
         n_lost_gene = n_lost_cell = 0
         for w, sgene, rgene, _ in cand:
             sp = sgene.split('|', 1)[0]
             r, cn, copy, rf = d_gene_row[rgene]
             if sgene in used_gene:
                 n_lost_gene += 1
-                log_rows.append((r, rf, cn, copy, rgene, sp, sgene, w, 1, 0, 'gene_taken'))
+                log_rows.append((r, rf, cn, copy, rgene, sp, sgene, w, 1, 0, 'gene_taken',
+                                 d_kind.get(sgene, 'unique')))
                 continue
             if (sp, copy, r) in occupied:
                 n_lost_cell += 1
-                log_rows.append((r, rf, cn, copy, rgene, sp, sgene, w, 1, 0, 'cell_taken'))
+                log_rows.append((r, rf, cn, copy, rgene, sp, sgene, w, 1, 0, 'cell_taken',
+                                 d_kind.get(sgene, 'unique')))
                 continue
             used_gene.add(sgene)
             occupied.add((sp, copy, r))
@@ -1303,13 +1321,49 @@ class Alignment:
             rest = sgene[len(sp) + 1:] if sgene.startswith(sp + '|') else None
             cell = rest if (rest and rest.startswith(sp + '.')) else sgene
             d_new[(sp, copy)][r] = cell
-            log_rows.append((r, rf, cn, copy, rgene, sp, cell, w, 0, 0, 'assigned'))
+            kind = d_kind.get(sgene, 'unique')
+            d_stat.setdefault(sp, Counter())[kind] += 1
+            if kind == 'conflict':
+                cl = d_cand_gene[sgene]
+                wmax = max(x[0] for x in cl)
+                if sum(1 for x in cl if x[0] == wmax) > 1:
+                    d_conftie[sp] = d_conftie.get(sp, 0) + 1
+            log_rows.append((r, rf, cn, copy, rgene, sp, cell, w, 0, 0, 'assigned', kind))
         logger.info('orthomap: competitive assignment -> {} cells filled, '
                     '{} links lost (gene already used {} / cell already taken {})'.format(
                         len(occupied), n_lost_gene + n_lost_cell, n_lost_gene, n_lost_cell))
         n_filled = sum(len(v) for v in d_new.values())
         if n_filled == 0:
             raise ValueError('orthomap: nothing assigned; check design ids / matrix')
+        # ---- 按物种汇报分配质量
+        logger.info('orthomap: assignment quality by species '
+                    '(assigned / unique-hq / same-col / cross-col-conflict)')
+        hdr = '  {:<32}{:>9}{:>16}{:>16}{:>20}'
+        logger.info(hdr.format('species', 'assigned', 'unique(高质)', 'same-col', 'conflict(跨列)'))
+        t = Counter()
+        t_conftie = 0
+        for sp in new_samples:
+            c = d_stat.get(sp)
+            if not c:
+                logger.info(hdr.format(sp, 0, '-', '-', '-'))
+                continue
+            tot = sum(c.values())
+            t.update(c)
+            t_conftie += d_conftie.get(sp, 0)
+            logger.info(hdr.format(
+                sp, tot,
+                '{:>6} ({:>4.1f}%)'.format(c['unique'], 100.0 * c['unique'] / tot),
+                '{:>6} ({:>4.1f}%)'.format(c['same'], 100.0 * c['same'] / tot),
+                '{:>7} ({:>4.1f}%)'.format(c['conflict'], 100.0 * c['conflict'] / tot)))
+        tot = sum(t.values())
+        if tot:
+            logger.info(hdr.format(
+                'TOTAL', tot,
+                '{:>6} ({:>4.1f}%)'.format(t['unique'], 100.0 * t['unique'] / tot),
+                '{:>6} ({:>4.1f}%)'.format(t['same'], 100.0 * t['same'] / tot),
+                '{:>7} ({:>4.1f}%)'.format(t['conflict'], 100.0 * t['conflict'] / tot)))
+            logger.info('  conflict 中靠随机平手的: {} ({:.1f}% of conflict, {:.1f}% of assigned)'
+                        .format(t_conftie, 100.0 * t_conftie / max(t['conflict'], 1), 100.0 * t_conftie / tot))
         # ---- write matrix (original columns kept; sample columns appended, or
         #      rewritten in place when the name already exists)
         if out is None:
@@ -1343,7 +1397,7 @@ class Alignment:
                 print('{}\t{}'.format(k, nm), file=f)
         with open(prefix + '.orthomap.tsv', 'w') as f:
             print('row\tref\tref_column\tcopy\tref_gene\tsample\tpicked\tweight'
-                  '\tlost\tflag\tstatus', file=f)
+                  '\tlost\tflag\tstatus\tkind', file=f)
             for t in log_rows:
                 print('\t'.join(map(str, t)), file=f)
         logger.info('orthomap: {} cells filled -> {}\n  columns: {}\n  audit: {}'.format(
