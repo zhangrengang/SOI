@@ -1097,13 +1097,14 @@ class Alignment:
             (ref has _Dh/_Dr -> each sample gets _Dh/_Dr)
           * orthology pairs go into an undirected graph (edge weight = number of
             ortholog groups the pair appears in; in practice almost always 1)
-          * per connected component: if its ref genes come from >= 2 different
-            ref columns (different copies, or different refs), the whole
-            component is discarded and its cells stay '.'
-          * otherwise, per row x sample, pick the gene with the highest weight to
-            the ref gene; ties are broken by gene id (deterministic) and flagged
-            'ambiguous' in the audit table
-          * the same sample gene picked by several ref genes of ONE column is kept
+          * assignment is COMPETITIVE (2026-11-15): every sample gene competes
+            for the cells of all ref genes it is orthologous to; the highest
+            weight wins, ties are broken by gene id (deterministic)
+          * one sample gene occupies at most one cell and one cell holds at most
+            one gene -- this replaces the old "discard any component that mixes
+            ref columns" rule, which threw away the majority of the genes
+          * all_genes=0 (default) only uses rows where EVERY ref copy column is
+            present, like compmap; all_genes=1 uses all rows
         '''
         import glob
         import networkx as nx
@@ -1204,23 +1205,34 @@ class Alignment:
             logger.info('orthomap: ref {} = matrix id {}, copies {}, {} new samples'
                         .format(rf, d_refid[rf], [c for _, _, c in d_cols[rf]],
                                 len(new_samples)))
-        # ---- anchor ref genes: gene -> {matrix column name}
+        # ---- anchor ref genes (gene -> {matrix column name}) + row eligibility
+        # all_genes=0（默认，与 compmap 一致）：只认"该 ref 所有拷贝列都非空"的行
+        all_genes = kargs.pop('all_genes', 0)
+        all_genes = str(all_genes).lower() not in ('0', 'false', 'no', '')
         rows = list(self.indexed())
-        d_ref = {}
+        ref_cols = [(i, cn, copy, rf) for rf in d_cols for i, cn, copy in d_cols[rf]]
+        d_ref, d_gene_row, rows_keep = {}, {}, {}
         for r, line in rows:
-            for rf in d_cols:
-                for i, cn, copy in d_cols[rf]:
-                    g = line.genes[i]
-                    if g is None:
-                        continue
-                    d_ref.setdefault(g, set()).add(cn)
+            rows_keep[r] = all(line.genes[i] is not None for i, cn, copy, rf in ref_cols)
+        for r, line in rows:
+            if not all_genes and not rows_keep[r]:
+                continue
+            for i, cn, copy, rf in ref_cols:
+                g = line.genes[i]
+                if g is None:
+                    continue
+                d_ref.setdefault(g, set()).add(cn)
+                d_gene_row.setdefault(g, (r, cn, copy, rf))
+        n_keep = len(rows) if all_genes else sum(1 for v in rows_keep.values() if v)
+        logger.info('orthomap: all_genes={} -> {} of {} rows usable ({} ref genes)'.format(
+            int(all_genes), n_keep, len(rows), len(d_ref)))
         bad = [g for g in d_ref if '|' not in g]
         if bad:
             raise ValueError(
                 'orthomap: ref column genes do not look like "Species|gene" '
                 '(e.g. {}); cannot align them with ortholog ids'.format(bad[0]))
         # ---- orthology graph over {refs} + {samples} (sample-sample edges kept so
-        #      that ref copies joined through a sample gene are still detected)
+        #      that ref copies joined through a sample gene are still visible)
         wanted = set(d_cols) | set(new_samples)
         G = nx.Graph()
         n_pair = 0
@@ -1240,66 +1252,53 @@ class Alignment:
             raise ValueError('orthomap: no ortholog pair among the design refs ({}) '
                              'and their samples; check that design ids match the '
                              'species names in {}'.format(', '.join(d_cols), orthologs))
-        # ---- per component: conflict when refs of >1 matrix column meet
-        d_conflict, d_comp, n_conflict = set(), {}, 0
+        # ---- 竞争性分配（2026-11-15 起，取代"混拷贝列的分量整块弃用"）：
+        #   每个样本基因在它连到的所有 ref 基因里竞争，权重高者先占格子；
+        #   一个样本基因只进一个格子，一个格子只放一个基因（跨拷贝列同样竞争）。
+        #   这样冲突不再一律丢弃，而是让"最强的直系同源关系"赢。
+        sample_set = set(new_samples)
+        cand = []
         for comp in nx.connected_components(G):
             refs = [n for n in comp if n in d_ref]
             if not refs:
                 continue
-            cols = set()
-            for n in refs:
-                cols |= d_ref[n]
-            if len(cols) > 1:
-                d_conflict.update(refs)
-                n_conflict += 1
-                continue
-            for n in refs:
-                d_comp[n] = comp
-        logger.info('orthomap: {} ref genes, {} discarded in {} conflicting '
-                    'components (mixed ref columns)'.format(
-                        len(d_ref), len(d_conflict), n_conflict))
-        # ---- pick one sample gene per (row, ref column, sample)
+            for n in comp:
+                sp = n.split('|', 1)[0]
+                if sp not in sample_set:
+                    continue
+                for rg in refs:
+                    if G.has_edge(n, rg):
+                        cand.append((G[n][rg]['w'], n, rg))
+        cand.sort(key=lambda x: (-x[0], x[1], x[2]))
         d_new = OrderedDict()      # (sample, copy) -> {row: cell id}
         for rf in d_cols:
             for sp in new_samples:
                 for i, cn, copy in d_cols[rf]:
                     d_new.setdefault((sp, copy), {})
-        log_rows = []
-        n_amb = 0
-        for r, line in rows:
-            for rf in d_cols:
-                for i, cn, copy in d_cols[rf]:
-                    g = line.genes[i]
-                    if g is None:
-                        continue
-                    if g in d_conflict:
-                        for sp in new_samples:
-                            log_rows.append((r, rf, cn, copy, g, sp, '.', 0, 0, 1, 0))
-                        continue
-                    comp = d_comp.get(g)
-                    for sp in new_samples:
-                        mine = []
-                        if comp is not None:
-                            for n in comp:
-                                if n.split('|', 1)[0] != sp:
-                                    continue
-                                w = G[g][n]['w'] if G.has_edge(g, n) else 0
-                                mine.append((w, n))
-                        if not mine:
-                            log_rows.append((r, rf, cn, copy, g, sp, '.', 0, 0, 0, 0))
-                            continue
-                        mine.sort(key=lambda x: (-x[0], x[1]))
-                        w, picked = mine[0]
-                        amb = 1 if sum(1 for w2, _ in mine if w2 == w) > 1 else 0
-                        n_amb += amb
-                        # cell id: HybPiper samples use the original id
-                        # ('<sample>.<ref>-...'); annotation-style ids keep the
-                        # full 'Species|gene' form -- both match the pep headers
-                        rest = picked[len(sp) + 1:] if picked.startswith(sp + '|') else None
-                        cell = rest if (rest and rest.startswith(sp + '.')) else picked
-                        d_new.setdefault((sp, copy), {})[r] = cell
-                        log_rows.append((r, rf, cn, copy, g, sp, picked, w,
-                                         len(mine), 0, amb))
+        used_gene, occupied, log_rows = set(), set(), []
+        n_lost_gene = n_lost_cell = 0
+        for w, sgene, rgene in cand:
+            sp = sgene.split('|', 1)[0]
+            r, cn, copy, rf = d_gene_row[rgene]
+            if sgene in used_gene:
+                n_lost_gene += 1
+                log_rows.append((r, rf, cn, copy, rgene, sp, sgene, w, 1, 0, 'gene_taken'))
+                continue
+            if (sp, copy, r) in occupied:
+                n_lost_cell += 1
+                log_rows.append((r, rf, cn, copy, rgene, sp, sgene, w, 1, 0, 'cell_taken'))
+                continue
+            used_gene.add(sgene)
+            occupied.add((sp, copy, r))
+            # cell id: HybPiper 样本用原始 id（'<sample>.<ref>-...'）；
+            # 注释型 id 保留完整 'Species|gene'（两者都与 pep 头一致）
+            rest = sgene[len(sp) + 1:] if sgene.startswith(sp + '|') else None
+            cell = rest if (rest and rest.startswith(sp + '.')) else sgene
+            d_new[(sp, copy)][r] = cell
+            log_rows.append((r, rf, cn, copy, rgene, sp, cell, w, 0, 0, 'assigned'))
+        logger.info('orthomap: competitive assignment -> {} cells filled, '
+                    '{} links lost (gene already used {} / cell already taken {})'.format(
+                        len(occupied), n_lost_gene + n_lost_cell, n_lost_gene, n_lost_cell))
         n_filled = sum(len(v) for v in d_new.values())
         if n_filled == 0:
             raise ValueError('orthomap: nothing assigned; check design ids / matrix')
@@ -1336,14 +1335,13 @@ class Alignment:
                 print('{}\t{}'.format(k, nm), file=f)
         with open(prefix + '.orthomap.tsv', 'w') as f:
             print('row\tref\tref_column\tcopy\tref_gene\tsample\tpicked\tweight'
-                  '\tn_cand\tconflict\tambiguous', file=f)
+                  '\tlost\tflag\tstatus', file=f)
             for t in log_rows:
                 print('\t'.join(map(str, t)), file=f)
         logger.info('orthomap: {} cells filled -> {}\n  columns: {}\n  audit: {}'.format(
             n_filled, out, prefix + '.rename.list', prefix + '.orthomap.tsv'))
-        logger.info('orthomap: {} ambiguous picks (ties by gene id); next: '
-                    'soi-wgdi genetrees {} <pep> <cds> colnames={}.rename.list'.format(
-                        n_amb, out, prefix))
+        logger.info('orthomap: next step: soi-wgdi genetrees {} <pep> <cds> '
+                    'colnames={}.rename.list'.format(out, prefix))
 
     def compmap(self, cds, read1, read2=None, all_genes=False, ref=None, prefix=None, title=None,
                 ncpu=8, **kargs):
