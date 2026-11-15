@@ -1269,7 +1269,15 @@ class Alignment:
                 for rg in refs:
                     if G.has_edge(n, rg):
                         cand.append((G[n][rg]['w'], n, rg))
-        cand.sort(key=lambda x: (-x[0], x[1], x[2]))
+        # 权重相同（实测几乎全是 1）时【随机】决定谁先抢 —— 原先按 ref 基因 id 字典序，
+        # 会系统性偏向某个拷贝列（实测 R:H = 1.78:1，R 的 scaffold 编号更靠前）。
+        # seed 固定 ⇒ 结果可复现；换 seed 可做随机性检验。
+        import random
+        seed = int(kargs.pop('seed', 0))
+        rng = random.Random(seed)
+        cand = [(w, n, rg, rng.random()) for w, n, rg in cand]
+        cand.sort(key=lambda x: (-x[0], x[3], x[1], x[2]))
+        logger.info('orthomap: competition ties broken randomly (seed={})'.format(seed))
         d_new = OrderedDict()      # (sample, copy) -> {row: cell id}
         for rf in d_cols:
             for sp in new_samples:
@@ -1277,7 +1285,7 @@ class Alignment:
                     d_new.setdefault((sp, copy), {})
         used_gene, occupied, log_rows = set(), set(), []
         n_lost_gene = n_lost_cell = 0
-        for w, sgene, rgene in cand:
+        for w, sgene, rgene, _ in cand:
             sp = sgene.split('|', 1)[0]
             r, cn, copy, rf = d_gene_row[rgene]
             if sgene in used_gene:
