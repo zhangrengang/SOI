@@ -1214,24 +1214,35 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(
 					para_pairs.add((g1, g2))
 		return para_pairs
 
+	def orthologues_file(self, sp1, sp2):
+		'''v3 布局优先：Orthologues/<sp>.tsv（扁平，4 列，一个文件含全部伙伴物种）；
+		v2 布局兜底：Orthologues_<sp>/<sp1>__v__<sp2>.tsv（3 列，每个物种对一个文件）。'''
+		flat = '{}/Orthologues/{}.tsv'.format(self.ResultsDir, sp1)
+		if os.path.exists(flat):
+			return flat
+		return '{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(
+			self.ResultsDir, sp1, sp1, sp2)
+
 	def get_orthologs(self, sps=None, sp1=None, sp2=None, byName=True):
 		'''Retrieve orthologous pairs'''
+		allowed = None
 		if sps is not None:
 			orthoFiles = []
 			for sp1, sp2 in itertools.permutations(sps, 2):
 				if not byName:
 					sp1, sp2 = self.spId2Name(sp1, sp2)
-				orthoFiles += ['{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(
-					self.ResultsDir, sp1, sp1, sp2)]
+				orthoFiles += [self.orthologues_file(sp1, sp2)]
+			orthoFiles = list(OrderedDict.fromkeys(orthoFiles))  # v3 一个文件含全部伙伴，去重
+			allowed = set(sps)
 		elif sp1 is not None or sp2 is not None:
 			if not byName:
 				sp1, sp2 = self.spId2Name(sp1, sp2)
-			orthoFiles = ['{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(
-				self.ResultsDir, sp1, sp1, sp2),
-				'{}/Orthologues/Orthologues_{}/{}__v__{}.tsv'.format(
-				self.ResultsDir, sp2, sp2, sp1),]
+			orthoFiles = [x for x in [self.orthologues_file(sp1, sp2),
+				self.orthologues_file(sp2, sp1)] if os.path.exists(x)]
+			allowed = set(x for x in (sp1, sp2) if x is not None)
 		else:
-			orthoFiles = self.Orthologues
+			orthoFiles = glob.glob('{}/Orthologues/*.tsv'.format(self.ResultsDir)) \
+				or self.Orthologues   # v3 扁平优先，没有则用 v2 分文件
 		ortho_pairs = set([])
 		idx = 0
 		for orthoFile in orthoFiles:
@@ -1242,13 +1253,17 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(
 				if i == 1:
 					continue
 				temp = line.strip().split('\t')
-				try:
+				if len(temp) == 4:      # v3 扁平：OG / 伙伴物种 / 本物种基因 / 伙伴基因
+					Orthogroup, spPartner, Genes_1, Genes_2 = temp
+					if allowed is not None and spPartner not in allowed:
+						continue
+				elif len(temp) == 3:    # v2 分文件：OG / 基因1 / 基因2
 					Orthogroup, Genes_1, Genes_2 = temp
-				except ValueError:
+				else:
 					print('Error:', orthoFile, temp, file=sys.stderr)
 					continue
-				Genes_1 = Genes_1.split(', ')
-				Genes_2 = Genes_2.split(', ')
+				Genes_1 = [g for g in Genes_1.split(', ') if g]
+				Genes_2 = [g for g in Genes_2.split(', ') if g]
 				Genes_1 = list(map(gene_format_o, Genes_1))
 				Genes_2 = list(map(gene_format_o, Genes_2))
 				for (sp1, g1), (sp2, g2) in itertools.product(Genes_1, Genes_2):
