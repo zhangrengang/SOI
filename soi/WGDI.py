@@ -1250,25 +1250,13 @@ class Alignment:
         wanted = set(d_cols) | set(new_samples)
         rset, sset = set(d_cols), set(new_samples)
         xo = _OF(orthologs)
-        orthoFiles, allowed = xo.orthologues_files(sps=sorted(wanted))
-        # 只读"配好对"的行：ref 文件只留它自己的样本，样本文件只留它自己的 ref
-        allow_by_file = {}
-        for rf in d_cols:
-            f = xo.flat_orthologues(rf)
-            if f:
-                allow_by_file[f] = set(d_samples[rf])
-            for sp in d_samples[rf]:
-                if sp in new_samples:
-                    g = xo.flat_orthologues(sp)
-                    if g:
-                        allow_by_file[g] = {rf}
-        if all(f in allow_by_file for f in orthoFiles):
-            allowed = allow_by_file
-        else:
-            logger.info('orthomap: 有 v2 分文件布局的文件，伙伴过滤退回 wanted 全集')
+        # 物种对 = 每个新样本与它自己的 ref（配好对交给最底层，只解析这些对）
+        pair_list = [(rf, sp) for rf in d_cols for sp in d_samples[rf] if sp in new_samples]
+        orthoFiles, _allowed = xo.orthologues_files(
+            sps=sorted({x for p in pair_list for x in p}))
         G = nx.Graph()
         n_pair = n_row = 0
-        for _og, _partner, genes1, genes2 in xo.iter_ortholog_rows(orthoFiles, allowed):
+        for _og, _partner, genes1, genes2 in xo.iter_ortholog_rows(orthoFiles, pairs=pair_list):
             n_row += 1
             g1r = [g for g in genes1 if g.split('|', 1)[0] in rset]
             g2r = [g for g in genes2 if g.split('|', 1)[0] in rset]
@@ -1333,13 +1321,18 @@ class Alignment:
                 d_kind[g] = 'same'
         # 权重相同（实测几乎全是 1）时【随机】决定谁先抢 —— 原先按 ref 基因 id 字典序，
         # 会系统性偏向某个拷贝列（实测 R:H = 1.78:1，R 的 scaffold 编号更靠前）。
-        # seed 固定 ⇒ 结果可复现；换 seed 可做随机性检验。
+        # 平手键 = 由 (seed, 样本基因, ref 基因) 派生的伪随机数，**与遍历顺序无关**：
+        # 同样的候选集必定得到同样的分配（换边集实现不会改变结果）；换 seed 可做随机性检验。
         import random
+        import hashlib
         seed = int(kargs.pop('seed', 0))
-        rng = random.Random(seed)
-        cand = [(w, n, rg, rng.random()) for w, n, rg in cand]
+
+        def _tie_key(n, rg):
+            h = hashlib.md5('{}\x00{}\x00{}'.format(seed, n, rg).encode()).hexdigest()
+            return int(h[:15], 16)
+        cand = [(w, n, rg, _tie_key(n, rg)) for w, n, rg in cand]
         cand.sort(key=lambda x: (-x[0], x[3], x[1], x[2]))
-        logger.info('orthomap: competition ties broken randomly (seed={})'.format(seed))
+        logger.info('orthomap: competition ties broken by md5(seed, gene pair) (seed={})'.format(seed))
         d_new = OrderedDict()      # (sample, copy) -> {row: cell id}
         # 只给"该 ref 下的新样本"建拷贝格（多 ref 时不能把别的 ref 的拷贝名摊到它头上）
         for rf in d_cols:

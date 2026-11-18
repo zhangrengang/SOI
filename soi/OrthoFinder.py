@@ -1232,14 +1232,30 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(
 		return (glob.glob('{}/Orthologues/*.tsv'.format(self.ResultsDir))
 			or self.Orthologues), None   # 不限物种：v3 扁平优先，没有则 v2 分文件
 
-	def iter_ortholog_rows(self, orthoFiles, allowed=None):
+	def iter_ortholog_rows(self, orthoFiles, allowed=None, pairs=None):
 		'''读 Orthologues 文件，统一处理两种行格式，yield (OG, 伙伴物种, 基因1, 基因2)。
 		v3 扁平（4 列）：OG / 伙伴物种 / 本物种基因 / 伙伴基因
 		v2 分文件（3 列）：OG / 基因1 / 基因2
-		allowed：集合=所有文件共用的伙伴物种白名单；dict={文件路径: 伙伴白名单}（按文件分别给，
-		只读"配好对"的行，能省掉 90% 以上的行）；None=不过滤。'''
+
+		pairs：物种对列表（只解析这些对，能省掉 90% 以上的行）——元素可以是
+		  ('sp1', 'sp2')、{'sp1', 'sp2'} 或 'sp1__v__sp2'（v2 文件名形式），顺序无关。
+		  v3 按"文件物种 × 伙伴物种"判，v2 按文件名判。None=不限。
+		allowed：兼容旧的"伙伴物种白名单"（集合，或 {文件: 集合}）。'''
+		if pairs is not None:
+			pset = set()
+			for pr in pairs:
+				if isinstance(pr, str):
+					a, _, b = pr.partition('__v__')
+					pset.add(frozenset((a, b)))
+				else:
+					pset.add(frozenset(pr))
+			pairs = pset
 		for orthoFile in orthoFiles:
 			ok = allowed.get(orthoFile) if isinstance(allowed, dict) else allowed
+			fsp = None
+			if pairs is not None:            # 文件本身也带一个物种（v3 文件名 = 本物种；v2 = A__v__B）
+				base = os.path.basename(orthoFile)
+				fsp = base[:-4] if base.endswith('.tsv') else base
 			i = 0
 			for line in open(orthoFile):
 				i += 1
@@ -1248,11 +1264,15 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(
 				temp = line.strip().split('\t')
 				if len(temp) == 4:      # v3
 					Orthogroup, spPartner, Genes_1, Genes_2 = temp
+					if pairs is not None and frozenset((fsp, spPartner)) not in pairs:
+						continue
 					if ok is not None and spPartner not in ok:
 						continue
 				elif len(temp) == 3:    # v2
 					Orthogroup, Genes_1, Genes_2 = temp
 					spPartner = None
+					if pairs is not None and frozenset(fsp.split('__v__')) not in pairs:
+						continue
 				else:
 					print('Error:', orthoFile, temp, file=sys.stderr)
 					continue
