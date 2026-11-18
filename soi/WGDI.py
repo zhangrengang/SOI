@@ -1114,7 +1114,7 @@ class Alignment:
         # ---- design: ref -> [samples]
         d_samples = OrderedDict()
         for line in open(design):
-            if line.startswith('#'):
+            if not line.strip() or line.lstrip().startswith('#'):
                 continue
             tmp = line.rstrip('\n').split('\t')
             if len(tmp) < 3:
