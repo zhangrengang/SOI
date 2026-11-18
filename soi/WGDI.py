@@ -1212,31 +1212,32 @@ class Alignment:
             raise ValueError('orthomap: none of the design refs ({}) has a column in '
                              '{}; columns are {}'.format(', '.join(list(d_samples)[:5]),
                                                          self.alignment, self.colnames))
-        for rf in d_cols:
-            logger.info('orthomap: ref {} = matrix id {}, copies {}, {} new samples'
-                        .format(rf, d_refid[rf], [c for _, _, c in d_cols[rf]],
-                                len(new_samples)))
-        # ---- anchor ref genes (gene -> {matrix column name}) + row eligibility
-        # all_genes=0（默认，与 compmap 一致）：只认"该 ref 所有拷贝列都非空"的行
         all_genes = kargs.pop('all_genes', 0)
         all_genes = str(all_genes).lower() not in ('0', 'false', 'no', '')
         rows = list(self.indexed())
-        ref_cols = [(i, cn, copy, rf) for rf in d_cols for i, cn, copy in d_cols[rf]]
-        d_ref, d_gene_row, rows_keep = {}, {}, {}
-        for r, line in rows:
-            rows_keep[r] = all(line.genes[i] is not None for i, cn, copy, rf in ref_cols)
-        for r, line in rows:
-            if not all_genes and not rows_keep[r]:
-                continue
-            for i, cn, copy, rf in ref_cols:
-                g = line.genes[i]
-                if g is None:
+        # ---- 每个 ref 的"可用行"各算各的：all_genes=0 时只认"该 ref 自己的拷贝列都非空"
+        #      （多个 ref 各有自己的完全保留家族，不能取交集）
+        d_ref, d_gene_row = {}, {}
+        for rf in d_cols:
+            cols_rf = [(i, cn, copy) for i, cn, copy in d_cols[rf]]
+            n_new_rf = len([sp for sp in new_samples if sp in d_samples[rf]])
+            n_keep = 0
+            for r, line in rows:
+                if not all_genes and not all(line.genes[i] is not None
+                                             for i, cn, copy in cols_rf):
                     continue
-                d_ref.setdefault(g, set()).add(cn)
-                d_gene_row.setdefault(g, (r, cn, copy, rf))
-        n_keep = len(rows) if all_genes else sum(1 for v in rows_keep.values() if v)
-        logger.info('orthomap: all_genes={} -> {} of {} rows usable ({} ref genes)'.format(
-            int(all_genes), n_keep, len(rows), len(d_ref)))
+                n_keep += 1
+                for i, cn, copy in cols_rf:
+                    g = line.genes[i]
+                    if g is None:
+                        continue
+                    d_ref.setdefault(g, set()).add(cn)
+                    d_gene_row.setdefault(g, (r, cn, copy, rf))
+            logger.info('orthomap: ref {} = matrix id {}, copies {}, {} new samples; '
+                        'all_genes={} -> {} of {} rows usable'.format(
+                            rf, d_refid[rf], [c for _, _, c in d_cols[rf]], n_new_rf,
+                            int(all_genes), n_keep, len(rows)))
+        logger.info('orthomap: {} ref genes over {} refs'.format(len(d_ref), len(d_cols)))
         bad = [g for g in d_ref if '|' not in g]
         if bad:
             raise ValueError(
@@ -1304,8 +1305,11 @@ class Alignment:
         cand.sort(key=lambda x: (-x[0], x[3], x[1], x[2]))
         logger.info('orthomap: competition ties broken randomly (seed={})'.format(seed))
         d_new = OrderedDict()      # (sample, copy) -> {row: cell id}
+        # 只给"该 ref 下的新样本"建拷贝格（多 ref 时不能把别的 ref 的拷贝名摊到它头上）
         for rf in d_cols:
             for sp in new_samples:
+                if sp not in d_samples[rf]:
+                    continue
                 for i, cn, copy in d_cols[rf]:
                     d_new.setdefault((sp, copy), {})
         used_gene, occupied, log_rows = set(), set(), []
