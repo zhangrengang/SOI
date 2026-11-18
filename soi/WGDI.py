@@ -999,8 +999,13 @@ class Alignment:
         return n_swap
 
 
-    def append_cols(self, seqfile, sample, prefix=None, fout=None, **kargs):
-        '''Append assembled sequences as a set of new columns (one per copy).
+    def baitmap(self, seqfile, sample, prefix=None, fout=None, **kargs):
+        '''baitmap: place assembled sequences into the matrix cells their bait ids name.
+
+        (was append_cols; the copy of each sequence is already fixed by the bait it was
+        assembled from -- unlike orthomap, which infers the copy from orthology.)
+
+        Append assembled sequences as a set of new columns (one per copy).
 
         seqfile: HybPiper retrieve output. Sequence id = '{sample}-{colnum}_XG{row}',
         the bait id written by compmap: colnum = column number in the colnames
@@ -1768,9 +1773,9 @@ def main():
     elif subcmd == 'genetrees':
         pep, cds = sys.argv[3:5]
         Alignment(alignment, **kargs).genetrees(pep, cds, **kargs)
-    elif subcmd == 'append_cols':
+    elif subcmd in ('baitmap', 'append_cols'):  # append_cols: old name, kept as alias
         seqfile, sample = sys.argv[3:5]
-        Alignment(alignment, **kargs).append_cols(seqfile, sample, **kargs)
+        Alignment(alignment, **kargs).baitmap(seqfile, sample, **kargs)
     elif subcmd == 'compmap':
         cds, read1 = sys.argv[3:5]
         read2 = sys.argv[5] if len(sys.argv) > 5 and not sys.argv[5].count('=') else None
