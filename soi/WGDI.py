@@ -1000,12 +1000,7 @@ class Alignment:
 
 
     def baitmap(self, seqfile, sample, prefix=None, fout=None, **kargs):
-        '''baitmap: place assembled sequences into the matrix cells their bait ids name.
-
-        (was append_cols; the copy of each sequence is already fixed by the bait it was
-        assembled from -- unlike orthomap, which infers the copy from orthology.)
-
-        Append assembled sequences as a set of new columns (one per copy).
+        '''Append assembled sequences as a set of new columns (one per copy).
 
         seqfile: HybPiper retrieve output. Sequence id = '{sample}-{colnum}_XG{row}',
         the bait id written by compmap: colnum = column number in the colnames
@@ -1145,45 +1140,56 @@ class Alignment:
         if not of_sps:
             raise ValueError('orthomap: no Orthologues/ in {}; not an OrthoFinder '
                              'results directory'.format(orthologs))
-        ref = kargs.pop('ref', None)
-        if ref is None:
-            cands = [rf for rf in d_samples
-                     if rf in of_sps
-                     and [c for c in self.colnames
-                          if c == rf or c.startswith(rf + '_')]]
-            if len(cands) != 1:
+        # ---- refs：design 第 3 列里同时"在 OrthoFinder 结果里"且"矩阵里有列"的物种，可多个
+        #      （一次运行把所有 ref 的样本都加上去；ref= 可显式限定，逗号或空格分隔）
+        ref_given = kargs.pop('ref', None)
+        if ref_given:
+            refs = [x for x in str(ref_given).replace(',', ' ').split() if x]
+            miss = [r for r in refs if r not in d_samples]
+            if miss:
+                raise ValueError('orthomap: ref {} has no row in design {}'.format(
+                    ', '.join(miss), design))
+        else:
+            refs = [rf for rf in d_samples
+                    if rf in of_sps
+                    and [c for c in self.colnames
+                         if c == rf or c.startswith(rf + '_')]]
+            if not refs:
                 raise ValueError(
-                    'orthomap: cannot pin down the ref of this matrix: {} of the '
-                    'design refs are in {} and have a column here; give ref= to '
-                    'choose'.format(cands, orthologs))
-            ref = cands[0]
-            logger.info('orthomap: ref inferred from design+results+matrix: {}'.format(ref))
-        if ref not in d_samples:
-            raise ValueError('orthomap: ref {} has no row in design {}'.format(ref, design))
+                    'orthomap: none of the design refs ({}) is in {} and has a column '
+                    'in {}'.format(', '.join(list(d_samples)[:5]), orthologs, self.alignment))
+            logger.info('orthomap: refs inferred from design+results+matrix: {}'.format(
+                ', '.join(refs)))
         # ---- only NEW species: skip those that already have a column
         def cols_of(sp):
             return [c for c in self.colnames
                     if c == sp or (c.startswith(sp + '_')
                                    and '_' not in c[len(sp) + 1:])]
-        absent = [sp for sp in d_samples[ref] if sp not in of_sps]
+        def _uniq(seq):
+            seen, out = set(), []
+            for x in seq:
+                if x not in seen:
+                    seen.add(x); out.append(x)
+            return out
+        absent = _uniq(sp for rf in refs for sp in d_samples[rf] if sp not in of_sps)
         if absent:
-            logger.info('orthomap: {} samples of ref {} are not in {} -> skipped: {}'
-                        .format(len(absent), ref, orthologs,
+            logger.info('orthomap: {} samples of refs ({}) are not in {} -> skipped: {}'
+                        .format(len(absent), ', '.join(refs), orthologs,
                                 ' '.join(absent[:6]) + (' ...' if len(absent) > 6 else '')))
-        new_samples = [sp for sp in d_samples[ref]
-                       if sp in of_sps and not cols_of(sp)]
-        skipped = [sp for sp in d_samples[ref] if cols_of(sp)]
+        new_samples = _uniq(sp for rf in refs for sp in d_samples[rf]
+                            if sp in of_sps and not cols_of(sp))
+        skipped = _uniq(sp for rf in refs for sp in d_samples[rf] if cols_of(sp))
         if skipped:
             logger.info('orthomap: {} samples already have columns -> untouched: {}'
                         .format(len(skipped), ' '.join(skipped[:6])
                                 + (' ...' if len(skipped) > 6 else '')))
         if not new_samples:
-            raise ValueError('orthomap: nothing to add for ref {}: every sample that '
+            raise ValueError('orthomap: nothing to add for refs ({}): every sample that '
                              'is in {} already has a column in {}'.format(
-                                 ref, orthologs, self.alignment))
+                                 ', '.join(refs), orthologs, self.alignment))
         # ---- ref copy columns
         d_refid, d_cols = {}, {}
-        for rf in [ref]:
+        for rf in refs:
             cands = [c for c in self.colnames if c == rf or c.startswith(rf + '_')]
             if not cands:
                 continue
@@ -1410,8 +1416,8 @@ class Alignment:
         logger.info('orthomap: next step: soi-wgdi genetrees {} <pep> <cds> '
                     'colnames={}.rename.list'.format(out, prefix))
 
-    def compmap(self, cds, read1, read2=None, all_genes=False, ref=None, prefix=None, title=None,
-                ncpu=8, **kargs):
+    def compmap(self, cds, read1, read2=None, all_genes=False, min_frac=1.0, ref=None, prefix=None,
+                title=None, ncpu=8, **kargs):
         '''Competitive mapping of reads to reference CDS baits.
 
         bait = all CDS of species ref (from the alignment csv), one sequence per
@@ -1450,8 +1456,12 @@ class Alignment:
         d_cell = {}      # refgene -> (row, col_index), first occurrence in a retained row
         d_cell_all = {}  # refgene -> (row, col_index), first occurrence anywhere
         retained_rows = set()
+        # min_frac=1.0（默认）＝原口径"全部拷贝非空"；0.8 表示 5 拷贝里至少 4 个非空即可
+        import math
+        keep_min = max(1, int(math.ceil(float(min_frac) * len(idx_copy))))
         for r, line in self.indexed():
-            keep = all(line.genes[i] is not None for i, _ in idx_copy)
+            n_present = sum(1 for i, _ in idx_copy if line.genes[i] is not None)
+            keep = n_present >= keep_min
             if keep:
                 retained_rows.add(r)
             for i, _ in idx_copy:
@@ -1466,13 +1476,13 @@ class Alignment:
             d_cell.setdefault(g, c)
         refs = set(d_cell_all)
         d_retain = {g: c for g, c in d_cell.items() if c[0] in retained_rows}
-        logger.info('ref {} copies: {}; all ref genes: {}; fully-retained genes: {}'.format(
-            ref, [c for _, c in idx_copy], len(refs), len(d_retain)))
+        logger.info('ref {} copies: {}; all ref genes: {}; genes with >= {}/{} copies: {}'.format(
+            ref, [c for _, c in idx_copy], len(refs), keep_min, len(idx_copy), len(d_retain)))
         # all_genes=1：不做"完全保留"过滤 —— bam / 深度表 / target.cds 一致地用全部基因
         all_genes = bool(all_genes) and str(all_genes).lower() not in ('0', 'false', 'no', '')
         d_rows = d_retain if not all_genes else d_cell
-        logger.info('all_genes={} -> {} genes used ({} fully-retained)'.format(
-            all_genes, len(d_rows), len(d_retain)))
+        logger.info('all_genes={} min_frac={} -> {} genes used ({} with >= {}/{} copies)'.format(
+            all_genes, min_frac, len(d_rows), len(d_retain), keep_min, len(idx_copy)))
         # ref itself may contain '-', so it is sanitized for the taxon slot; gene
         # ids never enter the id, so they may contain any character
         taxon = ref.replace('-', '_')
@@ -1773,7 +1783,7 @@ def main():
     elif subcmd == 'genetrees':
         pep, cds = sys.argv[3:5]
         Alignment(alignment, **kargs).genetrees(pep, cds, **kargs)
-    elif subcmd in ('baitmap', 'append_cols'):  # append_cols: old name, kept as alias
+    elif subcmd in ('baitmap', 'append_cols'):
         seqfile, sample = sys.argv[3:5]
         Alignment(alignment, **kargs).baitmap(seqfile, sample, **kargs)
     elif subcmd == 'compmap':
