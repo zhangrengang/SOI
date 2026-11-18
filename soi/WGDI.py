@@ -1108,7 +1108,7 @@ class Alignment:
         '''
         import glob
         import networkx as nx
-        from .mcscan import XOrthology
+        from .OrthoFinder import OrthoFinder as _OF
         if design is None:
             raise ValueError('orthomap: need design=<species.design>')
         # ---- design: ref -> [samples]
@@ -1245,21 +1245,37 @@ class Alignment:
                 '(e.g. {}); cannot align them with ortholog ids'.format(bad[0]))
         # ---- orthology graph over {refs} + {samples} (sample-sample edges kept so
         #      that ref copies joined through a sample gene are still visible)
+        # 只建 sample↔ref 的边：ref↔ref / sample↔sample 在竞争分配里用不到（候选只取
+        # "样本基因—ref 基因"的直接边），白建会吃几倍内存。同时只读 wanted 物种的文件与行。
         wanted = set(d_cols) | set(new_samples)
+        rset, sset = set(d_cols), set(new_samples)
+        xo = _OF(orthologs)
+        orthoFiles, allowed = xo.orthologues_files(sps=sorted(wanted))
         G = nx.Graph()
-        n_pair = 0
-        for rc in XOrthology(orthologs):
-            s1, s2 = rc.species1, rc.species2
-            if s1 == s2 or s1 not in wanted or s2 not in wanted:
-                continue
-            g1, g2 = rc.gene1, rc.gene2
-            n_pair += 1
-            if G.has_edge(g1, g2):
-                G[g1][g2]['w'] += 1
-            else:
-                G.add_edge(g1, g2, w=1)
-        logger.info('orthomap: {} ortholog pairs, {} nodes in the graph'.format(
-            n_pair, G.number_of_nodes()))
+        n_pair = n_row = 0
+        for _og, _partner, genes1, genes2 in xo.iter_ortholog_rows(orthoFiles, allowed):
+            n_row += 1
+            g1r = [g for g in genes1 if g.split('|', 1)[0] in rset]
+            g2r = [g for g in genes2 if g.split('|', 1)[0] in rset]
+            g1s = [g for g in genes1 if g.split('|', 1)[0] in sset]
+            g2s = [g for g in genes2 if g.split('|', 1)[0] in sset]
+            for a in g1s:
+                for b in g2r:
+                    n_pair += 1
+                    if G.has_edge(a, b):
+                        G[a][b]['w'] += 1
+                    else:
+                        G.add_edge(a, b, w=1)
+            for a in g1r:
+                for b in g2s:
+                    n_pair += 1
+                    if G.has_edge(a, b):
+                        G[a][b]['w'] += 1
+                    else:
+                        G.add_edge(a, b, w=1)
+        logger.info('orthomap: read {} files / {} rows -> {} sample-ref pairs, '
+                    '{} nodes in the graph'.format(len(orthoFiles), n_row, n_pair,
+                                                   G.number_of_nodes()))
         if n_pair == 0:
             raise ValueError('orthomap: no ortholog pair among the design refs ({}) '
                              'and their samples; check that design ids match the '
@@ -1269,16 +1285,21 @@ class Alignment:
         #   一个样本基因只进一个格子，一个格子只放一个基因（跨拷贝列同样竞争）。
         #   这样冲突不再一律丢弃，而是让"最强的直系同源关系"赢。
         sample_set = set(new_samples)
+        # 每个样本只跟"它自己的 ref"竞争（跨 ref 的直系同源边在别的拷贝列里没有格子）
+        ref_of = {sp: rf for rf in d_cols for sp in d_samples[rf] if sp in sample_set}
         cand = []
         for comp in nx.connected_components(G):
-            refs = [n for n in comp if n in d_ref]
-            if not refs:
+            ref_nodes = [n for n in comp if n in d_ref]
+            if not ref_nodes:
                 continue
             for n in comp:
                 sp = n.split('|', 1)[0]
                 if sp not in sample_set:
                     continue
-                for rg in refs:
+                myref = ref_of.get(sp)
+                for rg in ref_nodes:
+                    if d_gene_row[rg][3] != myref:
+                        continue
                     if G.has_edge(n, rg):
                         cand.append((G[n][rg]['w'], n, rg))
         # ---- 分配质量分类（按样本基因的候选集）：unique=唯一候选（高质）；
