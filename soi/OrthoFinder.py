@@ -1235,8 +1235,11 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(
 	def iter_ortholog_rows(self, orthoFiles, allowed=None):
 		'''读 Orthologues 文件，统一处理两种行格式，yield (OG, 伙伴物种, 基因1, 基因2)。
 		v3 扁平（4 列）：OG / 伙伴物种 / 本物种基因 / 伙伴基因
-		v2 分文件（3 列）：OG / 基因1 / 基因2'''
+		v2 分文件（3 列）：OG / 基因1 / 基因2
+		allowed：集合=所有文件共用的伙伴物种白名单；dict={文件路径: 伙伴白名单}（按文件分别给，
+		只读"配好对"的行，能省掉 90% 以上的行）；None=不过滤。'''
 		for orthoFile in orthoFiles:
+			ok = allowed.get(orthoFile) if isinstance(allowed, dict) else allowed
 			i = 0
 			for line in open(orthoFile):
 				i += 1
@@ -1245,7 +1248,7 @@ specific multi-copy OGs: {}\nspecific multi-copy genes: {}'.format(
 				temp = line.strip().split('\t')
 				if len(temp) == 4:      # v3
 					Orthogroup, spPartner, Genes_1, Genes_2 = temp
-					if allowed is not None and spPartner not in allowed:
+					if ok is not None and spPartner not in ok:
 						continue
 				elif len(temp) == 3:    # v2
 					Orthogroup, Genes_1, Genes_2 = temp

@@ -1251,6 +1251,21 @@ class Alignment:
         rset, sset = set(d_cols), set(new_samples)
         xo = _OF(orthologs)
         orthoFiles, allowed = xo.orthologues_files(sps=sorted(wanted))
+        # 只读"配好对"的行：ref 文件只留它自己的样本，样本文件只留它自己的 ref
+        allow_by_file = {}
+        for rf in d_cols:
+            f = xo.flat_orthologues(rf)
+            if f:
+                allow_by_file[f] = set(d_samples[rf])
+            for sp in d_samples[rf]:
+                if sp in new_samples:
+                    g = xo.flat_orthologues(sp)
+                    if g:
+                        allow_by_file[g] = {rf}
+        if all(f in allow_by_file for f in orthoFiles):
+            allowed = allow_by_file
+        else:
+            logger.info('orthomap: 有 v2 分文件布局的文件，伙伴过滤退回 wanted 全集')
         G = nx.Graph()
         n_pair = n_row = 0
         for _og, _partner, genes1, genes2 in xo.iter_ortholog_rows(orthoFiles, allowed):
