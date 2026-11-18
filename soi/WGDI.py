@@ -1140,6 +1140,25 @@ class Alignment:
         if not of_sps:
             raise ValueError('orthomap: no Orthologues/ in {}; not an OrthoFinder '
                              'results directory'.format(orthologs))
+        # ---- alias：OrthoFinder 结果里的物种名 ≠ 矩阵里的物种名（core 建库时改名、矩阵没跟），
+        #      写成 alias='结果名=矩阵名[, ...]'；只影响取文件和基因前缀，不改产物列名
+        alias = kargs.pop('alias', None)
+        res2canon = {}
+        if alias:
+            items = alias.split(',') if isinstance(alias, str) else list(alias)
+            for item in items:
+                a, _sep, b = str(item).partition('=')
+                if not b.strip():
+                    raise ValueError('orthomap: alias 要写成 结果名=矩阵名: {}'.format(item))
+                res2canon[a.strip()] = b.strip()
+            of_sps |= set(res2canon.values())
+            logger.info('orthomap: alias {}'.format(
+                ', '.join('{} -> {}'.format(k, v) for k, v in res2canon.items())))
+        canon2res = {v: k for k, v in res2canon.items()}
+
+        def _canon(g):
+            p, sep, body = g.partition('|')
+            return res2canon[p] + sep + body if (sep and p in res2canon) else g
         # ---- refs：design 第 3 列里同时"在 OrthoFinder 结果里"且"矩阵里有列"的物种，可多个
         #      （一次运行把所有 ref 的样本都加上去；ref= 可显式限定，逗号或空格分隔）
         ref_given = kargs.pop('ref', None)
@@ -1250,14 +1269,19 @@ class Alignment:
         wanted = set(d_cols) | set(new_samples)
         rset, sset = set(d_cols), set(new_samples)
         xo = _OF(orthologs)
-        # 物种对 = 每个新样本与它自己的 ref（配好对交给最底层，只解析这些对）
+        # 物种对 = 每个新样本与它自己的 ref（配好对交给最底层，只解析这些对）；
+        # 取文件用结果里的名字（alias），分配仍用矩阵里的名字
         pair_list = [(rf, sp) for rf in d_cols for sp in d_samples[rf] if sp in new_samples]
+        parse_pairs = [(canon2res.get(rf, rf), canon2res.get(sp, sp)) for rf, sp in pair_list]
         orthoFiles, _allowed = xo.orthologues_files(
-            sps=sorted({x for p in pair_list for x in p}))
+            sps=sorted({x for p in parse_pairs for x in p}))
         G = nx.Graph()
         n_pair = n_row = 0
-        for _og, _partner, genes1, genes2 in xo.iter_ortholog_rows(orthoFiles, pairs=pair_list):
+        for _og, _partner, genes1, genes2 in xo.iter_ortholog_rows(orthoFiles, pairs=parse_pairs):
             n_row += 1
+            if res2canon:      # 基因前缀按 alias 改回矩阵里的物种名
+                genes1 = [_canon(g) for g in genes1]
+                genes2 = [_canon(g) for g in genes2]
             g1r = [g for g in genes1 if g.split('|', 1)[0] in rset]
             g2r = [g for g in genes2 if g.split('|', 1)[0] in rset]
             g1s = [g for g in genes1 if g.split('|', 1)[0] in sset]
