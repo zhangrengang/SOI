@@ -1838,7 +1838,9 @@ def main():
     elif subcmd == 'high_loss':
         Alignment(alignment, **kargs).get_high_loss(**kargs)
     elif subcmd == 'genetrees':
-        pep, cds = sys.argv[3:5]
+        pep = sys.argv[3]
+        # cds optional: pep-only trees (tree_from=pep) do not read it
+        cds = sys.argv[4] if len(sys.argv) > 4 and '=' not in sys.argv[4] else None
         Alignment(alignment, **kargs).genetrees(pep, cds, **kargs)
     elif subcmd in ('baitmap', 'append_cols'):
         seqfile, sample = sys.argv[3:5]
