@@ -13,6 +13,11 @@ from .small_tools import mkdirs, flatten, test_s, test_f, parse_kargs
 from .RunCmdsMP import run_cmd, run_job, logger
 from .style import format_species_label, format_species_title
 
+def ogid_name(i):
+    '''Per-family id of matrix row i — the name genetrees gives its tmp files.'''
+    return 'XG{}'.format(i)
+
+
 sg_colors = ['#f9c00c', '#00b9f1', '#7200da', '#f9320c', '#00b8a9']
 
 
@@ -808,7 +813,7 @@ class Alignment:
                 continue
             if line.missing_rate > max_missing:
                 continue
-            ogid = 'XG{}'.format(i)
+            ogid = ogid_name(i)
             pepSeq = '{}/{}.pep'.format(self.tmpdir, ogid)
             cdsSeq = '{}/{}.cds'.format(self.tmpdir, ogid)
             f_pep = open(pepSeq, 'w')
@@ -896,22 +901,19 @@ class Alignment:
             raise ValueError('no genes parsed from {} (第 2 列应为基因 id)'.format(gff))
 
         # 不套任何过滤：tmp 里有哪些 SG 的文件就合并哪些（max_missing 是 genetrees 的事）
-        import glob
+        # 文件名按 genetrees 自己的命名规则用行号构造（ogid_name），不 glob、不猜前缀/后缀；
+        # pep 与 cds 两种模式的中间件后缀不同，哪个存在用哪个
         anchor = kargs.get('anchor', 'P_MK')   # 锚定物种
         n_noanchor = 0
-        d_line = {i: line for i, line in self.indexed()}
         d_sub, d_idmap, n_skip = {}, {}, 0
-        tmpl = '{}/XG*.cds.aln.trimal.treefile'.format(tmpdir)
-        for tf in sorted(glob.glob(tmpl), key=lambda x: int(os.path.basename(x)[2:].split('.')[0])):
-            al = tf[:-len('.treefile')]
-            if not test_s(al):
+        for i, line in self.indexed():
+            stem = '{}/{}'.format(tmpdir, ogid_name(i))
+            al = next((stem + '.' + m + '.aln.trimal' for m in ('pep', 'cds')
+                       if test_s(stem + '.' + m + '.aln.trimal')), None)
+            if al is None or not test_s(al + '.treefile'):
                 n_skip += 1
                 continue
-            i = int(os.path.basename(tf)[2:].split('.')[0])
-            line = d_line.get(i)
-            if line is None:
-                n_skip += 1
-                continue
+            tf = al + '.treefile'
             genes = [(g, cn) for g, cn in zip(line.genes, self.colnames) if g is not None]
             # 染色体归属取「锚定物种」那一列的基因（默认 P_MK）；先前是"行里第一个能查到的基因"，
             # 缺锚定基因的行会静默退到别的物种、把 SG 分到错的染色体
@@ -926,7 +928,9 @@ class Alignment:
             for g, cn in genes:
                 d_idmap[format_id_for_iqtree(cn + '.' + g)] = cn
         # 响亮校验：idmap 必须能命中文件里的 id（否则是 colnames 给错/没给）
-        _probe = sorted(glob.glob('{}/XG*.cds.aln.trimal'.format(tmpdir)))[:1]
+        _probe = [al for al in ('{}/{}'.format(tmpdir, ogid_name(i)) + '.' + m + '.aln.trimal'
+                                for i, _ in list(self.indexed())[:1] for m in ('pep', 'cds'))
+                  if test_s(al)][:1]
         if _probe:
             _ids = [rc.id for rc in SeqIO.parse(_probe[0], 'fasta')]
             _hit = sum(1 for x in _ids if x in d_idmap)
