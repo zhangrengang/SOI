@@ -876,17 +876,19 @@ class Alignment:
             catAln(used_alns, fout, idmap=d_idmap)
 
 
-    def chrsplit(self, tmpdir, gff, refsp, prefix=None, **kargs):
+    def chrsplit(self, gff, refsp, tmpdir=None, prefix=None, **kargs):
         '''按染色体合并 genetrees 的产物（每染色体一套，格式与 genetrees 一致）。
 
-        tmpdir : genetrees 的中间目录（含 XG<i>.cds.aln.trimal[.treefile]，文件名自带 SG id）
-        **矩阵/colnames 必须与那次 genetrees 用的完全一致**（通常是 <ref>-appended.alignment.csv
-        + <ref>-appended.rename.list）；否则 idmap 与文件里的 id 对不上，会静默产出错文件（已加校验）
         gff    : all_species_gene.gff —— 第 1 列取染色体（原样），第 2 列是基因 id（形如 <refsp>|<gene>）
         refsp  : 参考物种（矩阵行基因所属物种），用它在 GFF 里取染色体归属
+        tmpdir : genetrees 的中间目录（含 XG<i>.cds.aln.trimal[.treefile]，文件名自带 SG id）；
+                 缺省用 {prefix}.tmp，没有 prefix 时用 ./tmp
+        **矩阵/colnames 必须与那次 genetrees 用的完全一致**（通常是 <ref>-appended.alignment.csv
+        + <ref>-appended.rename.list）；否则 idmap 与文件里的 id 对不上，会静默产出错文件（已加校验）
         prefix : 输出前缀 -> {prefix}.<chrom>.genetrees + {prefix}.<chrom>.alignments
         只做拆分/合并：复用 genetrees 里同一套 cat_genetrees / catAln。
         '''
+        tmpdir = tmpdir or ('{}.tmp'.format(prefix) if prefix else 'tmp')
         d_gl = Gff(gff).get_genes()      # 复用现成 GFF 解析类（GffLine: .chrom/.gene/.species）
         d_chrom = {g: gl.chrom for g, gl in d_gl.items()}
         logger.info('chrsplit: {} genes with chromosome; refsp={} (仅用于记录)'.format(len(d_chrom), refsp))
@@ -1853,8 +1855,13 @@ def main():
         orthologs = sys.argv[3]
         Alignment(alignment, **kargs).orthomap(orthologs, **kargs)
     elif subcmd == 'chrsplit':
-        tmpdir, gff, refsp = sys.argv[3:6]
-        Alignment(alignment, **kargs).chrsplit(tmpdir, gff, refsp, **kargs)
+        # chrsplit <aln> <gff> <refsp> [tmpdir=...]；老写法 chrsplit <aln> <tmpdir> <gff> <refsp> 仍接受
+        if len(sys.argv) > 5 and '=' not in sys.argv[5]:
+            tmpdir, gff, refsp = sys.argv[3:6]
+            kargs['tmpdir'] = tmpdir
+        else:
+            gff, refsp = sys.argv[3:5]
+        Alignment(alignment, **kargs).chrsplit(gff, refsp, **kargs)
     elif subcmd == 'swapcols':
         gff, chroms, col1, col2 = sys.argv[3:7]
         Alignment(alignment, **kargs).swapcols(gff, chroms, col1, col2, **kargs)
